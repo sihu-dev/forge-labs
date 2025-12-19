@@ -30,6 +30,8 @@ type IEquityPoint = HephaitosTypes.IEquityPoint;
 const createEquityPoint = (equity: number, dayOffset: number = 0): IEquityPoint => ({
   timestamp: new Date(2024, 0, dayOffset + 1).toISOString(),
   equity,
+  cash: equity * 0.1,
+  positionValue: equity * 0.9,
   drawdown: 0,
 });
 
@@ -40,21 +42,54 @@ const createRoundTrip = (
   netPnL: number,
   entryDayOffset: number = 0,
   holdingDays: number = 1
-): IRoundTrip => ({
-  id: `trade-${Math.random()}`,
-  symbol: 'BTC/USDT',
-  side: netPnL >= 0 ? 'long' : 'long',
-  enteredAt: new Date(2024, 0, entryDayOffset + 1).toISOString(),
-  exitedAt: new Date(2024, 0, entryDayOffset + holdingDays + 1).toISOString(),
-  entryPrice: 50000,
-  exitPrice: 50000 + netPnL * 10,
-  quantity: 0.1,
-  grossPnL: netPnL * 1.1,
-  fees: netPnL * 0.1,
-  netPnL,
-  pnlPercent: (netPnL / 5000) * 100,
-  holdingPeriodMs: holdingDays * 24 * 60 * 60 * 1000,
-});
+): IRoundTrip => {
+  const entryPrice = 50000;
+  const exitPrice = 50000 + netPnL * 10;
+  const quantity = 0.1;
+  const enteredAt = new Date(2024, 0, entryDayOffset + 1).toISOString();
+  const exitedAt = new Date(2024, 0, entryDayOffset + holdingDays + 1).toISOString();
+  const fee = Math.abs(netPnL) * 0.1;
+
+  return {
+    id: `trade-${Math.random()}`,
+    symbol: 'BTC/USDT',
+    side: 'buy',
+    entryTrade: {
+      id: `entry-${Math.random()}`,
+      orderId: `order-${Math.random()}`,
+      symbol: 'BTC/USDT',
+      side: 'buy',
+      quantity,
+      price: entryPrice,
+      value: entryPrice * quantity,
+      fee: fee / 2,
+      feeCurrency: 'USDT',
+      executedAt: enteredAt,
+    },
+    exitTrade: {
+      id: `exit-${Math.random()}`,
+      orderId: `order-${Math.random()}`,
+      symbol: 'BTC/USDT',
+      side: 'sell',
+      quantity,
+      price: exitPrice,
+      value: exitPrice * quantity,
+      fee: fee / 2,
+      feeCurrency: 'USDT',
+      executedAt: exitedAt,
+    },
+    entryPrice,
+    exitPrice,
+    quantity,
+    totalFees: fee,
+    netPnL,
+    netPnLPercent: (netPnL / (entryPrice * quantity)) * 100,
+    holdingPeriodMs: holdingDays * 24 * 60 * 60 * 1000,
+    holdingPeriodBars: holdingDays,
+    enteredAt,
+    exitedAt,
+  };
+};
 
 // ═══════════════════════════════════════════════════════════════
 // 수익률 계산 테스트

@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import type { ApiErrorResponse } from '@forge-labs/types/bidding';
+import type { BiddingTypes } from '@forge/types';
 
 // ============================================================================
 // 타입 정의
@@ -30,7 +30,7 @@ function createErrorResponse(
   code: string,
   message: string,
   status: number
-): NextResponse<ApiErrorResponse> {
+): NextResponse<BiddingTypes.ApiErrorResponse> {
   return NextResponse.json(
     {
       success: false,
@@ -79,7 +79,7 @@ export function withAuth<T>(
 ) {
   const { requireAuth = true, allowedRoles = ['admin', 'user'] } = config;
 
-  return async (request: NextRequest): Promise<NextResponse<T | ApiErrorResponse>> => {
+  return async (request: NextRequest): Promise<NextResponse<T | BiddingTypes.ApiErrorResponse>> => {
     try {
       // 인증 불필요 시 바로 처리
       if (!requireAuth) {
@@ -158,7 +158,7 @@ export function withApiKey<T>(
   handler: (req: NextRequest) => Promise<NextResponse<T>>,
   apiKeyEnvVar: string = 'API_SECRET_KEY'
 ) {
-  return async (request: NextRequest): Promise<NextResponse<T | ApiErrorResponse>> => {
+  return async (request: NextRequest): Promise<NextResponse<T | BiddingTypes.ApiErrorResponse>> => {
     try {
       const authHeader = request.headers.get('Authorization');
 

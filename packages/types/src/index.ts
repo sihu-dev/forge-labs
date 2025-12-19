@@ -372,3 +372,9 @@ export * as FolioTypes from './folio/index.js';
  * 자가개선 성장 루프 패턴 적용
  */
 export * as DryonTypes from './dryon/index.js';
+
+/**
+ * BIDFLOW 상세 타입 (L0 구현체)
+ * 입찰 자동화 시스템
+ */
+export * as BiddingTypes from './bidding/index.js';

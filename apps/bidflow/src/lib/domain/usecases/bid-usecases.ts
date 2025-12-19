@@ -3,15 +3,15 @@
  * @description 입찰 비즈니스 로직 (Use Cases)
  */
 
-import type {
-  BidData,
-  UUID,
-  BidStatus,
-  ApiResponse,
-  ProductMatch,
-  PaginatedResult,
-  CreateInput,
-} from '@forge-labs/types/bidding';
+import type { BiddingTypes } from '@forge/types';
+
+type BidData = BiddingTypes.BidData;
+type UUID = BiddingTypes.UUID;
+type BidStatus = BiddingTypes.BidStatus;
+type ApiResponse<T> = BiddingTypes.ApiResponse<T>;
+type ProductMatch = BiddingTypes.ProductMatch;
+type PaginatedResult<T> = BiddingTypes.PaginatedResult<T>;
+type CreateInput<T> = BiddingTypes.CreateInput<T>;
 import { getBidRepository, type BidFilters, type BidSortOptions } from '../repositories/bid-repository';
 import { matchProducts } from '../../clients/product-matcher';
 import { validatePromptInput, sanitizeInput } from '../../security/prompt-guard';
@@ -280,7 +280,7 @@ export async function getDashboardStats(): Promise<ApiResponse<DashboardStats>> 
     return allBids as ApiResponse<never>;
   }
 
-  const bids = allBids.data.items;
+  const bids: readonly BidData[] = allBids.data.items;
 
   // 상태별 집계
   const byStatus = bids.reduce(
@@ -309,10 +309,10 @@ export async function getDashboardStats(): Promise<ApiResponse<DashboardStats>> 
     : 0;
 
   // 최근 활동 (최신 5개)
-  const recentActivity = bids
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  const recentActivity = [...bids]
+    .sort((a: BidData, b: BidData) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 5)
-    .map((bid) => ({
+    .map((bid: BidData) => ({
       id: bid.id,
       title: bid.title,
       action: `상태: ${bid.status}`,

@@ -4,17 +4,17 @@
  */
 
 import { createServerClient } from '@supabase/ssr';
-import type {
-  BidData,
-  UUID,
-  BidStatus,
-  BidSource,
-  BidPriority,
-  PaginatedResult,
-  ApiResponse,
-  CreateInput,
-  UpdateInput,
-} from '@forge-labs/types/bidding';
+import type { BiddingTypes } from '@forge/types';
+
+type BidData = BiddingTypes.BidData;
+type UUID = BiddingTypes.UUID;
+type BidStatus = BiddingTypes.BidStatus;
+type BidSource = BiddingTypes.BidSource;
+type BidPriority = BiddingTypes.BidPriority;
+type PaginatedResult<T> = BiddingTypes.PaginatedResult<T>;
+type ApiResponse<T> = BiddingTypes.ApiResponse<T>;
+type CreateInput<T> = BiddingTypes.CreateInput<T>;
+type UpdateInput<T> = BiddingTypes.UpdateInput<T>;
 
 // ============================================================================
 // Repository 인터페이스

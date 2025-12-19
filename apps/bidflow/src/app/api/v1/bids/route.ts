@@ -10,7 +10,11 @@ import { withRateLimit, getEndpointIdentifier } from '@/lib/security/rate-limite
 import { withCSRF } from '@/lib/security/csrf';
 import { listBidsQuerySchema, createBidSchema } from '@/lib/validation/schemas';
 import { listBids, createBid } from '@/lib/domain/usecases/bid-usecases';
-import type { ApiResponse, BidData, PaginatedResult } from '@forge-labs/types/bidding';
+import type { BiddingTypes } from '@forge/types';
+
+type ApiResponse<T> = BiddingTypes.ApiResponse<T>;
+type BidData = BiddingTypes.BidData;
+type PaginatedResult<T> = BiddingTypes.PaginatedResult<T>;
 
 // ============================================================================
 // GET /api/v1/bids - 입찰 목록 조회
@@ -94,7 +98,12 @@ async function handlePost(request: AuthenticatedRequest): Promise<NextResponse<A
     }
 
     // 비즈니스 로직 실행
-    const result = await createBid(parseResult.data);
+    const bidInput = {
+      ...parseResult.data,
+      estimatedAmount: parseResult.data.estimatedAmount ?? null,
+      url: parseResult.data.url ?? null,
+    };
+    const result = await createBid(bidInput);
 
     if (!result.success) {
       const status = result.error.code === 'DUPLICATE' ? 409 : 500;

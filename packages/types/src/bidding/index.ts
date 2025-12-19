@@ -5,23 +5,20 @@
  */
 
 // ============================================================================
-// Branded Types (타입 안전성 강화)
+// Type Aliases (타입 별칭)
 // ============================================================================
 
-declare const __brand: unique symbol;
-type Brand<T, B> = T & { readonly [__brand]: B };
-
-/** UUID 타입 (문자열이지만 UUID임을 보장) */
-export type UUID = Brand<string, 'UUID'>;
+/** UUID 타입 (문자열) */
+export type UUID = string;
 
 /** 확률 타입 (0-1 범위) */
-export type Probability = Brand<number, 'Probability'>;
+export type Probability = number;
 
 /** 한국 원화 (BigInt로 정밀도 보장) */
-export type KRW = Brand<bigint, 'KRW'>;
+export type KRW = bigint;
 
 /** 날짜 문자열 (ISO 8601) */
-export type ISODateString = Brand<string, 'ISODateString'>;
+export type ISODateString = string;
 
 // ============================================================================
 // Literal Union Types (리터럴 유니온)
@@ -377,25 +374,25 @@ export function isISODateString(value: unknown): value is ISODateString {
 }
 
 // ============================================================================
-// Factory Functions (팩토리 함수)
+// Helper Functions (헬퍼 함수)
 // ============================================================================
 
 export function createUUID(value: string): UUID {
   if (!isUUID(value)) {
     throw new Error(`Invalid UUID: ${value}`);
   }
-  return value as UUID;
+  return value;
 }
 
 export function createProbability(value: number): Probability {
   if (!isProbability(value)) {
     throw new Error(`Invalid Probability: ${value}. Must be between 0 and 1`);
   }
-  return value as Probability;
+  return value;
 }
 
 export function createKRW(value: bigint): KRW {
-  return value as KRW;
+  return value;
 }
 
 export function createISODateString(value: string | Date): ISODateString {
@@ -403,5 +400,5 @@ export function createISODateString(value: string | Date): ISODateString {
   if (!isISODateString(dateStr)) {
     throw new Error(`Invalid ISO Date String: ${value}`);
   }
-  return dateStr as ISODateString;
+  return dateStr;
 }

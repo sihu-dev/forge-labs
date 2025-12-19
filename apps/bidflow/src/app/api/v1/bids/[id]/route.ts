@@ -10,7 +10,11 @@ import { withCSRF } from '@/lib/security/csrf';
 import { uuidSchema, updateBidSchema } from '@/lib/validation/schemas';
 import { getBidById, updateBidStatus } from '@/lib/domain/usecases/bid-usecases';
 import { getBidRepository } from '@/lib/domain/repositories/bid-repository';
-import type { ApiResponse, BidData, UUID } from '@forge-labs/types/bidding';
+import type { BiddingTypes } from '@forge/types';
+
+type ApiResponse<T> = BiddingTypes.ApiResponse<T>;
+type BidData = BiddingTypes.BidData;
+type UUID = BiddingTypes.UUID;
 
 interface RouteParams {
   params: Promise<{ id: string }>;

@@ -6,7 +6,7 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { NextRequest, NextResponse } from 'next/server';
-import type { ApiErrorResponse } from '@forge-labs/types/bidding';
+import type { BiddingTypes } from '@forge/types';
 
 // ============================================================================
 // Redis 클라이언트 초기화
@@ -132,7 +132,7 @@ export function withRateLimit<T>(
     getIdentifier = defaultGetIdentifier,
   } = config;
 
-  return async (request: NextRequest): Promise<NextResponse<T | ApiErrorResponse>> => {
+  return async (request: NextRequest): Promise<NextResponse<T | BiddingTypes.ApiErrorResponse>> => {
     const identifier = getIdentifier(request);
     const result = await checkRateLimit(identifier, type);
 

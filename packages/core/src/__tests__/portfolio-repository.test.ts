@@ -318,7 +318,7 @@ describe('InMemoryPortfolioRepository', () => {
       const result = await repository.getSnapshots('portfolio-1');
 
       expect(result.success).toBe(true);
-      const dates = result.data.map(s => new Date(s.recorded_at).getTime());
+      const dates = result.data!.map(s => new Date(s.recorded_at).getTime());
 
       for (let i = 1; i < dates.length; i++) {
         expect(dates[i]).toBeGreaterThanOrEqual(dates[i - 1]);
@@ -364,11 +364,11 @@ describe('Repository Immutability', () => {
     await repository.saveSnapshot(snapshot);
 
     const getResult = await repository.getSnapshots('portfolio-1');
-    if (getResult.data[0]) {
+    if (getResult.data && getResult.data[0]) {
       getResult.data[0].total_value_usd = 999999;
     }
 
     const getResult2 = await repository.getSnapshots('portfolio-1');
-    expect(getResult2.data[0]?.total_value_usd).toBe(100000);
+    expect(getResult2.data?.[0]?.total_value_usd).toBe(100000);
   });
 });

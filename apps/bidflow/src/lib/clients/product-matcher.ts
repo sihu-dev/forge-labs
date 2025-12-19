@@ -3,7 +3,11 @@
  * @description 제품 매칭 로직 (씨엠엔텍 제품 기준)
  */
 
-import type { BidData, ProductMatch, MatchConfidence } from '@forge-labs/types/bidding';
+import type { BiddingTypes } from '@forge/types';
+
+type BidData = BiddingTypes.BidData;
+type ProductMatch = BiddingTypes.ProductMatch;
+type MatchConfidence = BiddingTypes.MatchConfidence;
 
 // ============================================================================
 // 제품 매칭 규칙 정의

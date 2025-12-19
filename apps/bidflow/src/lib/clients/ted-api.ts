@@ -4,7 +4,11 @@
  * @see https://ted.europa.eu/en/about-ted/api
  */
 
-import type { BidData, BidSource, CreateInput } from '@forge-labs/types/bidding';
+import type { BiddingTypes } from '@forge/types';
+
+type BidData = BiddingTypes.BidData;
+type BidSource = BiddingTypes.BidSource;
+type CreateInput<T> = BiddingTypes.CreateInput<T>;
 import { checkCrawlingRateLimit } from '../security/rate-limiter';
 
 // ============================================================================

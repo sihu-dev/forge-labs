@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
-import type { ApiErrorResponse } from '@forge-labs/types/bidding';
+import type { BiddingTypes } from '@forge/types';
 
 // ============================================================================
 // CSRF 토큰 관리
@@ -93,7 +93,7 @@ export function withCSRF<T>(
     exemptMethods: config.exemptMethods ?? DEFAULT_CONFIG.exemptMethods,
   };
 
-  return async (request: NextRequest): Promise<NextResponse<T | ApiErrorResponse>> => {
+  return async (request: NextRequest): Promise<NextResponse<T | BiddingTypes.ApiErrorResponse>> => {
     const path = new URL(request.url).pathname;
     const method = request.method;
 
