@@ -1,0 +1,46 @@
+{
+  "name": "forge-labs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FORGE LABS - 나노인자 기반 AI 플랫폼 통합 모노레포",
+  "keywords": [
+    "ai",
+    "trading",
+    "automation",
+    "monorepo",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "FORGE LABS",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean && rm -rf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "forge:feature": "node .forge/cli/feature.js",
+    "forge:design": "node .forge/cli/design.js",
+    "forge:implement": "node .forge/cli/implement.js",
+    "forge:verify": "node .forge/cli/verify.js",
+    "g": "powershell -ExecutionPolicy Bypass -File .vscode/scripts/verify_workspace.ps1",
+    "g:apply": "powershell -ExecutionPolicy Bypass -File .vscode/scripts/verify_workspace.ps1 -AutoFix"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

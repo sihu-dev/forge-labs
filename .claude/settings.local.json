@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "version": "2.3",
+  "corePrinciples": {
+    "uxFriendly": true,
+    "businessAligned": true,
+    "techEfficient": true,
+    "dynamicDesign": true,
+    "automationFirst": true,
+    "productionQuality": true,
+    "trendyUX": true,
+    "prohibitions": [
+      "iconOveruse",
+      "customFonts",
+      "formalCopy",
+      "manualRequests",
+      "legacyTech"
+    ]
+  },
+  "permissions": {
+    "allow": ["*"],
+    "deny": [],
+    "defaultMode": "bypassPermissions",
+    "autoApprove": true
+  },
+  "project": {
+    "name": "FORGE LABS",
+    "description": "5개 앱 통합 플랫폼 (HEPHAITOS, DRYON, FOLIO, ADE, BIDFLOW)",
+    "type": "monorepo",
+    "framework": "turborepo",
+    "runtime": "nodejs"
+  },
+  "context": {
+    "requiredFiles": [
+      "CLAUDE.md",
+      ".forge/QUERY_PIPELINE.md",
+      ".forge/CROSS_VALIDATION_REPORT.md"
+    ],
+    "autoRead": true,
+    "maxContextSize": 100000
+  },
+  "codeStyle": {
+    "language": "typescript",
+    "strictMode": true,
+    "formatter": "prettier",
+    "linter": "eslint",
+    "useAbsoluteImports": true,
+    "noAnyType": true,
+    "preferConst": true
+  },
+  "commands": {
+    "enabled": true,
+    "directory": ".claude/commands"
+  },
+  "automation": {
+    "autoFix": true,
+    "autoFormat": true,
+    "autoLint": true,
+    "autoReview": true,
+    "autoTest": false,
+    "autoPush": false
+  },
+  "performance": {
+    "parallelTools": true,
+    "cacheResults": true,
+    "maxParallelQueries": 5,
+    "enableStreaming": true,
+    "compactOnContextLimit": true
+  },
+  "agents": {
+    "maxParallel": 8,
+    "timeout": 600000,
+    "preferredSubagents": [
+      "Explore",
+      "Plan",
+      "feature-dev:code-architect",
+      "feature-dev:code-reviewer",
+      "pr-review-toolkit:code-reviewer"
+    ]
+  },
+  "plugins": {
+    "enabled": [
+      "frontend-design",
+      "context7",
+      "feature-dev",
+      "code-review",
+      "ai-pair-programming",
+      "spec-kit",
+      "commit-commands",
+      "pr-review-toolkit",
+      "browser-pilot",
+      "auto-release-manager"
+    ]
+  },
+  "forge": {
+    "apps": [
+      "hephaitos",
+      "dryon",
+      "folio",
+      "ade",
+      "bidflow"
+    ],
+    "packages": [
+      "types",
+      "utils",
+      "core",
+      "ui"
+    ],
+    "nanoFactorLayers": [
+      "L0_types",
+      "L1_utils",
+      "L2_repositories",
+      "L3_agent"
+    ],
+    "queryPrefix": "QRY-",
+    "specsDirectory": ".forge/specs"
+  },
+  "design": {
+    "autoCheck": true,
+    "checkOnCommit": true,
+    "minScore": 80,
+    "blockOnFail": true,
+    "brandColors": {
+      "hephaitos": {
+        "primary": "#3B82F6",
+        "accent": "#60A5FA"
+      },
+      "folio": {
+        "primary": "#8B5CF6",
+        "accent": "#A78BFA"
+      },
+      "dryon": {
+        "primary": "#22C55E",
+        "accent": "#4ADE80"
+      },
+      "ade": {
+        "primary": "#F97316",
+        "accent": "#FB923C"
+      },
+      "bidflow": {
+        "primary": "#4F46E5",
+        "accent": "#6366F1"
+      }
+    },
+    "glassMorphism": {
+      "blur": "16px",
+      "background": "rgba(255, 255, 255, 0.03)",
+      "border": "rgba(255, 255, 255, 0.06)"
+    },
+    "accessibility": {
+      "minContrastRatio": 4.5,
+      "wcagLevel": "AA"
+    },
+    "breakpoints": {
+      "mobile": 640,
+      "tablet": 1024,
+      "desktop": 1440
+    }
+  },
+  "security": {
+    "scanOnWrite": true,
+    "blockSecrets": true,
+    "requireEnvValidation": true
+  },
+  "todoList": {
+    "autoCreate": true,
+    "persistAcrossSessions": false,
+    "maxItems": 20
+  }
+}

@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 10, 10, 10;
+    --background-end-rgb: 10, 10, 10;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--background-start-rgb)),
+    rgb(var(--background-end-rgb))
+  );
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Dev Console Overlay */
+.dev-console {
+  @apply fixed bottom-0 left-0 right-0 h-64 bg-gray-900 text-blue-400
+         font-mono text-xs overflow-auto p-4 z-50 border-t border-gray-700;
+}
+
+.dev-console-toggle {
+  @apply fixed bottom-4 right-4 w-12 h-12 bg-blue-500 text-white
+         rounded-full flex items-center justify-center shadow-lg z-50
+         hover:bg-blue-600 transition-colors;
+}
