@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@forge-labs/types', '@forge-labs/utils', '@forge-labs/ui'],
+  transpilePackages: ['@forge/types', '@forge/utils', '@forge/core', '@forge/ui'],
 
   // 보안 헤더
   async headers() {

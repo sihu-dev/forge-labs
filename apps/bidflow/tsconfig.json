@@ -21,9 +21,10 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@forge-labs/types/*": ["../../packages/types/src/*"],
-      "@forge-labs/utils/*": ["../../packages/utils/src/*"],
-      "@forge-labs/ui/*": ["../../packages/ui/src/*"]
+      "@forge/types": ["../../packages/types/src"],
+      "@forge/utils": ["../../packages/utils/src"],
+      "@forge/core": ["../../packages/core/src"],
+      "@forge/ui": ["../../packages/ui/src"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

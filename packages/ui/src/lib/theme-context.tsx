@@ -100,8 +100,9 @@ function getStoredTheme(key: string): ThemeMode | null {
       return stored;
     }
     return null;
-  } catch {
-    // localStorage may not be available
+  } catch (error) {
+    // localStorage may not be available (SSR, privacy mode, storage full)
+    console.warn('[ThemeContext] Failed to read theme from localStorage:', error);
     return null;
   }
 }
@@ -113,8 +114,9 @@ function storeTheme(key: string, theme: ThemeMode): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(key, theme);
-  } catch {
-    // localStorage may not be available
+  } catch (error) {
+    // localStorage may not be available (SSR, privacy mode, storage full)
+    console.warn('[ThemeContext] Failed to save theme to localStorage:', error);
   }
 }
 
@@ -332,7 +334,7 @@ export function getThemeScript(
       ? `root.classList.remove('light','dark');root.classList.add(r);`
       : `root.setAttribute('data-theme',r);`;
 
-  return `(function(){try{var s=localStorage.getItem('${safeStorageKey}');var t=s||'${safeDefaultTheme}';var r=t;if(t==='system'){r=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}var root=document.documentElement;${attributeCode}root.style.colorScheme=r;}catch(e){}})();`;
+  return `(function(){try{var s=localStorage.getItem('${safeStorageKey}');var t=s||'${safeDefaultTheme}';var r=t;if(t==='system'){r=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}var root=document.documentElement;${attributeCode}root.style.colorScheme=r;}catch(e){console.warn('[ThemeInit]',e);}})();`;
 }
 
 /**

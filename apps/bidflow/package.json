@@ -1,5 +1,5 @@
 {
-  "name": "@forge-labs/bidflow",
+  "name": "bidflow",
   "version": "0.1.0",
   "private": true,
   "description": "FORGE LABS 입찰 자동화 시스템 - 제조업 SME 맞춤 입찰 관리",
@@ -13,9 +13,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@forge-labs/types": "workspace:*",
-    "@forge-labs/utils": "workspace:*",
-    "@forge-labs/ui": "workspace:*",
+    "@forge/types": "workspace:*",
+    "@forge/utils": "workspace:*",
+    "@forge/core": "workspace:*",
+    "@forge/ui": "workspace:*",
     "@supabase/supabase-js": "^2.47.0",
     "@supabase/ssr": "^0.5.2",
     "@tanstack/react-query": "^5.62.0",
