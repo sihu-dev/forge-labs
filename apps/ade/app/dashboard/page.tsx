@@ -23,10 +23,19 @@ export default function DashboardPage() {
   };
 
   // 더미 최근 문서 (실제로는 DB에서 가져옴)
-  const recentDocuments = [
+  type DocType = 'quote' | 'contract' | 'invoice' | 'tax_invoice';
+  const recentDocuments: Array<{
+    id: string;
+    type: DocType;
+    number: string;
+    client: string;
+    amount: number;
+    status: string;
+    date: string;
+  }> = [
     {
       id: 'q-001',
-      type: 'quote' as const,
+      type: 'quote',
       number: 'Q-2024-0015',
       client: '(주)테크스타트',
       amount: 3000000,
@@ -35,7 +44,7 @@ export default function DashboardPage() {
     },
     {
       id: 'i-001',
-      type: 'invoice' as const,
+      type: 'invoice',
       number: 'I-2024-0012',
       client: '디자인랩',
       amount: 1500000,
@@ -44,7 +53,7 @@ export default function DashboardPage() {
     },
     {
       id: 'c-001',
-      type: 'contract' as const,
+      type: 'contract',
       number: 'C-2024-0008',
       client: '스마트솔루션',
       amount: 5000000,
@@ -120,19 +129,23 @@ export default function DashboardPage() {
       <section className="mb-8">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">빠른 작성</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Object.values(DOCUMENT_META).map((doc) => (
-            <Link
-              key={doc.id}
-              href={`/dashboard/${doc.id}s/new` as never}
-              className="flex flex-col items-center p-6 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all group"
-            >
-              <span className="text-3xl mb-3 group-hover:scale-110 transition-transform">
-                {doc.icon}
-              </span>
-              <span className="text-sm font-medium text-gray-700">{doc.name}</span>
-              <span className="text-xs text-gray-400 mt-1">{doc.description}</span>
-            </Link>
-          ))}
+          {Object.values(DOCUMENT_META).map((doc) => {
+            // tax_invoice → tax-invoices 변환
+            const path = doc.id === 'tax_invoice' ? 'tax-invoices' : `${doc.id}s`;
+            return (
+              <Link
+                key={doc.id}
+                href={`/dashboard/${path}/new` as never}
+                className="flex flex-col items-center p-6 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all group"
+              >
+                <span className="text-3xl mb-3 group-hover:scale-110 transition-transform">
+                  {doc.icon}
+                </span>
+                <span className="text-sm font-medium text-gray-700">{doc.name}</span>
+                <span className="text-xs text-gray-400 mt-1">{doc.description}</span>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
@@ -177,6 +190,8 @@ export default function DashboardPage() {
               <tbody className="divide-y divide-gray-200">
                 {recentDocuments.map((doc) => {
                   const meta = DOCUMENT_META[doc.type];
+                  // tax_invoice → tax-invoices 변환
+                  const basePath = doc.type === 'tax_invoice' ? 'tax-invoices' : `${doc.type}s`;
                   return (
                     <tr key={doc.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
@@ -198,7 +213,7 @@ export default function DashboardPage() {
                       <td className="px-6 py-4 text-sm text-gray-500">{doc.date}</td>
                       <td className="px-6 py-4 text-right">
                         <Link
-                          href={`/dashboard/${doc.type}s/${doc.id}` as never}
+                          href={`/dashboard/${basePath}/${doc.id}` as never}
                           className="text-blue-600 hover:text-blue-700 text-sm"
                         >
                           보기

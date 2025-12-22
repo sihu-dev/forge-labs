@@ -56,6 +56,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     console.log('Create tax invoice for:', resolvedParams.id);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const statusConfig: Record<string, { label: string; color: string }> = {
     draft: { label: '초안', color: 'bg-gray-100 text-gray-600' },
     sent: { label: '발송됨', color: 'bg-blue-100 text-blue-700' },

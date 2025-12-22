@@ -79,6 +79,7 @@ export default function PublicQuotePage({ params }: { params: Promise<{ token: s
   const resolvedParams = use(params);
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string | null>(null);
   const [responding, setResponding] = useState(false);
   const [responseType, setResponseType] = useState<'approve' | 'reject' | null>(null);

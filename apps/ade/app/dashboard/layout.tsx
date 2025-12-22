@@ -30,12 +30,12 @@ export default function DashboardLayout({
 
           <div className="pt-4 mt-4 border-t border-gray-200">
             <p className="px-3 text-xs text-gray-400 uppercase tracking-wider mb-2">
-              문서 작성
+              문서 관리
             </p>
-            <NavItem href="/dashboard/quotes/new" icon="📋" label="견적서" />
-            <NavItem href="/dashboard/contracts/new" icon="📝" label="계약서" />
-            <NavItem href="/dashboard/invoices/new" icon="💳" label="인보이스" />
-            <NavItem href="/dashboard/tax-invoices/new" icon="🧾" label="세금계산서" />
+            <NavItem href="/dashboard/quotes" icon="📋" label="견적서" />
+            <NavItem href="/dashboard/contracts" icon="📝" label="계약서" />
+            <NavItem href="/dashboard/invoices" icon="💳" label="인보이스" />
+            <NavItem href="/dashboard/tax-invoices" icon="🧾" label="세금계산서" />
           </div>
 
           <div className="pt-4 mt-4 border-t border-gray-200">
