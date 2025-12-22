@@ -55,6 +55,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [confirming, setConfirming] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -79,6 +80,13 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('ko-KR').format(amount);
   const formatDate = (date: string) => new Date(date).toLocaleDateString('ko-KR');
+
+  const handleCopyLink = () => {
+    const link = `${window.location.origin}/p/invoices/${resolvedParams.id}`;
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleMarkPaid = async () => {
     if (!invoice) return;
@@ -181,6 +189,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             <p className="text-gray-500 mt-1">{invoice.document_number}</p>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={handleCopyLink}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            >
+              {copied ? '복사됨!' : '링크 복사'}
+            </button>
             <button
               onClick={() => window.print()}
               className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
