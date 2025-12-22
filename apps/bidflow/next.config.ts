@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@forge/types', '@forge/utils', '@forge/core', '@forge/ui'],
 
+  // 서버 외부 패키지 (번들링 제외)
+  serverExternalPackages: ['jsdom', 'isomorphic-dompurify'],
+
   // 보안 헤더
   async headers() {
     return [
