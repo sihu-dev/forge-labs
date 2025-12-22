@@ -4,40 +4,70 @@
 
 'use client';
 
-import { useState, use } from 'react';
+import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
-// 데모 데이터
-const demoQuote = {
-  id: '1',
-  documentNumber: 'Q-2024-0001',
-  status: 'sent',
-  title: '웹사이트 리뉴얼 프로젝트',
-  items: [
-    { id: '1', name: '기획/설계', quantity: 1, unitPrice: 500000, amount: 500000, unit: '식' },
-    { id: '2', name: 'UI/UX 디자인', quantity: 1, unitPrice: 1500000, amount: 1500000, unit: '식' },
-    { id: '3', name: '프론트엔드 개발', quantity: 1, unitPrice: 2000000, amount: 2000000, unit: '식' },
-  ],
-  subtotal: 4000000,
-  taxAmount: 400000,
-  totalAmount: 4400000,
-  validUntil: '2024-12-31',
-  paymentTerms: '계약금 30% 선급, 잔금 70% 완료 후',
-  deliveryTerms: '최종 산출물 Google Drive 공유',
-  notes: '수정 2회 포함, 추가 수정 별도 협의',
-  client: {
-    name: '(주)테크스타트',
-    businessNumber: '123-45-67890',
-    email: 'tech@start.com',
-  },
-  createdAt: '2024-12-01T09:00:00Z',
-  publicToken: 'abc123xyz',
-};
+interface QuoteItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  unit: string;
+}
+
+interface Quote {
+  id: string;
+  document_number: string;
+  status: string;
+  title: string;
+  items: QuoteItem[];
+  subtotal: number;
+  tax_amount: number;
+  total_amount: number;
+  valid_until: string;
+  payment_terms?: string;
+  delivery_terms?: string;
+  notes?: string;
+  created_at: string;
+  clients?: {
+    name: string;
+    business_number?: string;
+    email: string;
+  };
+}
 
 export default function QuoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const [quote] = useState(demoQuote);
+  const router = useRouter();
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  // 견적서 데이터 불러오기
+  useEffect(() => {
+    const fetchQuote = async () => {
+      try {
+        const res = await fetch(`/api/quotes/${resolvedParams.id}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || '견적서를 불러오지 못했습니다');
+        }
+
+        setQuote(data.quote);
+      } catch (err) {
+        console.error('Failed to fetch quote:', err);
+        setError(err instanceof Error ? err.message : '견적서를 불러오지 못했습니다');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQuote();
+  }, [resolvedParams.id]);
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('ko-KR').format(amount);
   const formatDate = (date: string) => new Date(date).toLocaleDateString('ko-KR');
@@ -51,16 +81,66 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   };
 
   const handleCopyLink = () => {
-    const link = `${window.location.origin}/p/quotes/${quote.publicToken}`;
+    const link = `${window.location.origin}/p/quotes/${resolvedParams.id}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleCreateContract = () => {
-    // TODO: 계약서 생성 API 호출
-    console.log('Create contract from quote:', resolvedParams.id);
+  const handleCreateContract = async () => {
+    if (!quote) return;
+    setCreating(true);
+
+    try {
+      const res = await fetch('/api/contracts/from-quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quoteId: quote.id }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || '계약서 생성에 실패했습니다');
+      }
+
+      // 계약서 상세 페이지로 이동
+      router.push(`/dashboard/contracts/${data.contract.id}` as never);
+    } catch (err) {
+      console.error('Failed to create contract:', err);
+      alert(err instanceof Error ? err.message : '계약서 생성에 실패했습니다');
+    } finally {
+      setCreating(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-500">견적서 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !quote) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl border border-red-200 p-12 text-center">
+          <span className="text-4xl mb-4 block">❌</span>
+          <p className="text-red-600 mb-4">{error || '견적서를 찾을 수 없습니다'}</p>
+          <Link
+            href="/dashboard/quotes"
+            className="inline-block px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+          >
+            목록으로 돌아가기
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -83,7 +163,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                 {statusConfig[quote.status]?.label}
               </span>
             </div>
-            <p className="text-gray-500 mt-1">{quote.documentNumber}</p>
+            <p className="text-gray-500 mt-1">{quote.document_number}</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -101,9 +181,10 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             {quote.status === 'approved' && (
               <button
                 onClick={handleCreateContract}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                disabled={creating}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
               >
-                계약서 생성
+                {creating ? '생성 중...' : '계약서 생성'}
               </button>
             )}
           </div>
@@ -115,15 +196,15 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         <h2 className="font-semibold text-gray-900 mb-4">고객 정보</h2>
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <p className="font-medium text-gray-900">{quote.client.name}</p>
-            {quote.client.businessNumber && (
-              <p className="text-sm text-gray-500">{quote.client.businessNumber}</p>
+            <p className="font-medium text-gray-900">{quote.clients?.name || '고객 미지정'}</p>
+            {quote.clients?.business_number && (
+              <p className="text-sm text-gray-500">{quote.clients.business_number}</p>
             )}
-            <p className="text-sm text-gray-500">{quote.client.email}</p>
+            <p className="text-sm text-gray-500">{quote.clients?.email}</p>
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-500">유효기간</p>
-            <p className="font-medium text-gray-900">{formatDate(quote.validUntil)}</p>
+            <p className="font-medium text-gray-900">{formatDate(quote.valid_until)}</p>
           </div>
         </div>
       </div>
@@ -141,7 +222,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             </tr>
           </thead>
           <tbody>
-            {quote.items.map((item) => (
+            {quote.items?.map((item: QuoteItem) => (
               <tr key={item.id} className="border-b border-gray-100">
                 <td className="py-3 text-gray-900">{item.name}</td>
                 <td className="py-3 text-center text-gray-600">{item.quantity} {item.unit}</td>
@@ -157,12 +238,12 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             </tr>
             <tr>
               <td colSpan={3} className="py-2 text-gray-600">부가세 (10%)</td>
-              <td className="py-2 text-right">₩{formatCurrency(quote.taxAmount)}</td>
+              <td className="py-2 text-right">₩{formatCurrency(quote.tax_amount)}</td>
             </tr>
             <tr className="border-t border-gray-200">
               <td colSpan={3} className="py-4 font-bold text-gray-900 text-lg">합계</td>
               <td className="py-4 text-right font-bold text-blue-600 text-2xl">
-                ₩{formatCurrency(quote.totalAmount)}
+                ₩{formatCurrency(quote.total_amount)}
               </td>
             </tr>
           </tfoot>
@@ -173,16 +254,16 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="font-semibold text-gray-900 mb-4">계약 조건</h2>
         <div className="space-y-4">
-          {quote.paymentTerms && (
+          {quote.payment_terms && (
             <div>
               <p className="text-sm text-gray-500 mb-1">결제 조건</p>
-              <p className="text-gray-900">{quote.paymentTerms}</p>
+              <p className="text-gray-900">{quote.payment_terms}</p>
             </div>
           )}
-          {quote.deliveryTerms && (
+          {quote.delivery_terms && (
             <div>
               <p className="text-sm text-gray-500 mb-1">납품 조건</p>
-              <p className="text-gray-900">{quote.deliveryTerms}</p>
+              <p className="text-gray-900">{quote.delivery_terms}</p>
             </div>
           )}
           {quote.notes && (
@@ -190,6 +271,9 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-sm text-gray-500 mb-1">비고</p>
               <p className="text-gray-900">{quote.notes}</p>
             </div>
+          )}
+          {!quote.payment_terms && !quote.delivery_terms && !quote.notes && (
+            <p className="text-gray-400">등록된 조건이 없습니다</p>
           )}
         </div>
       </div>
