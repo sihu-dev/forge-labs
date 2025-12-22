@@ -4,56 +4,114 @@
 
 'use client';
 
-import { useState, use } from 'react';
+import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
-// 데모 데이터
-const demoInvoice = {
-  id: '1',
-  documentNumber: 'I-2024-0001',
-  status: 'sent',
-  title: '웹사이트 리뉴얼 - 계약금',
-  items: [
-    { id: '1', name: '웹사이트 리뉴얼 - 계약금 (30%)', quantity: 1, unitPrice: 1200000, amount: 1200000 },
-  ],
-  subtotal: 1200000,
-  taxAmount: 120000,
-  totalAmount: 1320000,
-  dueDate: '2024-12-31',
-  paymentStatus: 'pending',
-  paymentInfo: {
-    bankName: '신한은행',
-    accountNumber: '110-123-456789',
-    accountHolder: '포지랩스',
-  },
-  client: {
-    name: '(주)테크스타트',
-    businessNumber: '123-45-67890',
-    email: 'tech@start.com',
-  },
-  contractId: 'c1',
-  contractNumber: 'C-2024-0001',
-  createdAt: '2024-12-01T09:00:00Z',
-};
+interface InvoiceItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+}
+
+interface Invoice {
+  id: string;
+  document_number: string;
+  status: string;
+  title: string;
+  items: InvoiceItem[];
+  subtotal: number;
+  tax_amount: number;
+  total_amount: number;
+  due_date: string;
+  payment_status: string;
+  paid_at?: string;
+  payment_info?: {
+    bank_name: string;
+    account_number: string;
+    account_holder: string;
+  };
+  clients?: {
+    name: string;
+    business_number?: string;
+    email: string;
+  };
+  contract_id?: string;
+  contracts?: {
+    id: string;
+    document_number: string;
+  };
+  isOverdue: boolean;
+}
 
 export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const [invoice] = useState(demoInvoice);
+  const router = useRouter();
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    const fetchInvoice = async () => {
+      try {
+        const res = await fetch(`/api/invoices/${resolvedParams.id}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || '인보이스를 불러오지 못했습니다');
+        }
+
+        setInvoice(data.invoice);
+      } catch (err) {
+        console.error('Failed to fetch invoice:', err);
+        setError(err instanceof Error ? err.message : '인보이스를 불러오지 못했습니다');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInvoice();
+  }, [resolvedParams.id]);
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('ko-KR').format(amount);
   const formatDate = (date: string) => new Date(date).toLocaleDateString('ko-KR');
 
   const handleMarkPaid = async () => {
-    // TODO: API 호출
-    console.log('Mark as paid:', resolvedParams.id, paymentDate);
-    setShowPaymentModal(false);
+    if (!invoice) return;
+    setConfirming(true);
+
+    try {
+      const res = await fetch(`/api/invoices/${resolvedParams.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentStatus: 'paid',
+          paidAmount: invoice.total_amount,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || '결제 확인에 실패했습니다');
+      }
+
+      setInvoice({ ...invoice, payment_status: 'paid', paid_at: new Date().toISOString(), isOverdue: false });
+      setShowPaymentModal(false);
+    } catch (err) {
+      console.error('Failed to mark as paid:', err);
+      alert(err instanceof Error ? err.message : '결제 확인에 실패했습니다');
+    } finally {
+      setConfirming(false);
+    }
   };
 
   const handleCreateTaxInvoice = () => {
-    // TODO: 세금계산서 발행 페이지로 이동
-    console.log('Create tax invoice for:', resolvedParams.id);
+    router.push(`/dashboard/tax-invoices/new?invoiceId=${resolvedParams.id}` as never);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -69,8 +127,35 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     overdue: { label: '연체', color: 'bg-red-100 text-red-700' },
   };
 
-  const isOverdue = invoice.paymentStatus === 'pending' && new Date(invoice.dueDate) < new Date();
-  const actualPaymentStatus = isOverdue ? 'overdue' : invoice.paymentStatus;
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-orange-600 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-500">인보이스 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !invoice) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl border border-red-200 p-12 text-center">
+          <span className="text-4xl mb-4 block">❌</span>
+          <p className="text-red-600 mb-4">{error || '인보이스를 찾을 수 없습니다'}</p>
+          <Link
+            href="/dashboard/invoices"
+            className="inline-block px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+          >
+            목록으로 돌아가기
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const actualPaymentStatus = invoice.isOverdue ? 'overdue' : invoice.payment_status;
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -93,7 +178,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                 {paymentStatusConfig[actualPaymentStatus]?.label}
               </span>
             </div>
-            <p className="text-gray-500 mt-1">{invoice.documentNumber}</p>
+            <p className="text-gray-500 mt-1">{invoice.document_number}</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -102,7 +187,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             >
               PDF 저장
             </button>
-            {invoice.paymentStatus === 'pending' && (
+            {invoice.payment_status === 'pending' && (
               <button
                 onClick={() => setShowPaymentModal(true)}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -110,7 +195,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                 결제 확인
               </button>
             )}
-            {invoice.paymentStatus === 'paid' && (
+            {invoice.payment_status === 'paid' && (
               <button
                 onClick={handleCreateTaxInvoice}
                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
@@ -123,10 +208,10 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* 연체 경고 */}
-      {isOverdue && (
+      {invoice.isOverdue && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <p className="text-red-800 font-medium">
-            이 인보이스는 납부기한({formatDate(invoice.dueDate)})이 지났습니다.
+            이 인보이스는 납부기한({formatDate(invoice.due_date)})이 지났습니다.
           </p>
         </div>
       )}
@@ -135,20 +220,20 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       <div className="grid md:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">고객 정보</h2>
-          <p className="font-medium text-gray-900">{invoice.client.name}</p>
-          {invoice.client.businessNumber && (
-            <p className="text-sm text-gray-500">{invoice.client.businessNumber}</p>
+          <p className="font-medium text-gray-900">{invoice.clients?.name || '고객 미지정'}</p>
+          {invoice.clients?.business_number && (
+            <p className="text-sm text-gray-500">{invoice.clients.business_number}</p>
           )}
-          <p className="text-sm text-gray-500">{invoice.client.email}</p>
+          <p className="text-sm text-gray-500">{invoice.clients?.email}</p>
 
-          {invoice.contractId && (
+          {invoice.contracts && (
             <div className="mt-4 pt-4 border-t border-gray-200">
               <p className="text-xs text-gray-500 mb-1">관련 계약서</p>
               <Link
-                href={`/dashboard/contracts/${invoice.contractId}` as never}
+                href={`/dashboard/contracts/${invoice.contracts.id}` as never}
                 className="text-purple-600 hover:underline"
               >
-                {invoice.contractNumber}
+                {invoice.contracts.document_number}
               </Link>
             </div>
           )}
@@ -156,26 +241,38 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">결제 정보</h2>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-500">은행</span>
-              <span className="font-medium">{invoice.paymentInfo.bankName}</span>
+          {invoice.payment_info ? (
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-500">은행</span>
+                <span className="font-medium">{invoice.payment_info.bank_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">계좌번호</span>
+                <span className="font-medium font-mono">{invoice.payment_info.account_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">예금주</span>
+                <span className="font-medium">{invoice.payment_info.account_holder}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-gray-200">
+                <span className="text-gray-500">납부기한</span>
+                <span className={`font-medium ${invoice.isOverdue ? 'text-red-600' : ''}`}>
+                  {formatDate(invoice.due_date)}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">계좌번호</span>
-              <span className="font-medium font-mono">{invoice.paymentInfo.accountNumber}</span>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex justify-between pt-2">
+                <span className="text-gray-500">납부기한</span>
+                <span className={`font-medium ${invoice.isOverdue ? 'text-red-600' : ''}`}>
+                  {formatDate(invoice.due_date)}
+                </span>
+              </div>
+              <p className="text-sm text-gray-400">결제 정보가 설정되지 않았습니다</p>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">예금주</span>
-              <span className="font-medium">{invoice.paymentInfo.accountHolder}</span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-gray-200">
-              <span className="text-gray-500">납부기한</span>
-              <span className={`font-medium ${isOverdue ? 'text-red-600' : ''}`}>
-                {formatDate(invoice.dueDate)}
-              </span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -192,11 +289,11 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </tr>
           </thead>
           <tbody>
-            {invoice.items.map((item) => (
+            {invoice.items?.map((item) => (
               <tr key={item.id} className="border-b border-gray-100">
                 <td className="py-3 text-gray-900">{item.name}</td>
                 <td className="py-3 text-center text-gray-600">{item.quantity}</td>
-                <td className="py-3 text-right text-gray-600">₩{formatCurrency(item.unitPrice)}</td>
+                <td className="py-3 text-right text-gray-600">₩{formatCurrency(item.unit_price)}</td>
                 <td className="py-3 text-right font-medium">₩{formatCurrency(item.amount)}</td>
               </tr>
             ))}
@@ -208,12 +305,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </tr>
             <tr>
               <td colSpan={3} className="py-2 text-gray-600">부가세 (10%)</td>
-              <td className="py-2 text-right">₩{formatCurrency(invoice.taxAmount)}</td>
+              <td className="py-2 text-right">₩{formatCurrency(invoice.tax_amount)}</td>
             </tr>
             <tr className="border-t border-gray-200">
               <td colSpan={3} className="py-4 font-bold text-gray-900 text-lg">합계</td>
               <td className="py-4 text-right font-bold text-orange-600 text-2xl">
-                ₩{formatCurrency(invoice.totalAmount)}
+                ₩{formatCurrency(invoice.total_amount)}
               </td>
             </tr>
           </tfoot>
@@ -241,7 +338,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
             <div className="p-4 bg-green-50 rounded-lg mb-6">
               <p className="text-green-800">
-                <span className="font-medium">₩{formatCurrency(invoice.totalAmount)}</span> 입금 확인
+                <span className="font-medium">₩{formatCurrency(invoice.total_amount)}</span> 입금 확인
               </p>
             </div>
 
@@ -254,9 +351,10 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
               </button>
               <button
                 onClick={handleMarkPaid}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                disabled={confirming}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
               >
-                확인
+                {confirming ? '처리 중...' : '확인'}
               </button>
             </div>
           </div>

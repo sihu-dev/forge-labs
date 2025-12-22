@@ -4,35 +4,21 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-// 임시 데모 데이터
-const demoContracts = [
-  {
-    id: '1',
-    documentNumber: 'C-2024-0001',
-    title: '웹사이트 리뉴얼 계약서',
-    projectName: '웹사이트 리뉴얼',
-    status: 'approved',
-    totalAmount: 4400000,
-    startDate: '2024-12-01',
-    endDate: '2024-12-31',
-    client: { name: '(주)테크스타트' },
-    signedAt: '2024-12-01T10:00:00Z',
-  },
-  {
-    id: '2',
-    documentNumber: 'C-2024-0002',
-    title: 'UI/UX 디자인 계약서',
-    projectName: 'UI/UX 디자인',
-    status: 'sent',
-    totalAmount: 2200000,
-    startDate: '2024-12-15',
-    endDate: '2025-01-15',
-    client: { name: '디자인랩' },
-  },
-];
+interface Contract {
+  id: string;
+  document_number: string;
+  title: string;
+  project_name: string;
+  status: string;
+  total_amount: number;
+  start_date: string;
+  end_date: string;
+  signed_at?: string;
+  clients?: { name: string };
+}
 
 type StatusFilter = 'all' | 'draft' | 'sent' | 'approved' | 'completed';
 
@@ -46,13 +32,60 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 
 export default function ContractsPage() {
   const [filter, setFilter] = useState<StatusFilter>('all');
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredContracts = demoContracts.filter(
-    (c) => filter === 'all' || c.status === filter
-  );
+  useEffect(() => {
+    const fetchContracts = async () => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (filter !== 'all') params.set('status', filter);
+
+        const res = await fetch(`/api/contracts?${params}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || '계약서 목록을 불러오지 못했습니다');
+        }
+
+        setContracts(data.contracts || []);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch contracts:', err);
+        setError(err instanceof Error ? err.message : '계약서 목록을 불러오지 못했습니다');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchContracts();
+  }, [filter]);
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('ko-KR').format(amount);
   const formatDate = (date: string) => new Date(date).toLocaleDateString('ko-KR');
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-500">계약서 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-white rounded-xl border border-red-200 p-12 text-center">
+          <span className="text-4xl mb-4 block">❌</span>
+          <p className="text-red-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -60,7 +93,7 @@ export default function ContractsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">계약서 관리</h1>
-          <p className="text-gray-500 mt-1">총 {filteredContracts.length}건</p>
+          <p className="text-gray-500 mt-1">총 {contracts.length}건</p>
         </div>
       </div>
 
@@ -82,14 +115,14 @@ export default function ContractsPage() {
       </div>
 
       {/* 목록 */}
-      {filteredContracts.length === 0 ? (
+      {contracts.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
           <span className="text-4xl mb-4 block">📝</span>
           <p className="text-gray-500">계약서가 없습니다</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredContracts.map((contract) => (
+          {contracts.map((contract) => (
             <Link
               key={contract.id}
               href={`/dashboard/contracts/${contract.id}` as never}
@@ -98,24 +131,24 @@ export default function ContractsPage() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-sm text-gray-500">{contract.documentNumber}</span>
+                    <span className="text-sm text-gray-500">{contract.document_number}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${statusConfig[contract.status]?.color || 'bg-gray-100'}`}>
                       {statusConfig[contract.status]?.label || contract.status}
                     </span>
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-1">{contract.projectName}</h3>
-                  <p className="text-sm text-gray-500">{contract.client.name}</p>
+                  <h3 className="font-semibold text-gray-900 mb-1">{contract.project_name || contract.title}</h3>
+                  <p className="text-sm text-gray-500">{contract.clients?.name || '고객 미지정'}</p>
                   <p className="text-sm text-gray-400 mt-2">
-                    {formatDate(contract.startDate)} ~ {formatDate(contract.endDate)}
+                    {formatDate(contract.start_date)} ~ {formatDate(contract.end_date)}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-xl font-bold text-gray-900">
-                    ₩{formatCurrency(contract.totalAmount)}
+                    ₩{formatCurrency(contract.total_amount)}
                   </p>
-                  {contract.signedAt && (
+                  {contract.signed_at && (
                     <p className="text-sm text-green-600 mt-1">
-                      {formatDate(contract.signedAt)} 체결
+                      {formatDate(contract.signed_at)} 체결
                     </p>
                   )}
                 </div>
