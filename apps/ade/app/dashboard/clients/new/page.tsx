@@ -19,6 +19,7 @@ import {
 export default function NewClientPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     register,
@@ -47,14 +48,26 @@ export default function NewClientPage() {
 
   const onSubmit = async (data: ClientFormData) => {
     setIsSubmitting(true);
+    setError(null);
+
     try {
-      // TODO: API 연동
-      console.log('Client data:', data);
+      const res = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || '고객 등록에 실패했습니다');
+      }
 
       // 성공 시 목록으로 이동
       router.push('/dashboard/clients');
-    } catch (error) {
-      console.error('Failed to create client:', error);
+    } catch (err) {
+      console.error('Failed to create client:', err);
+      setError(err instanceof Error ? err.message : '고객 등록에 실패했습니다');
     } finally {
       setIsSubmitting(false);
     }
@@ -87,6 +100,21 @@ export default function NewClientPage() {
         </Link>
         <h1 className="text-2xl font-bold text-gray-900">새 고객 등록</h1>
       </div>
+
+      {/* 에러 메시지 */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+          <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-red-700">{error}</p>
+          <button onClick={() => setError(null)} className="ml-auto text-red-500 hover:text-red-700">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* 폼 */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

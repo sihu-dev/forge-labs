@@ -4,71 +4,57 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-// 임시 데모 데이터 (추후 Supabase 연동)
-const demoClients = [
-  {
-    id: '1',
-    type: 'business' as const,
-    name: '(주)테크스타트',
-    businessNumber: '123-45-67890',
-    email: 'tech@start.com',
-    phone: '02-1234-5678',
-    stats: { documentCount: 5, totalRevenue: 15000000 },
-  },
-  {
-    id: '2',
-    type: 'business' as const,
-    name: '디자인랩',
-    businessNumber: '456-78-90123',
-    email: 'hello@designlab.kr',
-    phone: '02-9876-5432',
-    stats: { documentCount: 3, totalRevenue: 8500000 },
-  },
-  {
-    id: '3',
-    type: 'individual' as const,
-    name: '김철수',
-    email: 'kim@email.com',
-    phone: '010-1234-5678',
-    stats: { documentCount: 2, totalRevenue: 3000000 },
-  },
-];
+interface Client {
+  id: string;
+  type: 'business' | 'individual';
+  name: string;
+  business_number?: string;
+  email: string;
+  phone?: string;
+  stats?: {
+    documentCount: number;
+    totalRevenue: number;
+  };
+}
 
 type SortOption = 'recent' | 'name' | 'revenue';
 type FilterOption = 'all' | 'business' | 'individual';
 
 export default function ClientsPage() {
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterOption>('all');
   const [sort, setSort] = useState<SortOption>('recent');
 
-  // 필터링 및 정렬
-  const filteredClients = demoClients
-    .filter((client) => {
-      if (filter !== 'all' && client.type !== filter) return false;
-      if (search) {
-        const searchLower = search.toLowerCase();
-        return (
-          client.name.toLowerCase().includes(searchLower) ||
-          client.email.toLowerCase().includes(searchLower) ||
-          (client.businessNumber?.includes(search))
-        );
+  // API에서 고객 목록 불러오기
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        if (filter !== 'all') params.set('type', filter);
+        params.set('sort', sort);
+        params.set('limit', '100');
+
+        const res = await fetch(`/api/clients?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          setClients(data.clients || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch clients:', err);
+      } finally {
+        setLoading(false);
       }
-      return true;
-    })
-    .sort((a, b) => {
-      switch (sort) {
-        case 'name':
-          return a.name.localeCompare(b.name, 'ko');
-        case 'revenue':
-          return b.stats.totalRevenue - a.stats.totalRevenue;
-        default:
-          return 0; // recent - 기본 순서 유지
-      }
-    });
+    };
+
+    const debounce = setTimeout(fetchClients, 300);
+    return () => clearTimeout(debounce);
+  }, [search, filter, sort]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR').format(amount);
@@ -80,7 +66,7 @@ export default function ClientsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">고객 관리</h1>
-          <p className="text-gray-500 mt-1">총 {filteredClients.length}명의 고객</p>
+          <p className="text-gray-500 mt-1">총 {clients.length}명의 고객</p>
         </div>
         <Link
           href="/dashboard/clients/new"
@@ -143,7 +129,12 @@ export default function ClientsPage() {
       </div>
 
       {/* 고객 목록 */}
-      {filteredClients.length === 0 ? (
+      {loading ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-500">고객 목록 불러오는 중...</p>
+        </div>
+      ) : clients.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
           <span className="text-4xl mb-4 block">👥</span>
           <p className="text-gray-500 mb-4">
@@ -160,7 +151,7 @@ export default function ClientsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredClients.map((client) => (
+          {clients.map((client) => (
             <Link
               key={client.id}
               href={`/dashboard/clients/${client.id}` as never}
@@ -188,7 +179,7 @@ export default function ClientsPage() {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500">
-                      {client.businessNumber && `${client.businessNumber} | `}
+                      {client.business_number && `${client.business_number} | `}
                       {client.email}
                     </p>
                   </div>
@@ -197,10 +188,10 @@ export default function ClientsPage() {
                 {/* 통계 */}
                 <div className="text-right">
                   <p className="text-sm text-gray-500">
-                    {client.stats.documentCount}건
+                    {client.stats?.documentCount || 0}건
                   </p>
                   <p className="font-semibold text-gray-900">
-                    {formatCurrency(client.stats.totalRevenue)}원
+                    {formatCurrency(client.stats?.totalRevenue || 0)}원
                   </p>
                 </div>
               </div>

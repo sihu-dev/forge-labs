@@ -4,42 +4,21 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-// 데모 데이터
-const demoQuotes = [
-  {
-    id: '1',
-    documentNumber: 'Q-2024-0001',
-    title: '웹사이트 리뉴얼 프로젝트',
-    totalAmount: 4400000,
-    validUntil: '2024-12-31',
-    status: 'approved',
-    client: { name: '(주)테크스타트' },
-    createdAt: '2024-12-01',
-  },
-  {
-    id: '2',
-    documentNumber: 'Q-2024-0002',
-    title: 'UI/UX 디자인 용역',
-    totalAmount: 2200000,
-    validUntil: '2024-12-20',
-    status: 'sent',
-    client: { name: '디자인랩' },
-    createdAt: '2024-12-10',
-  },
-  {
-    id: '3',
-    documentNumber: 'Q-2024-0003',
-    title: '모바일 앱 개발',
-    totalAmount: 8800000,
-    validUntil: '2024-12-25',
-    status: 'draft',
-    client: { name: '스마트솔루션' },
-    createdAt: '2024-12-15',
-  },
-];
+interface Quote {
+  id: string;
+  document_number: string;
+  title: string;
+  total_amount: number;
+  valid_until: string;
+  status: string;
+  created_at: string;
+  clients?: {
+    name: string;
+  };
+}
 
 type StatusFilter = 'all' | 'draft' | 'sent' | 'approved' | 'rejected';
 
@@ -52,20 +31,40 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function QuotesPage() {
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<StatusFilter>('all');
 
-  const filteredQuotes = demoQuotes.filter(
-    (q) => filter === 'all' || q.status === filter
-  );
+  // API에서 견적서 목록 불러오기
+  useEffect(() => {
+    const fetchQuotes = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (filter !== 'all') params.set('status', filter);
+        params.set('limit', '100');
+
+        const res = await fetch(`/api/quotes?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          setQuotes(data.quotes || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch quotes:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQuotes();
+  }, [filter]);
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('ko-KR').format(amount);
   const formatDate = (date: string) => new Date(date).toLocaleDateString('ko-KR');
 
   // 통계
   const stats = {
-    total: demoQuotes.length,
-    totalAmount: demoQuotes.reduce((sum, q) => sum + q.totalAmount, 0),
-    approved: demoQuotes.filter((q) => q.status === 'approved').length,
+    total: quotes.length,
+    totalAmount: quotes.reduce((sum, q) => sum + (q.total_amount || 0), 0),
+    approved: quotes.filter((q) => q.status === 'approved').length,
   };
 
   return (
@@ -74,7 +73,7 @@ export default function QuotesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">견적서 관리</h1>
-          <p className="text-gray-500 mt-1">총 {filteredQuotes.length}건</p>
+          <p className="text-gray-500 mt-1">총 {quotes.length}건</p>
         </div>
         <Link
           href="/dashboard/quotes/new"
@@ -118,7 +117,12 @@ export default function QuotesPage() {
       </div>
 
       {/* 목록 */}
-      {filteredQuotes.length === 0 ? (
+      {loading ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-500">견적서 목록 불러오는 중...</p>
+        </div>
+      ) : quotes.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
           <span className="text-4xl mb-4 block">📋</span>
           <p className="text-gray-500 mb-4">견적서가 없습니다</p>
@@ -131,7 +135,7 @@ export default function QuotesPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredQuotes.map((quote) => (
+          {quotes.map((quote) => (
             <Link
               key={quote.id}
               href={`/dashboard/quotes/${quote.id}` as never}
@@ -140,23 +144,23 @@ export default function QuotesPage() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-sm text-gray-500">{quote.documentNumber}</span>
+                    <span className="text-sm text-gray-500">{quote.document_number}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${statusConfig[quote.status]?.color || 'bg-gray-100'}`}>
                       {statusConfig[quote.status]?.label || quote.status}
                     </span>
                   </div>
                   <h3 className="font-semibold text-gray-900 mb-1">{quote.title}</h3>
-                  <p className="text-sm text-gray-500">{quote.client.name}</p>
+                  <p className="text-sm text-gray-500">{quote.clients?.name || '고객 미지정'}</p>
                   <p className="text-sm text-gray-400 mt-2">
-                    유효기간: {formatDate(quote.validUntil)}
+                    유효기간: {formatDate(quote.valid_until)}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-xl font-bold text-gray-900">
-                    ₩{formatCurrency(quote.totalAmount)}
+                    ₩{formatCurrency(quote.total_amount)}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    {formatDate(quote.createdAt)} 작성
+                    {formatDate(quote.created_at)} 작성
                   </p>
                 </div>
               </div>

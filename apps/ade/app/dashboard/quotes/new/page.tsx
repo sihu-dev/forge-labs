@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -18,12 +18,14 @@ import {
   generateItemId,
 } from '@/lib/validations/quote';
 
-// 임시 고객 데이터
-const demoClients = [
-  { id: '1', type: 'business', name: '(주)테크스타트', businessNumber: '123-45-67890', email: 'tech@start.com' },
-  { id: '2', type: 'business', name: '디자인랩', businessNumber: '456-78-90123', email: 'hello@designlab.kr' },
-  { id: '3', type: 'individual', name: '김철수', email: 'kim@email.com' },
-];
+// 고객 타입
+interface Client {
+  id: string;
+  type: 'individual' | 'business';
+  name: string;
+  business_number?: string;
+  email: string;
+}
 
 // 자주 쓰는 품목
 const frequentItems = [
@@ -40,12 +42,35 @@ export default function NewQuotePage() {
   const [formData, setFormData] = useState<QuoteFormData>(defaultQuoteFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  // 고객 목록 상태
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(true);
+
+  // 고객 목록 불러오기
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await fetch('/api/clients?limit=100');
+        if (res.ok) {
+          const data = await res.json();
+          setClients(data.clients || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch clients:', err);
+      } finally {
+        setClientsLoading(false);
+      }
+    };
+    fetchClients();
+  }, []);
 
   // 선택된 고객
-  const selectedClient = demoClients.find((c) => c.id === formData.clientId);
+  const selectedClient = clients.find((c) => c.id === formData.clientId);
 
   // 검색된 고객 목록
-  const filteredClients = demoClients.filter((client) =>
+  const filteredClients = clients.filter((client) =>
     client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     client.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -115,18 +140,45 @@ export default function NewQuotePage() {
   // 제출
   const handleSubmit = async (isDraft = false) => {
     setIsSubmitting(true);
+    setError(null);
+
     try {
       const payload = {
-        ...formData,
+        clientId: formData.clientId,
+        title: formData.title,
+        items: formData.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          amount: item.amount,
+          unit: item.unit,
+        })),
         status: isDraft ? 'draft' : 'sent',
         validUntil: calculateValidUntil(formData.validDays),
+        paymentTerms: formData.paymentTerms || null,
+        deliveryTerms: formData.deliveryTerms || null,
+        notes: formData.notes || null,
         ...totals,
       };
-      console.log('Quote payload:', payload);
-      // TODO: API 연동
+
+      const res = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || '견적서 생성에 실패했습니다');
+      }
+
+      // 성공 - 목록 페이지로 이동
       router.push('/dashboard/quotes' as never);
-    } catch (error) {
-      console.error('Failed to create quote:', error);
+    } catch (err) {
+      console.error('Failed to create quote:', err);
+      setError(err instanceof Error ? err.message : '견적서 생성에 실패했습니다');
     } finally {
       setIsSubmitting(false);
     }
@@ -149,6 +201,21 @@ export default function NewQuotePage() {
         </Link>
         <h1 className="text-2xl font-bold text-gray-900">견적서 작성</h1>
       </div>
+
+      {/* 에러 메시지 */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+          <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-red-700">{error}</p>
+          <button onClick={() => setError(null)} className="ml-auto text-red-500 hover:text-red-700">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* 스텝 인디케이터 */}
       <div className="mb-8">
@@ -213,42 +280,53 @@ export default function NewQuotePage() {
 
           {/* 고객 목록 */}
           <div className="space-y-2 max-h-80 overflow-y-auto">
-            {filteredClients.map((client) => (
-              <label
-                key={client.id}
-                className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  formData.clientId === client.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="client"
-                  value={client.id}
-                  checked={formData.clientId === client.id}
-                  onChange={() => handleClientSelect(client.id)}
-                  className="sr-only"
-                />
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${
-                  client.type === 'business' ? 'bg-blue-500' : 'bg-green-500'
-                }`}>
-                  {client.name.charAt(0)}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{client.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {client.businessNumber && `${client.businessNumber} · `}
-                    {client.email}
-                  </p>
-                </div>
-                {formData.clientId === client.id && (
-                  <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </label>
-            ))}
+            {clientsLoading ? (
+              <div className="text-center py-8 text-gray-500">
+                <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-2" />
+                <p>고객 목록 불러오는 중...</p>
+              </div>
+            ) : filteredClients.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>{searchQuery ? '검색 결과가 없습니다' : '등록된 고객이 없습니다'}</p>
+              </div>
+            ) : (
+              filteredClients.map((client) => (
+                <label
+                  key={client.id}
+                  className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    formData.clientId === client.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="client"
+                    value={client.id}
+                    checked={formData.clientId === client.id}
+                    onChange={() => handleClientSelect(client.id)}
+                    className="sr-only"
+                  />
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${
+                    client.type === 'business' ? 'bg-blue-500' : 'bg-green-500'
+                  }`}>
+                    {client.name.charAt(0)}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{client.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {client.business_number && `${client.business_number} · `}
+                      {client.email}
+                    </p>
+                  </div>
+                  {formData.clientId === client.id && (
+                    <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </label>
+              ))
+            )}
           </div>
 
           {/* 새 고객 등록 링크 */}
