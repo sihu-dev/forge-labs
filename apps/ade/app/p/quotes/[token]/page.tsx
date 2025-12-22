@@ -43,55 +43,34 @@ interface QuoteData {
   };
 }
 
-// 데모 데이터
-const demoQuote: QuoteData = {
-  id: '1',
-  documentNumber: 'Q-2024-0001',
-  title: '웹사이트 리뉴얼 프로젝트',
-  status: 'sent',
-  items: [
-    { id: '1', name: '기획/설계', quantity: 1, unitPrice: 500000, amount: 500000, unit: '식' },
-    { id: '2', name: 'UI/UX 디자인', quantity: 1, unitPrice: 1500000, amount: 1500000, unit: '식' },
-    { id: '3', name: '프론트엔드 개발', quantity: 1, unitPrice: 2000000, amount: 2000000, unit: '식' },
-  ],
-  subtotal: 4000000,
-  taxAmount: 400000,
-  totalAmount: 4400000,
-  validUntil: '2024-12-31',
-  paymentTerms: '계약금 30% 선급, 잔금 70% 완료 후',
-  deliveryTerms: '최종 산출물 Google Drive 공유',
-  notes: '수정 2회 포함, 추가 수정 별도 협의',
-  createdAt: '2024-12-15T09:00:00Z',
-  provider: {
-    name: '포지랩스',
-    businessNumber: '123-45-67890',
-    email: 'contact@forgelabs.kr',
-    phone: '02-1234-5678',
-    address: '서울시 강남구 테헤란로 123',
-  },
-  client: {
-    name: '(주)테크스타트',
-    email: 'tech@start.com',
-  },
-};
-
 export default function PublicQuotePage({ params }: { params: Promise<{ token: string }> }) {
   const resolvedParams = use(params);
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(true);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string | null>(null);
   const [responding, setResponding] = useState(false);
   const [responseType, setResponseType] = useState<'approve' | 'reject' | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
   useEffect(() => {
-    // TODO: API에서 토큰으로 견적서 조회
-    console.log('Token:', resolvedParams.token);
-    setTimeout(() => {
-      setQuote(demoQuote);
-      setLoading(false);
-    }, 500);
+    const fetchQuote = async () => {
+      try {
+        const res = await fetch(`/api/public/quotes/${resolvedParams.token}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || '견적서를 불러오지 못했습니다');
+        }
+
+        setQuote(data.quote);
+      } catch (err) {
+        console.error('Failed to fetch public quote:', err);
+        setError(err instanceof Error ? err.message : '견적서를 불러오지 못했습니다');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQuote();
   }, [resolvedParams.token]);
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('ko-KR').format(amount);
@@ -105,12 +84,27 @@ export default function PublicQuotePage({ params }: { params: Promise<{ token: s
 
     setResponding(true);
     try {
-      // TODO: API 연동
-      console.log('Response:', { type, reason: rejectReason });
-      setQuote((prev) => prev ? { ...prev, status: type === 'approve' ? 'approved' : 'rejected' } : null);
+      const res = await fetch(`/api/public/quotes/${resolvedParams.token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: type,
+          reason: type === 'reject' ? rejectReason : undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || '응답 처리에 실패했습니다');
+      }
+
+      setQuote((prev) => prev ? { ...prev, status: data.status } : null);
       setResponseType(null);
+      setRejectReason('');
     } catch (err) {
       console.error('Response failed:', err);
+      alert(err instanceof Error ? err.message : '응답 처리에 실패했습니다');
     } finally {
       setResponding(false);
     }
@@ -139,7 +133,7 @@ export default function PublicQuotePage({ params }: { params: Promise<{ token: s
   }
 
   const isExpired = new Date(quote.validUntil) < new Date();
-  const canRespond = quote.status === 'sent' && !isExpired;
+  const canRespond = ['sent', 'viewed'].includes(quote.status) && !isExpired;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -155,7 +149,7 @@ export default function PublicQuotePage({ params }: { params: Promise<{ token: s
             <p className="text-red-800 font-medium">이 견적서는 거절되었습니다</p>
           </div>
         )}
-        {isExpired && quote.status === 'sent' && (
+        {isExpired && ['sent', 'viewed'].includes(quote.status) && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-center">
             <p className="text-yellow-800 font-medium">이 견적서는 유효기간이 만료되었습니다</p>
           </div>
