@@ -4,57 +4,126 @@
 
 'use client';
 
-import { useState, use } from 'react';
+import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 
-// 데모 데이터
-const demoTaxInvoice = {
-  id: '1',
-  documentNumber: '20241201-12345678',
-  status: 'approved',
-  ntsStatus: 'approved',
-  ntsApprovalNumber: '2024120112345678',
-  ntsSubmittedAt: '2024-12-01T10:00:00Z',
-  items: [
-    { id: '1', date: '2024-12-01', name: '웹사이트 리뉴얼 - 계약금', quantity: 1, unitPrice: 1200000, supplyAmount: 1200000, taxAmount: 120000 },
-  ],
-  subtotal: 1200000,
-  taxAmount: 120000,
-  totalAmount: 1320000,
-  issueDate: '2024-12-01',
-  issueType: 'regular',
-  provider: {
-    businessNumber: '123-45-67890',
-    name: '포지랩스',
-    representativeName: '홍길동',
-    address: '서울시 강남구 테헤란로 123',
-    businessType: '서비스업',
-    businessCategory: '소프트웨어 개발',
-    email: 'contact@forgelabs.kr',
-  },
-  client: {
-    businessNumber: '234-56-78901',
-    name: '(주)테크스타트',
-    representativeName: '김대표',
-    address: '서울시 서초구 강남대로 456',
-    businessType: '서비스업',
-    businessCategory: 'IT 솔루션',
-    email: 'tech@start.com',
-  },
-  invoiceId: 'inv1',
-  invoiceNumber: 'I-2024-0001',
-};
+interface TaxInvoiceItem {
+  id: string;
+  date: string;
+  name: string;
+  quantity: number;
+  unit_price: number;
+  supply_amount: number;
+  tax_amount: number;
+}
+
+interface TaxInvoice {
+  id: string;
+  document_number: string;
+  status: string;
+  nts_status: string;
+  nts_approval_number?: string;
+  nts_submitted_at?: string;
+  items: TaxInvoiceItem[];
+  subtotal: number;
+  tax_amount: number;
+  total_amount: number;
+  issue_date: string;
+  issue_type: string;
+  provider_info?: {
+    business_number: string;
+    name: string;
+    representative_name: string;
+    address: string;
+    business_type: string;
+    business_category: string;
+    email: string;
+  };
+  provider?: {
+    business_number: string;
+    name: string;
+    representative_name: string;
+    address: string;
+    business_type: string;
+    business_category: string;
+    email: string;
+  };
+  client?: {
+    businessNumber: string;
+    name: string;
+    representativeName: string;
+    address: string;
+    businessType: string;
+    businessCategory: string;
+    email: string;
+  };
+  invoice_id?: string;
+}
+
+interface LinkedInvoice {
+  id: string;
+  document_number: string;
+  title: string;
+}
 
 export default function TaxInvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const [taxInvoice] = useState(demoTaxInvoice);
+  const [taxInvoice, setTaxInvoice] = useState<TaxInvoice | null>(null);
+  const [linkedInvoice, setLinkedInvoice] = useState<LinkedInvoice | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchTaxInvoice = async () => {
+      try {
+        const res = await fetch(`/api/tax-invoices/${resolvedParams.id}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || '세금계산서를 불러오지 못했습니다');
+        }
+
+        setTaxInvoice(data.taxInvoice);
+        setLinkedInvoice(data.invoice);
+      } catch (err) {
+        console.error('Failed to fetch tax invoice:', err);
+        setError(err instanceof Error ? err.message : '세금계산서를 불러오지 못했습니다');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTaxInvoice();
+  }, [resolvedParams.id]);
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('ko-KR').format(amount);
   const formatDate = (date: string) => new Date(date).toLocaleDateString('ko-KR');
 
   const handleSubmitToNTS = async () => {
-    // TODO: 국세청 전송 API 호출
-    console.log('Submit to NTS:', resolvedParams.id);
+    if (!taxInvoice) return;
+    setSubmitting(true);
+
+    try {
+      const res = await fetch(`/api/tax-invoices/${resolvedParams.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'submit_nts' }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || '국세청 전송에 실패했습니다');
+      }
+
+      setTaxInvoice(data.taxInvoice);
+      alert(data.message || '국세청 전송이 완료되었습니다');
+    } catch (err) {
+      console.error('NTS submission failed:', err);
+      alert(err instanceof Error ? err.message : '국세청 전송에 실패했습니다');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -64,6 +133,36 @@ export default function TaxInvoiceDetailPage({ params }: { params: Promise<{ id:
     approved: { label: '국세청 승인', color: 'text-green-700', bg: 'bg-green-100' },
     rejected: { label: '반려', color: 'text-red-700', bg: 'bg-red-100' },
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-500">세금계산서 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !taxInvoice) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl border border-red-200 p-12 text-center">
+          <span className="text-4xl mb-4 block">❌</span>
+          <p className="text-red-600 mb-4">{error || '세금계산서를 찾을 수 없습니다'}</p>
+          <Link
+            href="/dashboard/tax-invoices"
+            className="inline-block px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+          >
+            목록으로 돌아가기
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const provider = taxInvoice.provider || taxInvoice.provider_info;
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -82,11 +181,11 @@ export default function TaxInvoiceDetailPage({ params }: { params: Promise<{ id:
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900">세금계산서</h1>
-              <span className={`text-sm px-3 py-1 rounded-full ${statusConfig[taxInvoice.ntsStatus]?.bg} ${statusConfig[taxInvoice.ntsStatus]?.color}`}>
-                {statusConfig[taxInvoice.ntsStatus]?.label}
+              <span className={`text-sm px-3 py-1 rounded-full ${statusConfig[taxInvoice.nts_status]?.bg} ${statusConfig[taxInvoice.nts_status]?.color}`}>
+                {statusConfig[taxInvoice.nts_status]?.label}
               </span>
             </div>
-            <p className="text-gray-500 mt-1 font-mono">{taxInvoice.documentNumber}</p>
+            <p className="text-gray-500 mt-1 font-mono">{taxInvoice.document_number}</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -95,12 +194,13 @@ export default function TaxInvoiceDetailPage({ params }: { params: Promise<{ id:
             >
               인쇄
             </button>
-            {taxInvoice.ntsStatus === 'pending' && (
+            {['draft', 'pending'].includes(taxInvoice.nts_status) && (
               <button
                 onClick={handleSubmitToNTS}
-                className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+                disabled={submitting}
+                className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
               >
-                국세청 전송
+                {submitting ? '전송 중...' : '국세청 전송'}
               </button>
             )}
           </div>
@@ -108,15 +208,17 @@ export default function TaxInvoiceDetailPage({ params }: { params: Promise<{ id:
       </div>
 
       {/* 승인 정보 */}
-      {taxInvoice.ntsApprovalNumber && (
+      {taxInvoice.nts_approval_number && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
           <p className="text-green-800">
             <span className="font-medium">국세청 승인번호:</span>{' '}
-            <span className="font-mono">{taxInvoice.ntsApprovalNumber}</span>
+            <span className="font-mono">{taxInvoice.nts_approval_number}</span>
           </p>
-          <p className="text-green-600 text-sm mt-1">
-            {formatDate(taxInvoice.ntsSubmittedAt!)} 승인
-          </p>
+          {taxInvoice.nts_submitted_at && (
+            <p className="text-green-600 text-sm mt-1">
+              {formatDate(taxInvoice.nts_submitted_at)} 승인
+            </p>
+          )}
         </div>
       )}
 
@@ -137,27 +239,27 @@ export default function TaxInvoiceDetailPage({ params }: { params: Promise<{ id:
             <div className="p-4 space-y-2 text-sm">
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">등록번호</span>
-                <span className="col-span-2 font-mono">{taxInvoice.provider.businessNumber}</span>
+                <span className="col-span-2 font-mono">{provider?.business_number || '-'}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">상호</span>
-                <span className="col-span-2 font-semibold">{taxInvoice.provider.name}</span>
+                <span className="col-span-2 font-semibold">{provider?.name || '-'}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">대표자</span>
-                <span className="col-span-2">{taxInvoice.provider.representativeName}</span>
+                <span className="col-span-2">{provider?.representative_name || '-'}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">주소</span>
-                <span className="col-span-2 text-xs">{taxInvoice.provider.address}</span>
+                <span className="col-span-2 text-xs">{provider?.address || '-'}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">업태</span>
-                <span className="col-span-2">{taxInvoice.provider.businessType}</span>
+                <span className="col-span-2">{provider?.business_type || '-'}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">종목</span>
-                <span className="col-span-2">{taxInvoice.provider.businessCategory}</span>
+                <span className="col-span-2">{provider?.business_category || '-'}</span>
               </div>
             </div>
           </div>
@@ -170,27 +272,27 @@ export default function TaxInvoiceDetailPage({ params }: { params: Promise<{ id:
             <div className="p-4 space-y-2 text-sm">
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">등록번호</span>
-                <span className="col-span-2 font-mono">{taxInvoice.client.businessNumber}</span>
+                <span className="col-span-2 font-mono">{taxInvoice.client?.businessNumber || '-'}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">상호</span>
-                <span className="col-span-2 font-semibold">{taxInvoice.client.name}</span>
+                <span className="col-span-2 font-semibold">{taxInvoice.client?.name || '-'}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">대표자</span>
-                <span className="col-span-2">{taxInvoice.client.representativeName}</span>
+                <span className="col-span-2">{taxInvoice.client?.representativeName || '-'}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">주소</span>
-                <span className="col-span-2 text-xs">{taxInvoice.client.address}</span>
+                <span className="col-span-2 text-xs">{taxInvoice.client?.address || '-'}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">업태</span>
-                <span className="col-span-2">{taxInvoice.client.businessType}</span>
+                <span className="col-span-2">{taxInvoice.client?.businessType || '-'}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">종목</span>
-                <span className="col-span-2">{taxInvoice.client.businessCategory}</span>
+                <span className="col-span-2">{taxInvoice.client?.businessCategory || '-'}</span>
               </div>
             </div>
           </div>
@@ -209,14 +311,14 @@ export default function TaxInvoiceDetailPage({ params }: { params: Promise<{ id:
             </tr>
           </thead>
           <tbody>
-            {taxInvoice.items.map((item) => (
+            {taxInvoice.items?.map((item) => (
               <tr key={item.id} className="border-b border-gray-200">
                 <td className="py-2 px-3 text-center border-r border-gray-300">{item.date}</td>
                 <td className="py-2 px-3 border-r border-gray-300">{item.name}</td>
                 <td className="py-2 px-3 text-center border-r border-gray-300">{item.quantity}</td>
-                <td className="py-2 px-3 text-right border-r border-gray-300">₩{formatCurrency(item.unitPrice)}</td>
-                <td className="py-2 px-3 text-right border-r border-gray-300">₩{formatCurrency(item.supplyAmount)}</td>
-                <td className="py-2 px-3 text-right">₩{formatCurrency(item.taxAmount)}</td>
+                <td className="py-2 px-3 text-right border-r border-gray-300">₩{formatCurrency(item.unit_price)}</td>
+                <td className="py-2 px-3 text-right border-r border-gray-300">₩{formatCurrency(item.supply_amount)}</td>
+                <td className="py-2 px-3 text-right">₩{formatCurrency(item.tax_amount)}</td>
               </tr>
             ))}
           </tbody>
@@ -224,25 +326,25 @@ export default function TaxInvoiceDetailPage({ params }: { params: Promise<{ id:
             <tr className="bg-gray-50 border-t-2 border-gray-300 font-semibold">
               <td colSpan={4} className="py-3 px-3 text-right border-r border-gray-300">합계</td>
               <td className="py-3 px-3 text-right border-r border-gray-300">₩{formatCurrency(taxInvoice.subtotal)}</td>
-              <td className="py-3 px-3 text-right">₩{formatCurrency(taxInvoice.taxAmount)}</td>
+              <td className="py-3 px-3 text-right">₩{formatCurrency(taxInvoice.tax_amount)}</td>
             </tr>
             <tr className="bg-teal-50 font-bold text-lg">
               <td colSpan={5} className="py-4 px-3 text-right border-r border-gray-300">총 합계</td>
-              <td className="py-4 px-3 text-right text-teal-700">₩{formatCurrency(taxInvoice.totalAmount)}</td>
+              <td className="py-4 px-3 text-right text-teal-700">₩{formatCurrency(taxInvoice.total_amount)}</td>
             </tr>
           </tfoot>
         </table>
       </div>
 
       {/* 관련 문서 */}
-      {taxInvoice.invoiceId && (
+      {linkedInvoice && (
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <p className="text-sm text-gray-500 mb-1">관련 인보이스</p>
           <Link
-            href={`/dashboard/invoices/${taxInvoice.invoiceId}` as never}
+            href={`/dashboard/invoices/${linkedInvoice.id}` as never}
             className="text-orange-600 hover:underline"
           >
-            {taxInvoice.invoiceNumber}
+            {linkedInvoice.document_number} - {linkedInvoice.title}
           </Link>
         </div>
       )}

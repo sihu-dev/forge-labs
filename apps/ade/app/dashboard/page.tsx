@@ -2,65 +2,66 @@
  * ADE - 정산 자동화 대시보드 홈
  */
 
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { DOCUMENT_META } from '@/types';
 
-export default function DashboardPage() {
-  // 더미 통계 (실제로는 DB에서 가져옴)
-  const stats = {
-    thisMonth: {
-      quotes: 5,
-      contracts: 2,
-      invoices: 3,
-      revenue: 4500000,
-    },
-    pending: {
-      quotesToApprove: 2,
-      contractsToSign: 1,
-      invoicesToPay: 2,
-      overdueInvoices: 1,
-    },
+interface Stats {
+  thisMonth: {
+    quotes: number;
+    contracts: number;
+    invoices: number;
+    revenue: number;
   };
+  pending: {
+    quotesToApprove: number;
+    contractsToSign: number;
+    invoicesToPay: number;
+    overdueInvoices: number;
+  };
+}
 
-  // 더미 최근 문서 (실제로는 DB에서 가져옴)
-  type DocType = 'quote' | 'contract' | 'invoice' | 'tax_invoice';
-  const recentDocuments: Array<{
-    id: string;
-    type: DocType;
-    number: string;
-    client: string;
-    amount: number;
-    status: string;
-    date: string;
-  }> = [
-    {
-      id: 'q-001',
-      type: 'quote',
-      number: 'Q-2024-0015',
-      client: '(주)테크스타트',
-      amount: 3000000,
-      status: 'sent',
-      date: '2024-12-20',
-    },
-    {
-      id: 'i-001',
-      type: 'invoice',
-      number: 'I-2024-0012',
-      client: '디자인랩',
-      amount: 1500000,
-      status: 'paid',
-      date: '2024-12-19',
-    },
-    {
-      id: 'c-001',
-      type: 'contract',
-      number: 'C-2024-0008',
-      client: '스마트솔루션',
-      amount: 5000000,
-      status: 'approved',
-      date: '2024-12-18',
-    },
-  ];
+interface RecentDocument {
+  id: string;
+  type: 'quote' | 'contract' | 'invoice';
+  document_number: string;
+  client_name: string;
+  total_amount: number;
+  status: string;
+  created_at: string;
+}
+
+export default function DashboardPage() {
+  const [stats, setStats] = useState<Stats>({
+    thisMonth: { quotes: 0, contracts: 0, invoices: 0, revenue: 0 },
+    pending: { quotesToApprove: 0, contractsToSign: 0, invoicesToPay: 0, overdueInvoices: 0 },
+  });
+  const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/dashboard/stats');
+        const data = await res.json();
+
+        if (res.ok) {
+          setStats({
+            thisMonth: data.thisMonth,
+            pending: data.pending,
+          });
+          setRecentDocuments(data.recentDocuments || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
@@ -68,6 +69,19 @@ export default function DashboardPage() {
       maximumFractionDigits: 1,
     }).format(amount);
   };
+
+  const formatDate = (date: string) => new Date(date).toLocaleDateString('ko-KR');
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-500">대시보드 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -190,27 +204,26 @@ export default function DashboardPage() {
               <tbody className="divide-y divide-gray-200">
                 {recentDocuments.map((doc) => {
                   const meta = DOCUMENT_META[doc.type];
-                  // tax_invoice → tax-invoices 변환
-                  const basePath = doc.type === 'tax_invoice' ? 'tax-invoices' : `${doc.type}s`;
+                  const basePath = `${doc.type}s`;
                   return (
-                    <tr key={doc.id} className="hover:bg-gray-50">
+                    <tr key={`${doc.type}-${doc.id}`} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <span className="text-xl">{meta.icon}</span>
+                          <span className="text-xl">{meta?.icon || '📄'}</span>
                           <div>
-                            <p className="font-medium text-gray-900">{doc.number}</p>
-                            <p className="text-xs text-gray-500">{meta.name}</p>
+                            <p className="font-medium text-gray-900">{doc.document_number}</p>
+                            <p className="text-xs text-gray-500">{meta?.name || doc.type}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{doc.client}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{doc.client_name}</td>
                       <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">
-                        {new Intl.NumberFormat('ko-KR').format(doc.amount)}원
+                        {new Intl.NumberFormat('ko-KR').format(doc.total_amount)}원
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={doc.status} />
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{doc.date}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">{formatDate(doc.created_at)}</td>
                       <td className="px-6 py-4 text-right">
                         <Link
                           href={`/dashboard/${basePath}/${doc.id}` as never}
@@ -275,7 +288,9 @@ function StatusBadge({ status }: { status: string }) {
   const configs: Record<string, { label: string; className: string }> = {
     draft: { label: '초안', className: 'bg-gray-100 text-gray-600' },
     sent: { label: '발송됨', className: 'bg-blue-100 text-blue-600' },
+    viewed: { label: '열람됨', className: 'bg-yellow-100 text-yellow-600' },
     approved: { label: '승인됨', className: 'bg-green-100 text-green-600' },
+    pending: { label: '대기', className: 'bg-yellow-100 text-yellow-600' },
     paid: { label: '결제됨', className: 'bg-emerald-100 text-emerald-600' },
     rejected: { label: '거절됨', className: 'bg-red-100 text-red-600' },
     overdue: { label: '연체', className: 'bg-red-100 text-red-600' },
