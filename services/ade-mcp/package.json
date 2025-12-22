@@ -1,0 +1,26 @@
+{
+  "name": "@forge-labs/ade-mcp",
+  "version": "0.1.0",
+  "description": "ADE Vision Suite MCP Server",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "ade-mcp": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@forge-labs/vibe-engine": "workspace:*",
+    "@forge-labs/vibe-types": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
