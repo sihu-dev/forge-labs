@@ -50,6 +50,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const resolvedParams = use(params);
   const router = useRouter();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [publicToken, setPublicToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -68,6 +69,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         }
 
         setInvoice(data.invoice);
+        setPublicToken(data.publicToken);
       } catch (err) {
         console.error('Failed to fetch invoice:', err);
         setError(err instanceof Error ? err.message : '인보이스를 불러오지 못했습니다');
@@ -82,7 +84,8 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const formatDate = (date: string) => new Date(date).toLocaleDateString('ko-KR');
 
   const handleCopyLink = () => {
-    const link = `${window.location.origin}/p/invoices/${resolvedParams.id}`;
+    if (!publicToken) return;
+    const link = `${window.location.origin}/p/invoices/${publicToken}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -191,7 +194,8 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           <div className="flex gap-2">
             <button
               onClick={handleCopyLink}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              disabled={!publicToken}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               {copied ? '복사됨!' : '링크 복사'}
             </button>

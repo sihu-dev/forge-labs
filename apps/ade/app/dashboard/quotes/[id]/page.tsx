@@ -42,6 +42,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const resolvedParams = use(params);
   const router = useRouter();
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [publicToken, setPublicToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -59,6 +60,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         }
 
         setQuote(data.quote);
+        setPublicToken(data.publicToken);
       } catch (err) {
         console.error('Failed to fetch quote:', err);
         setError(err instanceof Error ? err.message : '견적서를 불러오지 못했습니다');
@@ -81,7 +83,8 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   };
 
   const handleCopyLink = () => {
-    const link = `${window.location.origin}/p/quotes/${resolvedParams.id}`;
+    if (!publicToken) return;
+    const link = `${window.location.origin}/p/quotes/${publicToken}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -168,7 +171,8 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           <div className="flex gap-2">
             <button
               onClick={handleCopyLink}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              disabled={!publicToken}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               {copied ? '복사됨!' : '링크 복사'}
             </button>

@@ -36,7 +36,37 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: '견적서를 불러오지 못했습니다' }, { status: 500 });
     }
 
-    return NextResponse.json({ quote });
+    // 공개 토큰 조회 또는 생성
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let { data: publicToken } = await (supabase as any)
+      .from('public_tokens')
+      .select('token')
+      .eq('document_id', id)
+      .eq('document_type', 'quote')
+      .eq('is_active', true)
+      .single();
+
+    if (!publicToken) {
+      const newToken = crypto.randomUUID();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: createdToken } = await (supabase as any)
+        .from('public_tokens')
+        .insert({
+          user_id: user.id,
+          document_type: 'quote',
+          document_id: id,
+          token: newToken,
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30일 후 만료
+        })
+        .select('token')
+        .single();
+      publicToken = createdToken;
+    }
+
+    return NextResponse.json({
+      quote,
+      publicToken: publicToken?.token || null,
+    });
   } catch (error) {
     console.error('Get quote error:', error);
     return NextResponse.json({ error: '서버 오류가 발생했습니다' }, { status: 500 });

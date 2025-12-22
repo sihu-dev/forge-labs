@@ -45,9 +45,37 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .eq('user_id', user.id)
       .order('created_at', { ascending: true });
 
+    // 공개 토큰 조회 또는 생성
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let { data: publicToken } = await (supabase as any)
+      .from('public_tokens')
+      .select('token')
+      .eq('document_id', id)
+      .eq('document_type', 'contract')
+      .eq('is_active', true)
+      .single();
+
+    if (!publicToken) {
+      const newToken = crypto.randomUUID();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: createdToken } = await (supabase as any)
+        .from('public_tokens')
+        .insert({
+          user_id: user.id,
+          document_type: 'contract',
+          document_id: id,
+          token: newToken,
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30일 후 만료
+        })
+        .select('token')
+        .single();
+      publicToken = createdToken;
+    }
+
     return NextResponse.json({
       contract,
       invoices: invoices || [],
+      publicToken: publicToken?.token || null,
     });
   } catch (error) {
     console.error('Get contract error:', error);

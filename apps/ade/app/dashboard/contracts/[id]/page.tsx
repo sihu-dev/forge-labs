@@ -68,6 +68,7 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
   const router = useRouter();
   const [contract, setContract] = useState<Contract | null>(null);
   const [linkedInvoices, setLinkedInvoices] = useState<LinkedInvoice[]>([]);
+  const [publicToken, setPublicToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -87,6 +88,7 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
 
         setContract(data.contract);
         setLinkedInvoices(data.invoices || []);
+        setPublicToken(data.publicToken);
       } catch (err) {
         console.error('Failed to fetch contract:', err);
         setError(err instanceof Error ? err.message : '계약서를 불러오지 못했습니다');
@@ -101,7 +103,8 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
   const formatDate = (date: string) => new Date(date).toLocaleDateString('ko-KR');
 
   const handleCopyLink = () => {
-    const link = `${window.location.origin}/p/contracts/${resolvedParams.id}`;
+    if (!publicToken) return;
+    const link = `${window.location.origin}/p/contracts/${publicToken}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -206,7 +209,8 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
           <div className="flex gap-2">
             <button
               onClick={handleCopyLink}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              disabled={!publicToken}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               {copied ? '복사됨!' : '링크 복사'}
             </button>
