@@ -157,6 +157,12 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
             >
               견적서 작성
             </Link>
+            <Link
+              href={`/dashboard/clients/${client.id}/edit` as never}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              수정
+            </Link>
             <button
               onClick={handleDelete}
               disabled={deleting}
