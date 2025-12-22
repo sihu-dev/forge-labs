@@ -98,79 +98,6 @@ export namespace Hephaitos {
   }
 }
 
-/**
- * FOLIO 도메인 타입
- */
-export namespace Folio {
-  /** 경쟁사 정보 */
-  export interface ICompetitor {
-    id: UUID;
-    name: string;
-    category: string;
-    location: ILocation;
-    price_range: IPriceRange;
-    rating: number;
-    review_count: number;
-    products: IProduct[];
-    crawled_at: Timestamp;
-  }
-
-  /** 위치 정보 */
-  export interface ILocation {
-    address: string;
-    lat: number;
-    lng: number;
-    region: string;
-  }
-
-  /** 가격 범위 */
-  export interface IPriceRange {
-    min: number;
-    max: number;
-    currency: string;
-  }
-
-  /** 상품 정보 */
-  export interface IProduct {
-    id: UUID;
-    name: string;
-    price: number;
-    category: string;
-    description?: string;
-    image_url?: string;
-  }
-
-  /** 매출 예측 */
-  export interface ISalesForecast {
-    period: string;
-    predicted_revenue: number;
-    confidence: number;
-    factors: IForecastFactor[];
-  }
-
-  export interface IForecastFactor {
-    name: string;
-    impact: number; // -1 to 1
-    description: string;
-  }
-
-  /** 카드 매출 분석 */
-  export interface ICardAnalysis {
-    period: string;
-    total_sales: number;
-    transaction_count: number;
-    average_ticket: number;
-    peak_hours: string[];
-    customer_segments: ICustomerSegment[];
-  }
-
-  export interface ICustomerSegment {
-    name: string;
-    percentage: number;
-    average_spend: number;
-  }
-}
-
 // ============================================
 // 크롤러 타입
 // ============================================
@@ -301,11 +228,6 @@ export type CurrencyCode = 'USD' | 'KRW' | 'EUR' | 'JPY' | 'CNY' | 'BTC' | 'ETH'
  * HEPHAITOS 상세 타입 (L0 구현체)
  */
 export * as HephaitosTypes from './hephaitos/index.js';
-
-/**
- * FOLIO 상세 타입 (L0 구현체)
- */
-export * as FolioTypes from './folio/index.js';
 
 /**
  * BIDFLOW 상세 타입 (L0 구현체)

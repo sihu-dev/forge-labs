@@ -1,6 +1,6 @@
 # FORGE LABS 마스터 가이드
 
-> **통합 플랫폼**: HEPHAITOS, DRYON, FOLIO, ADE, BIDFLOW (5개)
+> **통합 플랫폼**: HEPHAITOS, BIDFLOW (2개)
 > **아키텍처**: 나노팩터 계층 (L0→L1→L2→L3)
 > **개발 방식**: 참조 개발 (기존 프로젝트 자산 활용)
 
@@ -47,14 +47,11 @@
 | L2 (Cells) | packages/core/, packages/ui/ | 비즈니스 로직, UI 컴포넌트 |
 | L3 (Tissues) | apps/{app}/src/ | 애플리케이션 레이어 |
 
-### 5개 앱
+### 2개 앱
 
 | 앱 | 목적 | 위치 | 포트 |
 | --- | --- | --- | --- |
 | HEPHAITOS | 트레이딩 엔진 | apps/hephaitos/ | 3000 |
-| DRYON | 기후 AI 시스템 | apps/dryon/ | 3001 |
-| FOLIO | 포트폴리오 관리 | apps/folio/ | 3002 |
-| ADE | AI 코드 생성 | apps/ade/ | 3003 |
 | BIDFLOW | 입찰 자동화 | apps/bidflow/ | 3010 |
 
 ---
@@ -142,19 +139,13 @@
 
 ## 코드베이스 구조
 
-### 에이전트 - L3 Tissues (9개)
+### 에이전트 - L3 Tissues (3개)
 
 | 앱 | 에이전트 | 역할 |
 |---|---------|------|
 | HEPHAITOS | BacktestAgent | 백테스트 시뮬레이션 |
 | | OrderExecutorAgent | 주문 실행/리스크 관리 |
 | | PortfolioSyncAgent | 멀티 거래소 동기화 |
-| FOLIO | CompetitorMonitorAgent | 경쟁사 모니터링 |
-| | InventoryOptimizerAgent | 재고 최적화 |
-| | SalesForecastAgent | 매출 예측 |
-| DRYON | AlarmManagerAgent | 알림 관리 |
-| | EnergyMonitorAgent | 에너지 모니터링 |
-| | SensorOptimizerAgent | 센서 최적화 |
 
 ### 타입 시스템 (packages/types/src/hephaitos/) - 8개 파일
 
@@ -169,7 +160,7 @@
 | portfolio.ts | SyncStatus, IPortfolio, IPortfolioSummary, IPortfolioSnapshot |
 | trade.ts | OrderSide, OrderType, OrderStatus, IOrder, ITrade, IPosition, IOHLCV |
 
-### 유틸리티 (packages/utils/src/) - L1 Molecules (14개)
+### 유틸리티 (packages/utils/src/) - L1 Molecules (7개)
 
 | 파일 | 역할 |
 |-----|------|
@@ -180,37 +171,22 @@
 | currency.ts | 통화 변환 |
 | pnl.ts | 손익 계산 |
 | order-calc.ts | 주문 계산 |
-| geo.ts | 지리 연산 (FOLIO) |
-| reward.ts | 리워드 계산 (FOLIO) |
-| time-series.ts | 시계열 분석 |
-| forecast-calc.ts | 예측 계산 (FOLIO) |
-| alarm-eval.ts | 알림 평가 (DRYON) |
-| inventory-calc.ts | 재고 계산 (FOLIO) |
-| energy-calc.ts | 에너지 계산 (DRYON) |
 
 ### 코어 서비스 (packages/core/src/) - L2 Cells
 
-#### 서비스 (4개)
+#### 서비스 (2개)
 | 서비스 | 파일 | 라인 | 역할 |
 |-------|------|-----|------|
 | ExchangeServiceFactory | services/exchange-service.ts | 402 | 거래소 API 통합 (Binance, Upbit) |
 | PriceDataService | services/price-data-service.ts | 241 | 과거 가격/OHLCV 데이터 |
-| SalesDataService | services/sales-data-service.ts | - | 매출 데이터 서비스 |
-| PlaceCrawlerService | services/place-crawler-service.ts | - | 장소 크롤링 서비스 |
 
-#### 리포지토리 (10개)
+#### 리포지토리 (4개)
 | 리포지토리 | 파일 | 라인 | 역할 |
 |-----------|------|-----|------|
 | PortfolioRepository | repositories/portfolio-repository.ts | 322 | 포트폴리오 CRUD + 스냅샷 |
 | StrategyRepository | repositories/strategy-repository.ts | 241 | 전략 CRUD + 복제 |
 | BacktestResultRepository | repositories/backtest-result-repository.ts | - | 백테스트 결과 저장 |
 | OrderRepository | repositories/order-repository.ts | - | 주문 이력 저장 |
-| ForecastRepository | repositories/forecast-repository.ts | - | 예측 데이터 저장 |
-| AlarmRepository | repositories/alarm-repository.ts | - | 알림 설정 저장 |
-| CompetitorRepository | repositories/competitor-repository.ts | - | 경쟁사 분석 데이터 |
-| EnergyRepository | repositories/energy-repository.ts | - | DRYON 에너지 데이터 |
-| InventoryRepository | repositories/inventory-repository.ts | - | 재고 관리 데이터 |
-| FeedbackRepository | repositories/feedback-repository.ts | - | 피드백 저장 |
 
 ### UI 컴포넌트 (packages/ui/src/) - L2 Cells (30개)
 

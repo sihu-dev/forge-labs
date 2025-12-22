@@ -20,22 +20,6 @@ export {
   createPortfolioRepository,
 } from './repositories/portfolio-repository.js';
 
-// L2 Services - FOLIO
-export {
-  type IPlaceCrawlerService,
-  type IPlaceSearchResult,
-  NaverPlaceCrawlerService,
-  KakaoLocalCrawlerService,
-  createPlaceCrawlerService,
-} from './services/place-crawler-service.js';
-
-// L2 Repositories - FOLIO
-export {
-  type ICompetitorRepository,
-  InMemoryCompetitorRepository,
-  createCompetitorRepository,
-} from './repositories/competitor-repository.js';
-
 // L2 Services - HEPHAITOS (백테스팅)
 export {
   type IPriceDataService,
@@ -57,20 +41,6 @@ export {
   createBacktestResultRepository,
 } from './repositories/backtest-result-repository.js';
 
-// L2 Services - FOLIO (매출 데이터)
-export {
-  type ISalesDataService,
-  InMemorySalesDataService,
-  createSalesDataService,
-} from './services/sales-data-service.js';
-
-// L2 Repositories - FOLIO (매출 예측)
-export {
-  type IForecastRepository,
-  InMemoryForecastRepository,
-  createForecastRepository,
-} from './repositories/forecast-repository.js';
-
 // L2 Repositories - HEPHAITOS (주문 실행)
 export {
   type IOrderRepository,
@@ -80,11 +50,3 @@ export {
   createOrderRepository,
   createPositionRepository,
 } from './repositories/order-repository.js';
-
-// L2 Repositories - FOLIO (재고 관리)
-export {
-  type IInventoryRepository,
-  InMemoryInventoryRepository,
-  createInventoryRepository,
-} from './repositories/inventory-repository.js';
-

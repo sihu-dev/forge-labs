@@ -49,17 +49,6 @@ export {
   type IValidationResult,
 } from './validation.js';
 
-// Geo Utilities
-export {
-  calculateDistance,
-  createBoundingBox,
-  isWithinBoundingBox,
-  isWithinRadius,
-  calculateCentroid,
-  sortByDistance,
-  formatDistance,
-} from './geo.js';
-
 // Backtest Calculation Utilities (HEPHAITOS)
 export {
   calculateTotalReturn,
@@ -98,40 +87,6 @@ export {
   detectExitSignal,
 } from './signal-detector.js';
 
-// Time Series Analysis (FOLIO)
-export {
-  calculateSimpleMovingAverage,
-  calculateWeightedMovingAverage,
-  exponentialSmoothing,
-  doubleExponentialSmoothing,
-  decomposeAdditive,
-  decomposeMultiplicative,
-  extractSeasonalPattern,
-  calculateLinearTrend,
-  calculateGrowthRate,
-  calculateCAGR,
-  type IDecompositionResult,
-} from './time-series.js';
-
-// Forecast Calculation (FOLIO)
-export {
-  forecastSimpleMA,
-  forecastWeightedMA,
-  forecastExponential,
-  forecastHoltLinear,
-  applySeasonalAdjustment,
-  calculateWeatherImpact,
-  calculateHolidayImpact,
-  calculateEventImpact,
-  applyExternalFactors,
-  calculateConfidenceInterval,
-  calculateSimpleConfidenceInterval,
-  calculateMAPE,
-  calculateRMSE,
-  calculateMAE,
-  type ISimpleForecast,
-} from './forecast-calc.js';
-
 // Order Calculation (HEPHAITOS)
 export {
   calculatePositionSize,
@@ -156,30 +111,3 @@ export {
   type IPositionSizeResult,
   type IOrderValidation,
 } from './order-calc.js';
-
-// Inventory Calculation (FOLIO)
-export {
-  calculateEOQ,
-  calculateROP,
-  calculateSafetyStock,
-  calculateSafetyStockByDays,
-  calculateTurnoverRate,
-  calculateDaysOfSupply,
-  estimateStockoutDate,
-  calculateAnnualHoldingCost,
-  calculateHoldingCostPerUnit,
-  calculateStockoutRisk,
-  determineStockStatus,
-  classifyABC,
-  calculateOrderQuantity,
-  calculateOrderUrgency,
-  calculateDemandStatistics,
-  type IEOQInput,
-  type IEOQResult,
-  type IROPInput,
-  type ISafetyStockInput,
-  type IABCInput,
-  type IABCResult,
-  type IOrderQuantityInput,
-} from './inventory-calc.js';
-
