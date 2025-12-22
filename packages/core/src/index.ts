@@ -36,13 +36,6 @@ export {
   createCompetitorRepository,
 } from './repositories/competitor-repository.js';
 
-// L2 Repositories - DRYON (자가개선 성장 루프)
-export {
-  type IFeedbackRepository,
-  InMemoryFeedbackRepository,
-  createFeedbackRepository,
-} from './repositories/feedback-repository.js';
-
 // L2 Services - HEPHAITOS (백테스팅)
 export {
   type IPriceDataService,
@@ -78,13 +71,6 @@ export {
   createForecastRepository,
 } from './repositories/forecast-repository.js';
 
-// L2 Repositories - DRYON (알람 관리)
-export {
-  type IAlarmRepository,
-  InMemoryAlarmRepository,
-  createAlarmRepository,
-} from './repositories/alarm-repository.js';
-
 // L2 Repositories - HEPHAITOS (주문 실행)
 export {
   type IOrderRepository,
@@ -102,9 +88,3 @@ export {
   createInventoryRepository,
 } from './repositories/inventory-repository.js';
 
-// L2 Repositories - DRYON (에너지 모니터링)
-export {
-  type IEnergyRepository,
-  InMemoryEnergyRepository,
-  createEnergyRepository,
-} from './repositories/energy-repository.js';

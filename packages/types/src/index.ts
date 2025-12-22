@@ -171,66 +171,6 @@ export namespace Folio {
   }
 }
 
-/**
- * DRYON 도메인 타입
- */
-export namespace Dryon {
-  /** 센서 종류 */
-  export type SensorType = 'temperature' | 'humidity' | 'pressure' | 'flow' | 'level' | 'vibration';
-
-  /** 센서 프로토콜 */
-  export type SensorProtocol = 'modbus' | 'opcua' | 'mqtt';
-
-  /** 센서 정보 */
-  export interface ISensor {
-    id: UUID;
-    name: string;
-    type: SensorType;
-    protocol: SensorProtocol;
-    unit: string;
-    location: string;
-    config: ISensorConfig;
-  }
-
-  export interface ISensorConfig {
-    address?: string;
-    register?: number;
-    topic?: string;
-    polling_interval_ms: number;
-  }
-
-  /** 센서 데이터 */
-  export interface ISensorData {
-    sensor_id: UUID;
-    value: number;
-    timestamp: Timestamp;
-    quality: 'good' | 'uncertain' | 'bad';
-  }
-
-  /** 공정 최적화 권장사항 */
-  export interface IOptimizationRecommendation {
-    id: UUID;
-    type: 'energy' | 'quality' | 'throughput';
-    priority: 'high' | 'medium' | 'low';
-    title: string;
-    description: string;
-    expected_saving: number;
-    parameters: Record<string, number>;
-    confidence: number;
-  }
-
-  /** 슬러지 분석 결과 */
-  export interface ISludgeAnalysis {
-    id: UUID;
-    moisture_content: number;
-    dry_matter: number;
-    energy_consumption: number;
-    throughput: number;
-    efficiency_score: number;
-    timestamp: Timestamp;
-  }
-}
-
 // ============================================
 // 크롤러 타입
 // ============================================
@@ -366,12 +306,6 @@ export * as HephaitosTypes from './hephaitos/index.js';
  * FOLIO 상세 타입 (L0 구현체)
  */
 export * as FolioTypes from './folio/index.js';
-
-/**
- * DRYON 상세 타입 (L0 구현체)
- * 자가개선 성장 루프 패턴 적용
- */
-export * as DryonTypes from './dryon/index.js';
 
 /**
  * BIDFLOW 상세 타입 (L0 구현체)

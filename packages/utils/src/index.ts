@@ -60,18 +60,6 @@ export {
   formatDistance,
 } from './geo.js';
 
-// Reward Utilities (자가개선 성장 루프)
-export {
-  computeReward,
-  calculateStateChange,
-  updateConfidence,
-  shouldExplore,
-  calculatePatternMatchScore,
-  DEFAULT_REWARD_WEIGHTS,
-  type IRewardWeights,
-  type IRewardBreakdown,
-} from './reward.js';
-
 // Backtest Calculation Utilities (HEPHAITOS)
 export {
   calculateTotalReturn,
@@ -144,22 +132,6 @@ export {
   type ISimpleForecast,
 } from './forecast-calc.js';
 
-// Alarm Evaluation (DRYON)
-export {
-  evaluateCondition as evaluateAlarmCondition,
-  evaluateRule as evaluateAlarmRule,
-  checkDeadband,
-  calculateAlarmScore,
-  prioritizeAlarms,
-  filterUnacknowledged,
-  filterNeedingEscalation,
-  calculateAvgAcknowledgeTime,
-  calculateAvgResolutionTime,
-  countAlarmsByCode,
-  type IConditionEvalResult,
-  type IRuleEvalResult,
-} from './alarm-eval.js';
-
 // Order Calculation (HEPHAITOS)
 export {
   calculatePositionSize,
@@ -211,29 +183,3 @@ export {
   type IOrderQuantityInput,
 } from './inventory-calc.js';
 
-// Energy Calculation (DRYON)
-export {
-  calculateSEC,
-  calculateSECPerformance,
-  calculateCOP,
-  calculateDryingEfficiency,
-  calculateMoistureRemoved,
-  calculateLoadFactor,
-  calculatePowerFactor,
-  calculateApparentPower,
-  analyzePeakDemand,
-  calculatePeakUtilization,
-  calculateEnergyCostByTOU,
-  calculateDemandCharge,
-  calculateUnitEnergyCost,
-  convertToKwh,
-  calculateTotalEnergy,
-  determineTimeOfUse,
-  isSummerSeason,
-  detectEnergyAnomaly,
-  compareToBenchmark,
-  predictConsumption,
-  type ITOURates,
-  type IAnomalyResult,
-  type IBenchmarkComparison,
-} from './energy-calc.js';
