@@ -37,7 +37,7 @@ test.describe('Rate Limiting', () => {
       email: user.user.email!,
     })
 
-    testToken = session.properties.action_link.split('access_token=')[1].split('&')[0]
+    testToken = session?.properties?.action_link?.split('access_token=')[1]?.split('&')[0] ?? ''
   })
 
   test.afterEach(async () => {
@@ -206,14 +206,14 @@ test.describe('Rate Limiting', () => {
 
     await supabaseAdmin
       .from('credit_wallets')
-      .insert({ user_id: userB!.user.id, balance: 1000 })
+      .insert({ user_id: userB?.user?.id ?? '', balance: 1000 })
 
     const { data: sessionB } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
-      email: userB!.user.email!,
+      email: userB?.user?.email ?? '',
     })
 
-    const testTokenB = sessionB.properties.action_link.split('access_token=')[1].split('&')[0]
+    const testTokenB = sessionB?.properties?.action_link?.split('access_token=')[1]?.split('&')[0] ?? ''
 
     // 사용자 B: 첫 요청 (성공해야 함)
     const responseB1 = await request.post(
@@ -233,7 +233,9 @@ test.describe('Rate Limiting', () => {
     expect(responseB1.status()).toBe(200)
 
     // 사용자 B 정리
-    await supabaseAdmin.auth.admin.deleteUser(userB!.user.id)
+    if (userB?.user?.id) {
+      await supabaseAdmin.auth.admin.deleteUser(userB.user.id)
+    }
   })
 
   test('should apply different rate limits for different endpoints', async ({

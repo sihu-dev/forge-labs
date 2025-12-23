@@ -5,9 +5,16 @@
  * @description 언어 전환 드롭다운 컴포넌트
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { locales, localeNames, localeFlagEmojis, type Locale } from '@/i18n/config';
+
+// Helper to set locale cookie
+const setLocaleCookie = (locale: string) => {
+  if (typeof document !== 'undefined') {
+    document.cookie = `locale=${locale}; path=/; max-age=31536000`;
+  }
+};
 
 interface LanguageSwitcherProps {
   currentLocale: Locale;
@@ -19,7 +26,7 @@ export function LanguageSwitcher({ currentLocale, className = '' }: LanguageSwit
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleLocaleChange = (newLocale: Locale) => {
+  const handleLocaleChange = useCallback((newLocale: Locale) => {
     // 현재 경로에서 로케일 부분 교체
     let newPath = pathname;
 
@@ -37,11 +44,11 @@ export function LanguageSwitcher({ currentLocale, className = '' }: LanguageSwit
     }
 
     // 쿠키에 로케일 저장
-    document.cookie = `locale=${newLocale}; path=/; max-age=31536000`;
+    setLocaleCookie(newLocale);
 
     router.push(newPath);
     setIsOpen(false);
-  };
+  }, [pathname, router]);
 
   return (
     <div className={`relative ${className}`}>

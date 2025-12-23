@@ -34,7 +34,7 @@ test.describe('Safety Net - Legal Compliance', () => {
       email: user.user.email!,
     })
 
-    testToken = session.properties.action_link.split('access_token=')[1].split('&')[0]
+    testToken = session?.properties?.action_link?.split('access_token=')[1]?.split('&')[0] ?? ''
   })
 
   test.afterEach(async () => {

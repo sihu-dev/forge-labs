@@ -23,5 +23,5 @@
     { "path": "./packages/core" },
     { "path": "./packages/ui" }
   ],
-  "exclude": ["node_modules", "dist", ".next", "coverage"]
+  "exclude": ["node_modules", "dist", ".next", "coverage", "apps"]
 }
