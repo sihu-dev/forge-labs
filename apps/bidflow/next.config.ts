@@ -17,7 +17,10 @@ const nextConfig: NextConfig = {
   distDir: '.next',
 
   // 현재 디렉토리를 워크스페이스 루트로 명시 (부모 lockfile 무시)
-  outputFileTracingRoot: path.resolve(__dirname),
+  outputFileTracingRoot: path.resolve(__dirname, '../../'),
+
+  // Transpile monorepo packages
+  transpilePackages: ['@forge/types', '@forge/utils'],
 
   // 서버 외부 패키지 설정 (Handsontable SSR 호환성)
   serverExternalPackages: ['handsontable', '@handsontable/react'],

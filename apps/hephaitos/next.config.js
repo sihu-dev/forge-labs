@@ -11,6 +11,8 @@ const nextConfig = {
   outputFileTracingRoot: __dirname,
   // Disable static generation for all pages
   output: 'standalone',
+  // Transpile internal packages for monorepo support
+  transpilePackages: ['@hephaitos/types', '@hephaitos/utils', '@hephaitos/core'],
   // Compiler optimizations
   compiler: {
     // Remove console.log in production

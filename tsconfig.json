@@ -14,7 +14,14 @@
     "noEmit": true,
     "declaration": true,
     "declarationMap": true,
-    "incremental": true
+    "incremental": true,
+    "composite": true
   },
+  "references": [
+    { "path": "./packages/types" },
+    { "path": "./packages/utils" },
+    { "path": "./packages/core" },
+    { "path": "./packages/ui" }
+  ],
   "exclude": ["node_modules", "dist", ".next", "coverage"]
 }

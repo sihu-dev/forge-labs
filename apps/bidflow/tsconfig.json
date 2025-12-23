@@ -23,7 +23,11 @@
       "@/*": ["./src/*"],
       "@/types": ["./types/index.ts"],
       "@/types/*": ["./types/*"],
-      "@forge-labs/types/bidding": ["./types/index.ts"]
+      "@forge-labs/types/bidding": ["./types/index.ts"],
+      "@forge/types": ["../../packages/types/src/index.ts"],
+      "@forge/types/*": ["../../packages/types/src/*"],
+      "@forge/utils": ["../../packages/utils/src/index.ts"],
+      "@forge/utils/*": ["../../packages/utils/src/*"]
     }
   },
   "include": [
