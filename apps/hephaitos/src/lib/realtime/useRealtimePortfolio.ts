@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { getSupabaseBrowserClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
 // ============================================
 // Portfolio Realtime Hook
 // Supabase Realtime for portfolio updates
+// Performance: Visibility-based lazy connection
 // ============================================
 
 interface PortfolioData {
@@ -37,6 +38,18 @@ export function useRealtimePortfolio(userId?: string) {
   const [isConnected, setIsConnected] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const [isPageVisible, setIsPageVisible] = useState(true)
+  const channelRef = useRef<ReturnType<ReturnType<typeof getSupabaseBrowserClient>['channel']> | null>(null)
+
+  // Track page visibility for performance optimization
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsPageVisible(document.visibilityState === 'visible')
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
 
   // Fetch initial portfolio data
   const fetchPortfolio = useCallback(async () => {
@@ -81,12 +94,14 @@ export function useRealtimePortfolio(userId?: string) {
     }
   }, [userId])
 
-  // Subscribe to realtime updates
+  // Subscribe to realtime updates (visibility-aware)
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setIsLoading(false)
 
-      // Demo mode: simulate updates
+      // Demo mode: simulate updates only when page is visible
+      if (!isPageVisible) return
+
       const interval = setInterval(() => {
         setPortfolio(prev => {
           const randomChange = (Math.random() - 0.45) * 50
@@ -165,7 +180,7 @@ export function useRealtimePortfolio(userId?: string) {
       channel.unsubscribe()
       setIsConnected(false)
     }
-  }, [userId, fetchPortfolio])
+  }, [userId, fetchPortfolio, isPageVisible])
 
   // Manual refresh
   const refresh = useCallback(() => {
