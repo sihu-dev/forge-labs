@@ -17,7 +17,7 @@ type Handler = (event: MouseEvent | TouchEvent) => void
 export function useClickOutside<T extends HTMLElement = HTMLElement>(
   handler: Handler,
   enabled: boolean = true
-): RefObject<T> {
+): RefObject<T | null> {
   const ref = useRef<T>(null)
 
   useEffect(() => {

@@ -67,7 +67,7 @@ export function AnimatedValue({
   const [displayValue, setDisplayValue] = useState(value)
   const [flash, setFlash] = useState<'up' | 'down' | null>(null)
   const previousValue = useRef(value)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     const startValue = previousValue.current

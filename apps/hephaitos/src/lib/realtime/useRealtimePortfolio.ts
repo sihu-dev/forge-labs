@@ -39,7 +39,7 @@ export function useRealtimePortfolio(userId?: string) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [isPageVisible, setIsPageVisible] = useState(true)
-  const channelRef = useRef<ReturnType<ReturnType<typeof getSupabaseBrowserClient>['channel']> | null>(null)
+  const channelRef = useRef<RealtimeChannel | null>(null)
 
   // Track page visibility for performance optimization
   useEffect(() => {
