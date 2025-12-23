@@ -95,13 +95,21 @@ export default function ContractsPage() {
           <h1 className="text-2xl font-bold text-gray-900">계약서 관리</h1>
           <p className="text-gray-500 mt-1">총 {contracts.length}건</p>
         </div>
-        <Link
-          href="/dashboard/quotes"
-          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          title="승인된 견적서에서 계약서를 생성합니다"
-        >
-          견적서에서 생성
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/dashboard/quotes"
+            className="px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+            title="승인된 견적서에서 계약서를 생성합니다"
+          >
+            견적서에서 생성
+          </Link>
+          <Link
+            href="/dashboard/contracts/new"
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            새 계약서
+          </Link>
+        </div>
       </div>
 
       {/* 필터 */}

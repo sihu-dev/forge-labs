@@ -104,13 +104,21 @@ export default function InvoicesPage() {
           <h1 className="text-2xl font-bold text-gray-900">인보이스 관리</h1>
           <p className="text-gray-500 mt-1">총 {invoices.length}건</p>
         </div>
-        <Link
-          href="/dashboard/contracts"
-          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-          title="계약서에서 인보이스를 발행합니다"
-        >
-          계약서에서 발행
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/dashboard/contracts"
+            className="px-4 py-2 border border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 transition-colors"
+            title="계약서에서 인보이스를 발행합니다"
+          >
+            계약서에서 발행
+          </Link>
+          <Link
+            href="/dashboard/invoices/new"
+            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+          >
+            새 인보이스
+          </Link>
+        </div>
       </div>
 
       {/* 통계 카드 */}
