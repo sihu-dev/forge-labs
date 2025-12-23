@@ -6,21 +6,36 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { NextRequest, NextResponse } from 'next/server';
-import type { BiddingTypes } from '@forge/types';
+import type { ApiErrorResponse } from '@forge-labs/types/bidding';
+
+// ============================================================================
+// 개발 모드 감지
+// ============================================================================
+
+const isDevelopment = process.env.NODE_ENV !== 'production';
 
 // ============================================================================
 // Redis 클라이언트 초기화
 // ============================================================================
 
 let redis: Redis | null = null;
+let redisAvailable = true;
 
-function getRedis(): Redis {
+function getRedis(): Redis | null {
+  if (!redisAvailable) return null;
   if (redis) return redis;
 
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
+    if (isDevelopment) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[DEV] Upstash Redis 미설정 - Rate Limiting 비활성화');
+      }
+      redisAvailable = false;
+      return null;
+    }
     throw new Error('Upstash Redis 환경 변수가 설정되지 않았습니다');
   }
 
@@ -50,14 +65,17 @@ const RATE_LIMIT_CONFIGS: Record<RateLimitType, RateLimitConfig> = {
 
 const rateLimiters = new Map<RateLimitType, Ratelimit>();
 
-function getRateLimiter(type: RateLimitType): Ratelimit {
+function getRateLimiter(type: RateLimitType): Ratelimit | null {
+  const redisClient = getRedis();
+  if (!redisClient) return null;
+
   if (rateLimiters.has(type)) {
     return rateLimiters.get(type)!;
   }
 
   const config = RATE_LIMIT_CONFIGS[type];
   const limiter = new Ratelimit({
-    redis: getRedis(),
+    redis: redisClient,
     limiter: Ratelimit.slidingWindow(config.requests, config.window),
     prefix: config.prefix,
     analytics: true,
@@ -89,6 +107,17 @@ export async function checkRateLimit(
 ): Promise<RateLimitResult> {
   try {
     const limiter = getRateLimiter(type);
+
+    // 개발 모드에서 Redis 미설정 시 항상 통과
+    if (!limiter) {
+      return {
+        success: true,
+        remaining: 999,
+        reset: Date.now() + 60000,
+        limit: 999,
+      };
+    }
+
     const result = await limiter.limit(identifier);
 
     return {
@@ -132,7 +161,7 @@ export function withRateLimit<T>(
     getIdentifier = defaultGetIdentifier,
   } = config;
 
-  return async (request: NextRequest): Promise<NextResponse<T | BiddingTypes.ApiErrorResponse>> => {
+  return async (request: NextRequest): Promise<NextResponse<T | ApiErrorResponse>> => {
     const identifier = getIdentifier(request);
     const result = await checkRateLimit(identifier, type);
 

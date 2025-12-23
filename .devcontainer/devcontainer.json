@@ -1,0 +1,87 @@
+{
+  "name": "Forge Labs - Full Stack Monorepo",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm",
+
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/warrenbuckley/codespace-features/pnpm:1": {
+      "version": "latest"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "prisma.prisma",
+        "ms-playwright.playwright",
+        "github.copilot",
+        "github.copilot-chat",
+        "anthropic.claude-code",
+        "supabase.supabase-vscode"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true
+      }
+    }
+  },
+
+  "forwardPorts": [
+    3000,  // HEPHAITOS
+    3010,  // BIDFLOW
+    3020,  // ADE
+    3030,  // FOLIO
+    3040,  // DRYON
+    54321, // Supabase Studio
+    54322  // Supabase PostgreSQL
+  ],
+
+  "portsAttributes": {
+    "3000": {
+      "label": "HEPHAITOS (Trading Education)",
+      "onAutoForward": "notify"
+    },
+    "3010": {
+      "label": "BIDFLOW (Bid Automation)",
+      "onAutoForward": "notify"
+    },
+    "3020": {
+      "label": "ADE (AI Design Engine)",
+      "onAutoForward": "notify"
+    },
+    "3030": {
+      "label": "FOLIO (SMB AI SaaS)",
+      "onAutoForward": "notify"
+    },
+    "3040": {
+      "label": "DRYON (Gov Support Automation)",
+      "onAutoForward": "notify"
+    },
+    "54321": {
+      "label": "Supabase Studio",
+      "onAutoForward": "openPreview"
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+
+  "remoteEnv": {
+    "NODE_ENV": "development"
+  },
+
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,readonly,type=bind,consistency=cached"
+  ]
+}

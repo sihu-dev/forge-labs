@@ -1,7 +1,8 @@
-/**
- * HEPHAITOS - Dashboard Components Export
- * L3 (Tissues) - 대시보드 컴포넌트
- */
-
-export { DashboardLayout } from './DashboardLayout';
-export type { DashboardLayoutProps } from './DashboardLayout';
+export { Sidebar } from './Sidebar'
+export { DashboardHeader } from './DashboardHeader'
+export { PortfolioOverview } from './PortfolioOverview'
+export { ActiveStrategies } from './ActiveStrategies'
+export { PerformanceChart } from './PerformanceChart'
+export { RecentTrades } from './RecentTrades'
+export { QuickActions } from './QuickActions'
+export { MarketOverview } from './MarketOverview'

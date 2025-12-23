@@ -16,29 +16,31 @@
  * ⚠️ 면책조항: 백테스트 결과는 과거 성과이며 미래 수익을 보장하지 않습니다.
  */
 
-import type { HephaitosTypes, IResult } from '@forge/types';
+import type {
+  IResult,
+  IStrategy,
+  IBacktestConfig,
+  IBacktestResult,
+  IBacktestSummary,
+  IStrategyComparison,
+  IRoundTrip,
+  IEquityPoint,
+  IOHLCV,
+  ITrade,
+  IPerformanceMetrics,
+} from '@hephaitos/types';
 import type {
   IPriceDataService,
   IStrategyRepository,
   IBacktestResultRepository,
-} from '@forge/core';
+} from '@hephaitos/core';
 import {
   calculatePerformanceMetrics,
   extractDrawdownRecords,
   calculateMonthlyReturns,
   detectEntrySignal,
   detectExitSignal,
-} from '@forge/utils';
-
-type IStrategy = HephaitosTypes.IStrategy;
-type IBacktestConfig = HephaitosTypes.IBacktestConfig;
-type IBacktestResult = HephaitosTypes.IBacktestResult;
-type IBacktestSummary = HephaitosTypes.IBacktestSummary;
-type IStrategyComparison = HephaitosTypes.IStrategyComparison;
-type IRoundTrip = HephaitosTypes.IRoundTrip;
-type IEquityPoint = HephaitosTypes.IEquityPoint;
-type IOHLCV = HephaitosTypes.IOHLCV;
-type ITrade = HephaitosTypes.ITrade;
+} from '@hephaitos/utils';
 
 /**
  * 에이전트 설정
@@ -454,6 +456,7 @@ export class BacktestAgent {
 
   /**
    * 포지션 크기 계산
+   * P1 FIX: 0 또는 음수 자본금 처리 추가
    */
   private calculatePositionSize(
     availableCash: number,
@@ -461,6 +464,11 @@ export class BacktestAgent {
     positionSizing: IStrategy['positionSizing'],
     riskManagement: IStrategy['riskManagement']
   ): number {
+    // P1 FIX: 0 또는 음수 자본금 조기 리턴
+    if (availableCash <= 0 || currentPrice <= 0) {
+      return 0;
+    }
+
     const maxUsage = riskManagement.maxCapitalUsage ?? 100;
     const maxCash = availableCash * (maxUsage / 100);
 
@@ -507,7 +515,7 @@ export class BacktestAgent {
   /**
    * 빈 지표 생성
    */
-  private getEmptyMetrics(): HephaitosTypes.IPerformanceMetrics {
+  private getEmptyMetrics(): IPerformanceMetrics {
     return {
       totalReturn: 0,
       annualizedReturn: 0,

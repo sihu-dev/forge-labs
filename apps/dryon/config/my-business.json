@@ -1,0 +1,25 @@
+{
+  "serviceName": "ZZIK (찍)",
+  "item": "AI 기반 위치기반 여행 경로 추천 서비스",
+  "field": "AI/LBS/관광테크",
+  "stage": "초기 단계 (MVP 개발 중)",
+  "team": "2인 팀 (개발자 2명)",
+  "techStack": "Next.js, React, TypeScript, Python, FastAPI, PostgreSQL, OpenAI API, Google Maps API",
+  "additionalInfo": {
+    "targetMarket": "국내 여행객 (20-30대 중심)",
+    "uniqueValue": "AI가 사용자 취향을 분석하여 개인 맞춤형 여행 경로를 자동으로 생성",
+    "currentProgress": "MVP 개발 80% 완료, 베타 테스트 준비 중",
+    "businessModel": "프리미엄 기능 구독 모델 + 제휴 수수료",
+    "competitiveAdvantage": [
+      "AI 기반 개인화 추천 알고리즘",
+      "실시간 위치 기반 동선 최적화",
+      "사용자 리뷰 및 평점 통합"
+    ],
+    "fundingNeeds": [
+      "서버 및 인프라 비용",
+      "AI 모델 고도화",
+      "마케팅 및 사용자 확보",
+      "추가 개발 인력 채용"
+    ]
+  }
+}

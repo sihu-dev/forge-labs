@@ -1,45 +1,41 @@
-/**
- * HEPHAITOS - Dashboard Layout
- * 대시보드 레이아웃 (인증 필요)
- */
+'use client'
 
-'use client';
+import dynamic from 'next/dynamic'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
+import { DisclaimerBanner } from '@/components/ui/Disclaimer'
+import { KeyboardShortcuts } from '@/components/dashboard/KeyboardShortcuts'
+import { ShortcutsModal } from '@/components/ui/ShortcutsModal'
+import { CommandPalette } from '@/components/ui/CommandPalette'
+import { NotificationToast } from '@/components/notifications/NotificationToast'
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/providers/AuthProvider';
-import { DashboardLayout as Layout } from '@/components/dashboard/DashboardLayout';
+const Sidebar = dynamic(() => import('@/components/dashboard/Sidebar').then(m => m.Sidebar), { ssr: false })
+const DashboardHeader = dynamic(() => import('@/components/dashboard/DashboardHeader').then(m => m.DashboardHeader), { ssr: false })
 
-export default function DashboardLayoutWrapper({
+export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
-  const router = useRouter();
-  const { user, isLoading, isAuthenticated } = useAuth();
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/auth/login');
-    }
-  }, [isLoading, isAuthenticated, router]);
-
-  // 로딩 중
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-1">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-11">로딩 중...</p>
+  return (
+    <KeyboardShortcuts>
+      <div className="min-h-screen bg-[#0D0D0F]">
+        {/* 법적 필수 면책조항 배너 */}
+        <DisclaimerBanner />
+        <Sidebar />
+        <div className="lg:pl-52">
+          <DashboardHeader />
+          <main id="main-content" className="px-6 py-4 pb-20 lg:pb-4" tabIndex={-1}>
+            <ErrorBoundary showDetails={process.env.NODE_ENV === 'development'}>
+              {children}
+            </ErrorBoundary>
+          </main>
         </div>
       </div>
-    );
-  }
-
-  // 인증되지 않음
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  return <Layout>{children}</Layout>;
+      {/* Global Modals */}
+      <CommandPalette />
+      <ShortcutsModal />
+      {/* Toast Notifications */}
+      <NotificationToast position="top-right" maxToasts={3} />
+    </KeyboardShortcuts>
+  )
 }

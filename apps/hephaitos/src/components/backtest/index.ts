@@ -1,10 +1,8 @@
-/**
- * HEPHAITOS - Backtest Components Export
- * L3 (Tissues) - 백테스트 관련 컴포넌트
- */
+// ============================================
+// Backtest Components Exports
+// ============================================
 
-export { BacktestResultCharts } from './BacktestResultCharts';
-export type { BacktestResultChartsProps } from './BacktestResultCharts';
-
-export { BacktestPreviewPanel } from './BacktestPreviewPanel';
-export type { BacktestPreviewPanelProps } from './BacktestPreviewPanel';
+export { BacktestRunner, default as BacktestRunnerDefault } from './BacktestRunner'
+export { BacktestChart, default as BacktestChartDefault } from './BacktestChart'
+export { BacktestMetrics, default as BacktestMetricsDefault } from './BacktestMetrics'
+export { BacktestHistory, default as BacktestHistoryDefault } from './BacktestHistory'

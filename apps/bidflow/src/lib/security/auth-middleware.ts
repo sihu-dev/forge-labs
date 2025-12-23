@@ -5,7 +5,20 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import type { BiddingTypes } from '@forge/types';
+import type { ApiErrorResponse } from '@forge-labs/types/bidding';
+
+// ============================================================================
+// 개발 모드 감지
+// ============================================================================
+
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
+// 개발용 Mock 사용자
+const DEV_MOCK_USER = {
+  id: 'dev-user-001',
+  email: 'dev@bidflow.local',
+  role: 'admin' as const,
+};
 
 // ============================================================================
 // 타입 정의
@@ -30,7 +43,7 @@ function createErrorResponse(
   code: string,
   message: string,
   status: number
-): NextResponse<BiddingTypes.ApiErrorResponse> {
+): NextResponse<ApiErrorResponse> {
   return NextResponse.json(
     {
       success: false,
@@ -49,6 +62,12 @@ function createSupabaseClient(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
+    if (isDevelopment) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[DEV] Supabase 미설정 - Mock 인증 사용');
+      }
+      return null;
+    }
     throw new Error('Supabase 환경 변수가 설정되지 않았습니다');
   }
 
@@ -79,7 +98,7 @@ export function withAuth<T>(
 ) {
   const { requireAuth = true, allowedRoles = ['admin', 'user'] } = config;
 
-  return async (request: NextRequest): Promise<NextResponse<T | BiddingTypes.ApiErrorResponse>> => {
+  return async (request: NextRequest): Promise<NextResponse<T | ApiErrorResponse>> => {
     try {
       // 인증 불필요 시 바로 처리
       if (!requireAuth) {
@@ -88,6 +107,23 @@ export function withAuth<T>(
 
       // Supabase 클라이언트 생성
       const supabase = createSupabaseClient(request);
+
+      // 개발 모드에서 Supabase 미설정 시 Mock 사용자 사용
+      if (!supabase && isDevelopment) {
+        const authenticatedRequest = request as AuthenticatedRequest;
+        authenticatedRequest.userId = DEV_MOCK_USER.id;
+        authenticatedRequest.userEmail = DEV_MOCK_USER.email;
+        authenticatedRequest.userRole = DEV_MOCK_USER.role;
+        return handler(authenticatedRequest);
+      }
+
+      if (!supabase) {
+        return createErrorResponse(
+          'CONFIG_ERROR',
+          '인증 서비스가 설정되지 않았습니다.',
+          500
+        );
+      }
 
       // 세션 확인
       const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -158,7 +194,7 @@ export function withApiKey<T>(
   handler: (req: NextRequest) => Promise<NextResponse<T>>,
   apiKeyEnvVar: string = 'API_SECRET_KEY'
 ) {
-  return async (request: NextRequest): Promise<NextResponse<T | BiddingTypes.ApiErrorResponse>> => {
+  return async (request: NextRequest): Promise<NextResponse<T | ApiErrorResponse>> => {
     try {
       const authHeader = request.headers.get('Authorization');
 

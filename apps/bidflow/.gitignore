@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+
+# Build
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/*.log
+.vscode/.ropeproject
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+.vitest/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Misc
+*.tsbuildinfo
+.turbo/
+# Verification and Testing
+screenshot*.js
+screenshots/
+font-verification*.json
+console-error*.json
+FONT_*.txt
+FONT_*.md
+README_FONT_*.md

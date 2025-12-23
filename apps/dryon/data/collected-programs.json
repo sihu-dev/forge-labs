@@ -1,0 +1,94 @@
+{
+  "collectedAt": "2025-12-19T11:00:00.000Z",
+  "totalCount": 8,
+  "programs": [
+    {
+      "id": "sludge-flowmeter-001",
+      "title": "대전 하수처리장 현대화사업 - 슬러지 유량측정 시스템",
+      "organization": "부강테크",
+      "category": "슬러지 처리/유량계",
+      "target": "하수처리장, 환경기업",
+      "deadline": "2028-12-31T15:00:00.000Z",
+      "url": "https://www.bkt21.co.kr/",
+      "memo": "[프로젝트 개요]\n부강테크 설립 이후 최대 규모 사업\n\n[처리 규모]\n- 슬러지 495톤/일 처리\n- DRACO, AAD, AMX 결합 IUP 솔루션 적용\n\n[핵심 기술]\n- DRACO: 열가수분해 기술 (슬러지 감량률 75~85%)\n- AAD: 유기성 폐자원 통합 소화 바이오가스 생산\n- AMX: 아나목스 질소폐액 처리\n\n[준공 예정]\n2028년",
+      "source": "sludge-flowmeter"
+    },
+    {
+      "id": "sludge-flowmeter-002",
+      "title": "스마트 하수도 선도사업 - 유량/수질 모니터링 시스템",
+      "organization": "환경부",
+      "category": "슬러지 처리/유량계",
+      "target": "지자체, 환경기업",
+      "deadline": "2024-12-31T15:00:00.000Z",
+      "url": "https://www.me.go.kr/",
+      "memo": "[사업 개요]\n환경부 스마트 하수도 선도사업 (2021~2024)\n\n[총 사업비]\n1,531억원 (국고 1,072억원 포함)\n\n[주요 시스템]\n1. 모니터링 시스템\n   - 유량/수위/수질 실시간 계측\n   - 슬러지 농도, pH, 온도 모니터링\n2. 침수대응 시스템\n3. 통합관리 시스템\n\n[AI 기술 적용]\n- 빅데이터 분석, 인공지능 알고리즘\n- 유입하수 부하 예측\n- 방류수질 예측",
+      "source": "sludge-flowmeter"
+    },
+    {
+      "id": "sludge-flowmeter-003",
+      "title": "씨엠엔텍 전자유량계 - 슬러지/폐수 측정용",
+      "organization": "씨엠엔텍",
+      "category": "슬러지 처리/유량계",
+      "target": "하수처리장, 산업시설",
+      "deadline": "2025-12-31T15:00:00.000Z",
+      "url": "https://www.komachine.com/ko/companies/cm-entech/products",
+      "memo": "[회사 정보]\n경기도 용인시 기흥구 소재\n연락처: 031-702-4910\n\n[주요 제품]\n1. MF-1000C: 일체형 전자유량계\n2. MF-1000S: 분리형 전자유량계\n3. MF-1000E: 전극세척형 전자유량계\n4. UR-1000PLUS: 다회선 초음파유량계\n5. SL-3000PLUS: 개수로 유량계\n\n[기술 원리]\n페러데이(Faraday) 전자유도법칙\nFleming 법칙\n\n[적용 분야]\n상하수, 폐수, 해수, 도전성 액체",
+      "source": "sludge-flowmeter"
+    },
+    {
+      "id": "sludge-flowmeter-004",
+      "title": "한국유량계공업 SG-50 Series - 슬러지 유체 측정",
+      "organization": "한국유량계공업",
+      "category": "슬러지 처리/유량계",
+      "target": "하수처리장, 산업시설",
+      "deadline": "2025-12-31T15:00:00.000Z",
+      "url": "http://kometer.co.kr/",
+      "memo": "[제품 개요]\nSG-50 Series 유량 감시계\n\n[특징]\n- 자기 결합 방식 지침 지시형\n- 특수 설계 내부 구조\n- 불투명 유체 측정 가능\n- 슬러지 상태 유체 측정 가능\n\n[적용 분야]\n- 하수처리장 슬러지 유량 측정\n- 산업 폐수 처리시설\n- 슬러지 이송 라인",
+      "source": "sludge-flowmeter"
+    },
+    {
+      "id": "sludge-flowmeter-005",
+      "title": "에이치에스씨엠티 IWMS - 지능형 수자원 관리 시스템",
+      "organization": "에이치에스씨엠티",
+      "category": "슬러지 처리/유량계",
+      "target": "지자체, 수처리시설",
+      "deadline": "2025-12-31T15:00:00.000Z",
+      "url": "http://www.hscmt.co.kr/",
+      "memo": "[회사 개요]\n25년간 유량계 1.5만 대 이상 설치\n\n[주요 제품]\n1. 다회선 초음파 유량계\n2. 배터리 초음파 수도미터\n3. 초음파 열량계\n4. MF-Series 전자기 유량계\n\n[IWMS 시스템]\n스마트 계측기 + IT 기술 융합\n지능화된 수자원 관리 시스템\n\n[적용 분야]\n상하수, 폐수, 해수\n만관/비만관 파이프\n개수로 유속/유량 측정",
+      "source": "sludge-flowmeter"
+    },
+    {
+      "id": "sludge-flowmeter-006",
+      "title": "2025년 정부지원 환경사업 - 슬러지 처리시설",
+      "organization": "환경부",
+      "category": "슬러지 처리/유량계",
+      "target": "환경기업, 지자체",
+      "deadline": "2025-12-31T15:00:00.000Z",
+      "url": "https://me.go.kr/home/web/board/read.do?boardMasterId=39&boardId=1728990&menuId=10524",
+      "memo": "[안내서 개요]\n2025년 정부지원 환경사업 종합안내서\n\n[지원 분야]\n1. 정책자금\n2. 창업/사업화 지원\n3. 수주지원\n4. 시설개선지원\n5. 환경 R&D\n6. 마케팅/홍보\n7. 전문인력양성\n\n[슬러지 관련 정책]\n- 바이오가스 생산 우선 고려\n- 하수도정비기본계획 수립 지침 개정\n- 2025년 4월 24일 시행",
+      "source": "sludge-flowmeter"
+    },
+    {
+      "id": "sludge-flowmeter-007",
+      "title": "부강테크 Proteus - 프랑스/스위스 독점 계약",
+      "organization": "부강테크",
+      "category": "슬러지 처리/유량계",
+      "target": "수처리기업, 해외진출",
+      "deadline": "2025-12-31T15:00:00.000Z",
+      "url": "https://www.sedaily.com/NewsView/2H0JHPNZK5",
+      "memo": "[계약 개요]\n프로테우스(Proteus) 프랑스/스위스 독점 사용권 협약\n프랑스 소르 그룹 스테로와 체결\n\n[Proteus 기술]\n- 1차 침전지 대체 기술\n- 초기 강우 처리 분야 혁신\n- 미국/캐나다에서 검증\n\n[글로벌 진출 현황]\n- 미국 밀워키시 180억원 계약 (2022년)\n- 캘리포니아, 하와이, 조지아, 코네티컷 수주\n- EU 시장 본격 진출",
+      "source": "sludge-flowmeter"
+    },
+    {
+      "id": "sludge-flowmeter-008",
+      "title": "서울시 지능형 물재생센터 - AI 슬러지 관리",
+      "organization": "서울시",
+      "category": "슬러지 처리/유량계",
+      "target": "지자체, 수처리기업",
+      "deadline": "2030-12-31T15:00:00.000Z",
+      "url": "https://ar-korea.com/blog/수처리뉴스/ai와-물산업-슬러지처리/",
+      "memo": "[프로젝트 개요]\n서울시 4개 물재생센터 AI 자동화 시스템 도입\n목표: 2030년 완료\n\n[AI 적용 분야]\n1. 인 농도 등 빅데이터 실시간 분석/예측\n2. 송풍량 제어\n3. 약품투입 최적화\n4. 슬러지반송 자동제어\n\n[지능화 시스템]\n- 유량배분 의사결정\n- 목표수질 자동 설정\n- 처리효율 향상",
+      "source": "sludge-flowmeter"
+    }
+  ]
+}

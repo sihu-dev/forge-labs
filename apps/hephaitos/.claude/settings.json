@@ -1,0 +1,64 @@
+{
+  "$schema": "https://claude.ai/schemas/claude-code-settings.json",
+  "model": "opusplan",
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(pnpm:*)",
+      "Bash(npx:*)",
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(tree:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Read(**/*)",
+      "Edit(src/**/*)",
+      "Edit(packages/**/*)",
+      "Write(src/**/*)",
+      "Write(packages/**/*)",
+      "mcp__*"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/secrets/**)",
+      "Read(**/*.pem)",
+      "Bash(rm -rf /)",
+      "Bash(sudo rm:*)"
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development",
+    "FORCE_COLOR": "1"
+  },
+  "cleanupPeriodDays": 14,
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx prettier --write \"$CLAUDE_FILE_PATH\" 2>/dev/null || true",
+            "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "python3 /home/sihu2129/HEPHAITOS/.claude/hooks/audit-check.py",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  },
+  "agents": {
+    "opus-auditor": {
+      "model": "opus",
+      "autoTrigger": true,
+      "triggers": ["검수", "리뷰", "audit", "검토", "품질 확인"]
+    }
+  }
+}

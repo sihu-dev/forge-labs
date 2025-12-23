@@ -4,17 +4,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { withAuth, type AuthenticatedRequest } from '@/lib/security/auth-middleware';
 import { withRateLimit, getEndpointIdentifier } from '@/lib/security/rate-limiter';
 import { withCSRF } from '@/lib/security/csrf';
 import { listBidsQuerySchema, createBidSchema } from '@/lib/validation/schemas';
 import { listBids, createBid } from '@/lib/domain/usecases/bid-usecases';
-import type { BiddingTypes } from '@forge/types';
+import type { ApiResponse, BidData, PaginatedResult, CreateInput } from '@forge-labs/types/bidding';
 
-type ApiResponse<T> = BiddingTypes.ApiResponse<T>;
-type BidData = BiddingTypes.BidData;
-type PaginatedResult<T> = BiddingTypes.PaginatedResult<T>;
+// BigInt를 JSON 직렬화 가능하게 변환
+function serializeForJson<T>(obj: T): T {
+  return JSON.parse(
+    JSON.stringify(obj, (_key, value) => (typeof value === 'bigint' ? value.toString() : value))
+  );
+}
 
 // ============================================================================
 // GET /api/v1/bids - 입찰 목록 조회
@@ -56,7 +58,7 @@ async function handleGet(request: NextRequest): Promise<NextResponse<ApiResponse
       return NextResponse.json(result, { status: 500 });
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(serializeForJson(result));
   } catch (error) {
     console.error('GET /api/v1/bids 오류:', error);
     return NextResponse.json(
@@ -97,20 +99,15 @@ async function handlePost(request: AuthenticatedRequest): Promise<NextResponse<A
       );
     }
 
-    // 비즈니스 로직 실행
-    const bidInput = {
-      ...parseResult.data,
-      estimatedAmount: parseResult.data.estimatedAmount ?? null,
-      url: parseResult.data.url ?? null,
-    };
-    const result = await createBid(bidInput);
+    // 비즈니스 로직 실행 (Zod 출력을 Branded Type으로 캐스팅)
+    const result = await createBid(parseResult.data as unknown as CreateInput<BidData>);
 
     if (!result.success) {
       const status = result.error.code === 'DUPLICATE' ? 409 : 500;
       return NextResponse.json(result, { status });
     }
 
-    return NextResponse.json(result, { status: 201 });
+    return NextResponse.json(serializeForJson(result), { status: 201 });
   } catch (error) {
     console.error('POST /api/v1/bids 오류:', error);
     return NextResponse.json(

@@ -10,11 +10,14 @@ import { withCSRF } from '@/lib/security/csrf';
 import { uuidSchema, updateBidSchema } from '@/lib/validation/schemas';
 import { getBidById, updateBidStatus } from '@/lib/domain/usecases/bid-usecases';
 import { getBidRepository } from '@/lib/domain/repositories/bid-repository';
-import type { BiddingTypes } from '@forge/types';
+import type { ApiResponse, BidData, UUID, UpdateInput } from '@forge-labs/types/bidding';
 
-type ApiResponse<T> = BiddingTypes.ApiResponse<T>;
-type BidData = BiddingTypes.BidData;
-type UUID = BiddingTypes.UUID;
+// BigInt를 JSON 직렬화 가능하게 변환
+function serializeForJson<T>(obj: T): T {
+  return JSON.parse(
+    JSON.stringify(obj, (_key, value) => (typeof value === 'bigint' ? value.toString() : value))
+  );
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -53,7 +56,7 @@ async function handleGet(
       return NextResponse.json(result, { status: 404 });
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(serializeForJson(result));
   } catch (error) {
     console.error('GET /api/v1/bids/[id] 오류:', error);
     return NextResponse.json(
@@ -121,18 +124,18 @@ async function handlePatch(
         const status = result.error.code === 'NOT_FOUND' ? 404 : 400;
         return NextResponse.json(result, { status });
       }
-      return NextResponse.json(result);
+      return NextResponse.json(serializeForJson(result));
     }
 
-    // 일반 업데이트
+    // 일반 업데이트 (Zod 출력을 Branded Type으로 캐스팅)
     const repository = getBidRepository();
-    const result = await repository.update(id as UUID, parseResult.data);
+    const result = await repository.update(id as UUID, parseResult.data as unknown as UpdateInput<BidData>);
 
     if (!result.success) {
       return NextResponse.json(result, { status: 500 });
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(serializeForJson(result));
   } catch (error) {
     console.error('PATCH /api/v1/bids/[id] 오류:', error);
     return NextResponse.json(

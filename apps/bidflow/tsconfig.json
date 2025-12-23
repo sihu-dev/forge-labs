@@ -21,12 +21,19 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@forge/types": ["../../packages/types/src"],
-      "@forge/utils": ["../../packages/utils/src"],
-      "@forge/core": ["../../packages/core/src"],
-      "@forge/ui": ["../../packages/ui/src"]
+      "@/types": ["./types/index.ts"],
+      "@/types/*": ["./types/*"],
+      "@forge-labs/types/bidding": ["./types/index.ts"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "types/**/*.ts"
+  ],
+  "exclude": ["node_modules", "bidflow", ".bidflow_backup"]
 }

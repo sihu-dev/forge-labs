@@ -1,203 +1,60 @@
 /**
- * DRYON - K-슬러지 AI 건조/처리 최적화
- * L3 (Tissues) - 앱 엔트리 포인트
- *
- * 자가개선 성장 루프 (Self-Improving Growth Loop) 패턴 적용
- *
- * ┌──────────────────────────────────────────────────────────────┐
- * │                    DRYON AI 시스템                           │
- * ├──────────────────────────────────────────────────────────────┤
- * │                                                              │
- * │   ┌──────────┐    ┌──────────┐    ┌──────────┐              │
- * │   │  SENSE   │───▶│  DECIDE  │───▶│   ACT    │              │
- * │   │ 센서수집  │    │ 패턴분석  │    │ 파라미터  │              │
- * │   └──────────┘    └──────────┘    └──────────┘              │
- * │        ▲                               │                     │
- * │        │         ┌──────────┐          │                     │
- * │        └─────────│  LEARN   │◀─────────┘                     │
- * │                  │ 보상학습  │                                │
- * │                  └──────────┘                                │
- * │                                                              │
- * │   핵심: 실행 결과의 보상(Reward)을 통해 패턴 신뢰도 갱신       │
- * │         → 시스템이 스스로 최적화 방향을 학습                   │
- * │                                                              │
- * └──────────────────────────────────────────────────────────────┘
+ * 정부지원사업 자동화 마스터 패키지 - 메인 엔트리
  */
 
-// ============================================
-// L3 Agent Exports
-// ============================================
+import { startScheduler, runNow } from './scheduler.js';
+import { log } from './utils/logger.js';
+import { validateConfig } from './config/index.js';
 
-export {
-  SensorOptimizerAgent,
-  createSensorOptimizerAgent,
-  type ISensorOptimizerAgentConfig,
-  type IOptimizationCycleResult,
-} from './agents/sensor-optimizer-agent.js';
+async function main() {
+  try {
+    log.info('🚀 Hyein Agent Starting...');
 
-export {
-  AlarmManagerAgent,
-  createAlarmManagerAgent,
-  type IAlarmManagerAgentConfig,
-  type INotificationHandler,
-  type IEvaluationResult,
-  type IEscalationResult,
-  type IAlarmDashboardData,
-} from './agents/alarm-manager-agent.js';
+    // 설정 검증
+    validateConfig();
 
-export {
-  EnergyMonitorAgent,
-  createEnergyMonitorAgent,
-  type IEnergyMonitorAgentConfig,
-} from './agents/energy-monitor-agent.js';
+    // 명령줄 인자 확인
+    const args = process.argv.slice(2);
+    const command = args[0];
 
-// ============================================
-// Re-exports from Dependencies
-// ============================================
-
-// L0 Types
-export { DryonTypes } from '@forge/types';
-
-// L1 Utilities (Reward Functions)
-export {
-  computeReward,
-  calculateStateChange,
-  updateConfidence,
-  shouldExplore,
-  calculatePatternMatchScore,
-  DEFAULT_REWARD_WEIGHTS,
-  type IRewardWeights,
-  type IRewardBreakdown,
-} from '@forge/utils';
-
-// L1 Utilities (Alarm Evaluation)
-export {
-  evaluateAlarmCondition,
-  evaluateAlarmRule,
-  checkDeadband,
-  calculateAlarmScore,
-  prioritizeAlarms,
-  filterUnacknowledged,
-  filterNeedingEscalation,
-  calculateAvgAcknowledgeTime,
-  calculateAvgResolutionTime,
-  countAlarmsByCode,
-  type IConditionEvalResult,
-  type IRuleEvalResult,
-} from '@forge/utils';
-
-// L1 Utilities (Energy Calculation)
-export {
-  calculateSEC,
-  calculateSECPerformance,
-  calculateCOP,
-  calculateDryingEfficiency,
-  calculateMoistureRemoved,
-  calculateLoadFactor,
-  calculatePowerFactor,
-  calculateApparentPower,
-  analyzePeakDemand,
-  calculatePeakUtilization,
-  calculateEnergyCostByTOU,
-  calculateDemandCharge,
-  calculateUnitEnergyCost,
-  convertToKwh,
-  calculateTotalEnergy,
-  determineTimeOfUse,
-  isSummerSeason,
-  detectEnergyAnomaly,
-  compareToBenchmark,
-  predictConsumption,
-  type ITOURates,
-  type IAnomalyResult,
-  type IBenchmarkComparison,
-} from '@forge/utils';
-
-// L2 Repositories
-export {
-  type IFeedbackRepository,
-  InMemoryFeedbackRepository,
-  createFeedbackRepository,
-  type IAlarmRepository,
-  InMemoryAlarmRepository,
-  createAlarmRepository,
-  type IEnergyRepository,
-  InMemoryEnergyRepository,
-  createEnergyRepository,
-} from '@forge/core';
-
-// ============================================
-// Convenience Factory
-// ============================================
-
-import { createSensorOptimizerAgent, type ISensorOptimizerAgentConfig } from './agents/sensor-optimizer-agent.js';
-import { createAlarmManagerAgent, type IAlarmManagerAgentConfig } from './agents/alarm-manager-agent.js';
-import { createEnergyMonitorAgent, type IEnergyMonitorAgentConfig } from './agents/energy-monitor-agent.js';
-import { createFeedbackRepository, createAlarmRepository, createEnergyRepository } from '@forge/core';
-
-/**
- * DRYON 센서 최적화 시스템 초기화
- *
- * 모든 의존성이 연결된 최적화 에이전트 생성
- */
-export function initializeDryonSystem(
-  config?: Partial<ISensorOptimizerAgentConfig>
-) {
-  // L2 Repository 생성
-  const feedbackRepo = createFeedbackRepository();
-
-  // L3 Agent 생성
-  const agent = createSensorOptimizerAgent(feedbackRepo, config);
-
-  return {
-    agent,
-    feedbackRepo,
-  };
+    if (command === 'now' || command === 'test') {
+      // 즉시 실행
+      log.info('Running workflow immediately...');
+      await runNow();
+      log.info('✅ Workflow completed. Exiting.');
+      process.exit(0);
+    } else {
+      // 스케줄러 모드
+      log.info('Starting in scheduler mode...');
+      startScheduler();
+      log.info('✅ Scheduler is running. Press Ctrl+C to stop.');
+    }
+  } catch (error) {
+    log.error('Failed to start Hyein Agent', error);
+    process.exit(1);
+  }
 }
 
-/**
- * DRYON 알람 관리 시스템 초기화
- *
- * 모든 의존성이 연결된 알람 관리자 에이전트 생성
- */
-export function initializeAlarmSystem(
-  config?: Partial<IAlarmManagerAgentConfig>
-) {
-  // L2 Repository 생성
-  const alarmRepo = createAlarmRepository();
+// 프로세스 종료 처리
+process.on('SIGINT', () => {
+  log.info('Received SIGINT, shutting down gracefully');
+  process.exit(0);
+});
 
-  // L3 Agent 생성
-  const agent = createAlarmManagerAgent(alarmRepo, config);
+process.on('SIGTERM', () => {
+  log.info('Received SIGTERM, shutting down gracefully');
+  process.exit(0);
+});
 
-  return {
-    agent,
-    alarmRepo,
-  };
-}
+process.on('uncaughtException', (error) => {
+  log.error('Uncaught exception', error);
+  process.exit(1);
+});
 
-/**
- * DRYON 에너지 모니터링 시스템 초기화
- *
- * 모든 의존성이 연결된 에너지 모니터 에이전트 생성
- */
-export function initializeEnergySystem(
-  config?: Partial<IEnergyMonitorAgentConfig>
-) {
-  // L2 Repository 생성
-  const energyRepo = createEnergyRepository();
+process.on('unhandledRejection', (reason) => {
+  log.error('Unhandled rejection', reason);
+  process.exit(1);
+});
 
-  // L3 Agent 생성
-  const agent = createEnergyMonitorAgent(energyRepo, config);
-
-  return {
-    agent,
-    energyRepo,
-  };
-}
-
-/**
- * 기본 내보내기: 시스템 초기화 함수
- */
-export default initializeDryonSystem;
-
-console.log('DRYON - K-슬러지 AI 건조/처리 최적화 v3.0.0 (센서최적화 + 알람관리 + 에너지모니터링)');
+// 실행
+main();
