@@ -48,11 +48,16 @@ async function fetchSiteInfo(siteId: string): Promise<SiteInfo> {
   const res = await fetch(`/api/v1/sludge/sites/${siteId}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to fetch site info');
   const json = await res.json();
+  // 사이트 상태는 센서 데이터로부터 계산됨
+  const sensorRes = await fetch(`/api/v1/sludge/sites/${siteId}/sensors`, { cache: 'no-store' });
+  const sensorJson = await sensorRes.json();
+  const hasAlerts = sensorJson.data?.alerts?.length > 0;
+
   return {
     id: json.data.id,
     name: json.data.name,
     type: json.data.type,
-    status: 'online', // TODO: 실제 상태 계산
+    status: hasAlerts ? 'warning' : 'online',
     lastUpdate: new Date(),
   };
 }
@@ -70,6 +75,10 @@ async function fetchSensorReadings(siteId: string): Promise<SensorReading[]> {
     const reading = readings[sensor.id];
     const hasAlert = alerts.some((a: any) => a.sensorId === sensor.id);
 
+    // 트렌드 계산: 알림이 있으면 down, 없으면 stable
+    // 향후 이전 readings와 비교하여 정확한 트렌드 계산 가능
+    const trend = hasAlert ? 'down' : 'stable';
+
     return {
       sensorId: sensor.id,
       sensorName: sensor.name,
@@ -77,7 +86,7 @@ async function fetchSensorReadings(siteId: string): Promise<SensorReading[]> {
       value: reading ? reading.value : 0,
       unit: sensor.unit,
       timestamp: reading ? new Date(reading.timestamp) : new Date(),
-      trend: 'stable' as const, // TODO: 트렌드 계산
+      trend,
       status: hasAlert ? 'warning' : 'normal',
     };
   });

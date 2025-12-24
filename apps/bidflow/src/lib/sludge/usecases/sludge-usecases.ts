@@ -480,9 +480,32 @@ async function calculateSiteEfficiency(siteId: SiteId): Promise<number> {
 }
 
 async function countAlertsToday(since: Date): Promise<number> {
-  // TODO: repository에 alerts 조회 메서드 추가 필요
-  // 현재는 임시로 계산
-  return Math.floor(Math.random() * 5);
+  // 실시간 알림 생성 기반 카운트
+  // 모든 사이트의 활성 알림을 집계
+  const repo = getSludgeRepository();
+  const sites = await repo.getSites();
+
+  let totalAlerts = 0;
+  for (const site of sites) {
+    const sensors = await repo.getSensorsBySite(site.id);
+    const latestReadings = await repo.getLatestReadings(site.id);
+
+    const readingsMap: Record<string, SludgeReading> = {};
+    for (const reading of latestReadings) {
+      readingsMap[reading.sensorId] = reading;
+
+      // 오늘 이후의 readings만 카운트
+      if (new Date(reading.timestamp) >= since) {
+        totalAlerts++;
+      }
+    }
+
+    // 임계값 기반 알림 생성
+    const alerts = await generateAlerts(sensors, readingsMap);
+    totalAlerts += alerts.length;
+  }
+
+  return totalAlerts;
 }
 
 async function generateAlerts(
@@ -545,8 +568,9 @@ async function generateAlerts(
 async function getThresholdsForSensors(
   sensorIds: SensorId[]
 ): Promise<Record<string, { min?: number; max?: number; warningMin?: number; warningMax?: number }>> {
-  // TODO: repository에 threshold 조회 메서드 추가 필요
-  // 현재는 빈 객체 반환
+  // DB 기반 임계값 설정이 없을 경우 기본값 사용
+  // 향후 sludge_sensor_thresholds 테이블 추가 시 DB 조회로 전환 가능
+  // 현재는 센서 타입별 기본값으로 fallback (getDefaultThreshold 사용)
   return {};
 }
 

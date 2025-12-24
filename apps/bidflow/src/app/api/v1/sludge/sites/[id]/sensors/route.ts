@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSiteSensors, getLatestSensorReadings } from '@/lib/sludge';
+import { getSiteSensors, getLatestSensorReadings, getActiveSiteAlerts } from '@/lib/sludge';
 
 export async function GET(
   request: NextRequest,
@@ -23,7 +23,8 @@ export async function GET(
       readingsMap[reading.sensorId] = reading;
     }
 
-    const alerts: any[] = []; // TODO: 실제 알림 조회
+    // 실제 알림 조회 (센서별 임계값 기반)
+    const alerts = await getActiveSiteAlerts(siteId as any);
 
     return NextResponse.json({
       success: true,

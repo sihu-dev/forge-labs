@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getAllSites, createNewSite } from '@/lib/sludge';
+import { getAllSites, createNewSite, getSiteSensors, getActiveSiteAlerts } from '@/lib/sludge';
 
 // ============================================
 // Validation Schema
@@ -23,11 +23,29 @@ export async function GET() {
   try {
     const sites = await getAllSites();
 
+    // 각 사이트의 센서 및 알림 수 집계
+    const sitesWithStats = await Promise.all(
+      sites.map(async (site) => {
+        const sensors = await getSiteSensors(site.id);
+        const alerts = await getActiveSiteAlerts(site.id);
+
+        // 상태 계산: 알림이 있으면 warning, 없으면 online
+        const status = alerts.length > 0 ? 'warning' : 'online';
+
+        return {
+          ...site,
+          sensorsCount: sensors.length,
+          alertsCount: alerts.length,
+          status,
+        };
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      data: sites,
+      data: sitesWithStats,
       meta: {
-        total: sites.length,
+        total: sitesWithStats.length,
       },
     });
   } catch (error) {

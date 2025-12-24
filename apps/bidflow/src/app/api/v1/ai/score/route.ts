@@ -14,6 +14,7 @@ import {
   type BidAnnouncement,
   type MatchResult,
 } from '@/lib/matching/enhanced-matcher';
+import { getBidRepository } from '@/lib/domain/repositories/bid-repository';
 
 // ============================================================================
 // 요청 스키마
@@ -139,19 +140,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let bid: BidAnnouncement;
 
     if (bidId) {
-      // TODO: Supabase에서 bid 조회
-      // const { data, error } = await supabase
-      //   .from('bid_announcements')
-      //   .select('*')
-      //   .eq('id', bidId)
-      //   .single();
+      // Supabase에서 bid 조회
+      const bidRepository = getBidRepository();
+      const bidResponse = await bidRepository.findById(bidId);
 
-      // 현재는 Mock 데이터 반환
+      if (!bidResponse.success || !bidResponse.data) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: bidResponse.error?.message || '입찰 공고를 찾을 수 없습니다',
+          },
+          { status: 404 }
+        );
+      }
+
+      const bidData = bidResponse.data;
       bid = {
-        id: bidId,
-        title: title || `입찰 공고 ${bidId}`,
-        organization: organization || '발주기관',
-        description: description,
+        id: bidData.id,
+        title: bidData.title,
+        organization: bidData.organization,
+        description: bidData.rawData?.description as string | undefined,
       };
     } else {
       bid = {
