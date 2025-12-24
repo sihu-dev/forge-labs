@@ -26,7 +26,12 @@
       "Bash(git add:*)",
       "Bash(powershell -Command \"Remove-Item -Path ''nul'' -Force -ErrorAction SilentlyContinue; if \\(Test-Path ''nul''\\) { Write-Host ''Still exists'' } else { Write-Host ''Removed'' }\")",
       "Bash(git clean:*)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git count-objects:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git gc:*)"
     ],
     "deny": [],
     "defaultMode": "bypassPermissions",
