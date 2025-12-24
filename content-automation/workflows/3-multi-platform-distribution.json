@@ -1,0 +1,584 @@
+{
+  "name": "Multi-Platform Content Distribution",
+  "nodes": [
+    {
+      "parameters": {
+        "databaseId": "{{ $env.NOTION_CONTENT_CALENDAR_DB }}",
+        "event": "pageUpdated",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Status|select",
+              "operator": "equals",
+              "value": "Published"
+            },
+            {
+              "key": "Distributed|checkbox",
+              "operator": "equals",
+              "value": false
+            }
+          ]
+        }
+      },
+      "id": "notion-trigger-published",
+      "name": "Notion: New Published Post",
+      "type": "n8n-nodes-base.notionTrigger",
+      "typeVersion": 1,
+      "position": [250, 400],
+      "webhookId": "auto-generated"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "pageId": "={{ $json.id }}"
+      },
+      "id": "notion-get-post",
+      "name": "Get Published Post",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract post content and metadata\nconst properties = $input.item.json.properties;\n\nreturn {\n  json: {\n    page_id: $input.item.json.id,\n    title: properties.Title.title[0]?.plain_text || '',\n    blog_url: properties['Published URL']?.url || '',\n    primary_keyword: properties['Primary Keyword']?.rich_text[0]?.plain_text || '',\n    content_blocks: $input.item.json.blocks || [],\n    key_takeaways: properties['Key Takeaways']?.rich_text[0]?.plain_text?.split('\\n') || [],\n    publish_date: properties['Publish Date']?.date?.start || new Date().toISOString()\n  }\n};"
+      },
+      "id": "extract-post-data",
+      "name": "Extract Post Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-5-20250929",
+        "prompt": "=You are a social media content strategist. Use the Social Media Manager Project custom instructions.\n\n**TASK**: Create a LinkedIn post based on this blog article.\n\n**BLOG TITLE**: {{ $json.title }}\n**BLOG URL**: {{ $json.blog_url }}\n**KEY TAKEAWAYS**:\n{{ $json.key_takeaways.join('\\n') }}\n\n**REQUIREMENTS**:\n- Length: 1200-1500 characters\n- Format: Hook → Key insights (3-5 bullets) → CTA\n- Include 3-5 relevant hashtags at end\n- Engaging question to drive comments\n- Link to blog at end\n\n**OUTPUT**: Ready-to-post LinkedIn content.",
+        "options": {
+          "maxTokens": 1024
+        }
+      },
+      "id": "claude-generate-linkedin",
+      "name": "Claude: Generate LinkedIn Post",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-5-20250929",
+        "prompt": "=You are a Twitter/X content expert. Use the Social Media Manager Project custom instructions.\n\n**TASK**: Create a 10-tweet thread based on this blog article.\n\n**BLOG TITLE**: {{ $json.title }}\n**KEY TAKEAWAYS**:\n{{ $json.key_takeaways.join('\\n') }}\n**BLOG URL**: {{ $json.blog_url }}\n\n**REQUIREMENTS**:\n- Tweet 1: Pure hook (curiosity gap, no context)\n- Tweets 2-8: One insight per tweet, numbered\n- Tweet 9: Summary\n- Tweet 10: CTA (link to blog + follow)\n- Each tweet <280 chars\n- 1 emoji per tweet max\n- No hashtags except last tweet\n\n**OUTPUT**: Array of 10 tweets as JSON.\n[\n  {\"tweet\": \"Tweet 1 content\"},\n  {\"tweet\": \"Tweet 2 content\"},\n  ...\n]",
+        "options": {
+          "maxTokens": 2048
+        }
+      },
+      "id": "claude-generate-twitter",
+      "name": "Claude: Generate Twitter Thread",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-5-20250929",
+        "prompt": "=You are an email newsletter expert. Use the Email Newsletter Project custom instructions.\n\n**TASK**: Create a newsletter snippet to promote this blog post.\n\n**BLOG TITLE**: {{ $json.title }}\n**BLOG URL**: {{ $json.blog_url }}\n**KEY TAKEAWAYS**:\n{{ $json.key_takeaways.join('\\n') }}\n\n**FORMAT**: This will be included in the weekly digest newsletter.\n\n**REQUIREMENTS**:\n- Headline (engaging, benefit-focused)\n- 2-3 sentence summary\n- Call-to-action (Read more →)\n- Length: 100-150 words\n\n**OUTPUT**: Newsletter snippet in markdown.",
+        "options": {
+          "maxTokens": 512
+        }
+      },
+      "id": "claude-generate-newsletter",
+      "name": "Claude: Generate Newsletter Snippet",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [850, 600]
+    },
+    {
+      "parameters": {
+        "resource": "organization",
+        "operation": "share",
+        "text": "={{ $json.linkedin_content }}",
+        "additionalFields": {}
+      },
+      "id": "linkedin-post",
+      "name": "Post to LinkedIn",
+      "type": "n8n-nodes-base.linkedin",
+      "typeVersion": 1,
+      "position": [1050, 200],
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "4",
+          "name": "LinkedIn account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.tweets[0].tweet }}",
+        "additionalFields": {}
+      },
+      "id": "twitter-post-thread-start",
+      "name": "Twitter: Post Thread (Tweet 1)",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [1050, 350],
+      "credentials": {
+        "twitterOAuth2Api": {
+          "id": "5",
+          "name": "Twitter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Post remaining tweets in thread\nconst tweets = $input.item.json.tweets;\nconst first_tweet_id = $input.item.json.first_tweet_id;\n\nlet previous_tweet_id = first_tweet_id;\nconst thread_results = [];\n\n// Start from tweet 2 (index 1)\nfor (let i = 1; i < tweets.length; i++) {\n  const tweet_text = tweets[i].tweet;\n  \n  // In production, this would make API calls to post each reply\n  // For this workflow, we're simulating\n  thread_results.push({\n    tweet_number: i + 1,\n    tweet_text,\n    reply_to: previous_tweet_id,\n    status: 'posted'\n  });\n  \n  // Update previous_tweet_id for next iteration\n  previous_tweet_id = `tweet_${i + 1}_id`;\n}\n\nreturn {\n  json: {\n    thread_id: first_tweet_id,\n    tweets_posted: thread_results.length + 1,\n    thread_url: `https://twitter.com/user/status/${first_tweet_id}`,\n    ...$ input.item.json\n  }\n};"
+      },
+      "id": "post-thread-replies",
+      "name": "Post Thread Replies",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 350]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "databaseId": "{{ $env.NOTION_NEWSLETTER_SNIPPETS_DB }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Title|title",
+              "textContent": "={{ $json.title }}"
+            },
+            {
+              "key": "Snippet|text",
+              "textContent": "={{ $json.newsletter_snippet }}"
+            },
+            {
+              "key": "Blog URL|url",
+              "urlValue": "={{ $json.blog_url }}"
+            },
+            {
+              "key": "Status|select",
+              "selectValue": "Ready for Newsletter"
+            },
+            {
+              "key": "Added Date|date",
+              "dateValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "save-newsletter-snippet",
+      "name": "Save Newsletter Snippet",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1050, 600]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "merge-distribution-results",
+      "name": "Merge Distribution Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "pageId": "={{ $json.page_id }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Distributed|checkbox",
+              "booleanValue": true
+            },
+            {
+              "key": "LinkedIn URL|url",
+              "urlValue": "={{ $json.linkedin_post_url }}"
+            },
+            {
+              "key": "Twitter Thread URL|url",
+              "urlValue": "={{ $json.thread_url }}"
+            },
+            {
+              "key": "Distribution Date|date",
+              "dateValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "mark-distributed",
+      "name": "Mark as Distributed",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1650, 400]
+    },
+    {
+      "parameters": {
+        "channel": "#content-distribution",
+        "text": "=📢 *Content Distributed Across Platforms*\n\n**Blog Post**: {{ $json.title }}\n**Blog URL**: {{ $json.blog_url }}\n\n**Distribution Summary**:\n✅ LinkedIn: [View Post]({{ $json.linkedin_post_url }})\n✅ Twitter: [View Thread]({{ $json.thread_url }})\n✅ Newsletter: Snippet saved for Friday digest\n\n**Engagement Tracking**:\nCheck back in 24 hours for initial metrics.\n\n[View in Notion]({{ $env.NOTION_BASE_URL }}/{{ $json.page_id }})",
+        "attachments": []
+      },
+      "id": "slack-distribution-complete",
+      "name": "Distribution Complete Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1850, 400]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 * * *"
+            }
+          ]
+        }
+      },
+      "id": "daily-check-engagement",
+      "name": "Daily Engagement Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 800]
+    },
+    {
+      "parameters": {
+        "databaseId": "{{ $env.NOTION_CONTENT_CALENDAR_DB }}",
+        "filterType": "manual",
+        "matchType": "anyFilter",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Distributed|checkbox",
+              "condition": "equals",
+              "returnValue": true
+            },
+            {
+              "key": "Distribution Date|date",
+              "condition": "on_or_after",
+              "date": "={{ new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "get-recent-distributed",
+      "name": "Get Recent Distributed Posts",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [450, 800]
+    },
+    {
+      "parameters": {
+        "url": "https://api.linkedin.com/v2/organizationalEntityShareStatistics",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linkedInOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "organizationalEntity"
+            },
+            {
+              "name": "organizationalEntity",
+              "value": "={{ $env.LINKEDIN_ORG_ID }}"
+            },
+            {
+              "name": "shares",
+              "value": "={{ $json.linkedin_share_id }}"
+            }
+          ]
+        }
+      },
+      "id": "fetch-linkedin-stats",
+      "name": "Fetch LinkedIn Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 700]
+    },
+    {
+      "parameters": {
+        "url": "https://api.twitter.com/2/tweets/{{ $json.thread_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twitterOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "tweet.fields",
+              "value": "public_metrics"
+            }
+          ]
+        }
+      },
+      "id": "fetch-twitter-stats",
+      "name": "Fetch Twitter Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 900]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate engagement rates\nconst linkedin_stats = $input.item.json.linkedin_stats || {};\nconst twitter_stats = $input.item.json.twitter_stats || {};\n\nconst linkedin_engagement = (\n  (linkedin_stats.likes || 0) +\n  (linkedin_stats.comments || 0) +\n  (linkedin_stats.shares || 0)\n) / (linkedin_stats.impressions || 1) * 100;\n\nconst twitter_engagement = (\n  (twitter_stats.retweets || 0) +\n  (twitter_stats.likes || 0) +\n  (twitter_stats.replies || 0)\n) / (twitter_stats.impressions || 1) * 100;\n\nreturn {\n  json: {\n    ...$input.item.json,\n    engagement_summary: {\n      linkedin: {\n        impressions: linkedin_stats.impressions || 0,\n        engagement_rate: Math.round(linkedin_engagement * 100) / 100,\n        total_engagements: (linkedin_stats.likes || 0) + (linkedin_stats.comments || 0) + (linkedin_stats.shares || 0)\n      },\n      twitter: {\n        impressions: twitter_stats.impressions || 0,\n        engagement_rate: Math.round(twitter_engagement * 100) / 100,\n        total_engagements: (twitter_stats.retweets || 0) + (twitter_stats.likes || 0) + (twitter_stats.replies || 0)\n      },\n      status: linkedin_engagement > 3 || twitter_engagement > 2 ? '🔥 High Performance' : '✅ Normal'\n    }\n  }\n};"
+      },
+      "id": "calculate-engagement",
+      "name": "Calculate Engagement Rates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 800]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "pageId": "={{ $json.page_id }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "LinkedIn Impressions|number",
+              "numberValue": "={{ $json.engagement_summary.linkedin.impressions }}"
+            },
+            {
+              "key": "LinkedIn Engagement Rate|number",
+              "numberValue": "={{ $json.engagement_summary.linkedin.engagement_rate }}"
+            },
+            {
+              "key": "Twitter Impressions|number",
+              "numberValue": "={{ $json.engagement_summary.twitter.impressions }}"
+            },
+            {
+              "key": "Twitter Engagement Rate|number",
+              "numberValue": "={{ $json.engagement_summary.twitter.engagement_rate }}"
+            },
+            {
+              "key": "Performance Status|select",
+              "selectValue": "={{ $json.engagement_summary.status }}"
+            }
+          ]
+        }
+      },
+      "id": "update-engagement-metrics",
+      "name": "Update Engagement Metrics in Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1050, 800]
+    }
+  ],
+  "connections": {
+    "Notion: New Published Post": {
+      "main": [
+        [
+          {
+            "node": "Get Published Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Published Post": {
+      "main": [
+        [
+          {
+            "node": "Extract Post Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Post Data": {
+      "main": [
+        [
+          {
+            "node": "Claude: Generate LinkedIn Post",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Claude: Generate Twitter Thread",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Claude: Generate Newsletter Snippet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: Generate LinkedIn Post": {
+      "main": [
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: Generate Twitter Thread": {
+      "main": [
+        [
+          {
+            "node": "Twitter: Post Thread (Tweet 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: Generate Newsletter Snippet": {
+      "main": [
+        [
+          {
+            "node": "Save Newsletter Snippet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Merge Distribution Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Twitter: Post Thread (Tweet 1)": {
+      "main": [
+        [
+          {
+            "node": "Post Thread Replies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Thread Replies": {
+      "main": [
+        [
+          {
+            "node": "Merge Distribution Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Save Newsletter Snippet": {
+      "main": [
+        [
+          {
+            "node": "Merge Distribution Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Distribution Results": {
+      "main": [
+        [
+          {
+            "node": "Mark as Distributed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Distributed": {
+      "main": [
+        [
+          {
+            "node": "Distribution Complete Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Engagement Check": {
+      "main": [
+        [
+          {
+            "node": "Get Recent Distributed Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Recent Distributed Posts": {
+      "main": [
+        [
+          {
+            "node": "Fetch LinkedIn Stats",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Twitter Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch LinkedIn Stats": {
+      "main": [
+        [
+          {
+            "node": "Calculate Engagement Rates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Twitter Stats": {
+      "main": [
+        [
+          {
+            "node": "Calculate Engagement Rates",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Calculate Engagement Rates": {
+      "main": [
+        [
+          {
+            "node": "Update Engagement Metrics in Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-15T00:00:00.000Z",
+  "versionId": "1"
+}

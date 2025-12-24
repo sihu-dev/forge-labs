@@ -1,0 +1,425 @@
+{
+  "name": "BIDFLOW - Lead Generation Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger (Every Hour)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://apis.data.go.kr/1230000/BidPublicInfoService04/getBidPblancListInfoThng01",
+        "method": "GET",
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ServiceKey",
+              "value": "={{$env.G2B_API_KEY}}"
+            },
+            {
+              "name": "inqryDiv",
+              "value": "1"
+            },
+            {
+              "name": "inqryBgnDt",
+              "value": "={{$now.format('YYYYMMDD')}}"
+            },
+            {
+              "name": "inqryEndDt",
+              "value": "={{$now.format('YYYYMMDD')}}"
+            },
+            {
+              "name": "bidNtceNm",
+              "value": "유량계"
+            },
+            {
+              "name": "numOfRows",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-g2b",
+      "name": "Fetch G2B Bids",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse XML response and filter bids\nconst items = [];\nconst response = $input.all()[0].json;\n\n// Check if response has items\nif (!response?.response?.body?.items?.item) {\n  return [];\n}\n\nconst bids = Array.isArray(response.response.body.items.item) \n  ? response.response.body.items.item \n  : [response.response.body.items.item];\n\nconst keywords = ['유량계', '초음파', '전자식', '열량계', 'flowmeter', 'ultrasonic'];\nconst minBudget = 50000000; // 50M KRW\n\nfor (const bid of bids) {\n  try {\n    // Parse budget\n    const budget = parseInt(bid.presmptPrce || '0');\n    if (budget < minBudget) continue;\n\n    // Check keywords\n    const title = bid.bidNtceNm || '';\n    const description = bid.ntceKndNm || '';\n    const fullText = `${title} ${description}`.toLowerCase();\n    \n    const hasKeyword = keywords.some(kw => fullText.includes(kw.toLowerCase()));\n    if (!hasKeyword) continue;\n\n    // Parse deadline\n    const deadlineStr = bid.bidClseDt || '';\n    const deadline = deadlineStr ? new Date(\n      deadlineStr.substring(0, 4) + '-' + \n      deadlineStr.substring(4, 6) + '-' + \n      deadlineStr.substring(6, 8)\n    ) : null;\n\n    // Calculate days to deadline\n    const daysToDeadline = deadline \n      ? Math.floor((deadline - new Date()) / (1000 * 60 * 60 * 24))\n      : null;\n\n    // Skip if already passed or too far in future\n    if (daysToDeadline !== null && (daysToDeadline < 0 || daysToDeadline > 90)) {\n      continue;\n    }\n\n    items.push({\n      json: {\n        source: 'g2b_procurement',\n        sourceReferenceId: bid.bidNtceNo || '',\n        companyName: bid.ntceInsttNm || '',\n        title: title,\n        description: description,\n        budget: budget,\n        currency: 'KRW',\n        deadline: deadline ? deadline.toISOString() : null,\n        daysToDeadline: daysToDeadline,\n        url: `https://www.g2b.go.kr:8101/ep/tbid/tbidDetail.do?bidno=${bid.bidNtceNo}`,\n        contactName: bid.rbidCntrctorNm || null,\n        contactPhone: bid.cntrctorTelno || null,\n        matchedKeywords: keywords.filter(kw => fullText.includes(kw.toLowerCase())),\n        rawData: bid,\n        createdAt: new Date().toISOString()\n      }\n    });\n  } catch (error) {\n    console.error(`Error processing bid ${bid.bidNtceNo}:`, error);\n    continue;\n  }\n}\n\nreturn items;"
+      },
+      "id": "parse-filter",
+      "name": "Parse and Filter Bids",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/leads",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "={{$json.source}}"
+            },
+            {
+              "name": "source_reference_id",
+              "value": "={{$json.sourceReferenceId}}"
+            },
+            {
+              "name": "company_name",
+              "value": "={{$json.companyName}}"
+            },
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "description",
+              "value": "={{$json.description}}"
+            },
+            {
+              "name": "budget",
+              "value": "={{$json.budget}}"
+            },
+            {
+              "name": "deadline",
+              "value": "={{$json.deadline}}"
+            },
+            {
+              "name": "url",
+              "value": "={{$json.url}}"
+            },
+            {
+              "name": "contact_name",
+              "value": "={{$json.contactName}}"
+            },
+            {
+              "name": "contact_phone",
+              "value": "={{$json.contactPhone}}"
+            },
+            {
+              "name": "raw_data",
+              "value": "={{JSON.stringify($json.rawData)}}"
+            },
+            {
+              "name": "stage",
+              "value": "raw"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "save-raw-lead",
+      "name": "Save Raw Lead to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.clay.com/v1/enrichments",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ={{$env.CLAY_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"company_name\": \"{{$json.body[0].company_name}}\",\n  \"enrichment_options\": {\n    \"company_data\": true,\n    \"contact_data\": true,\n    \"email_discovery\": true,\n    \"phone_discovery\": true,\n    \"linkedin_profile\": true\n  }\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "enrich-clay",
+      "name": "Enrich with Clay.com",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1040, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate comprehensive lead score\nconst lead = $input.item.json.body[0];\nconst enrichment = $input.item.json;\n\n// ============================================\n// FIRMOGRAPHIC SCORE (40 points)\n// ============================================\n\nlet firmographicScore = 0;\nlet firmographicDetails = {};\n\n// Budget (15 pts)\nconst budget = lead.budget || 0;\nif (budget >= 500000000) {\n  firmographicDetails.budgetScore = 15;\n  firmographicDetails.budgetReason = '예산 5억 이상';\n} else if (budget >= 200000000) {\n  firmographicDetails.budgetScore = 12;\n  firmographicDetails.budgetReason = '예산 2억~5억';\n} else if (budget >= 100000000) {\n  firmographicDetails.budgetScore = 10;\n  firmographicDetails.budgetReason = '예산 1억~2억';\n} else if (budget >= 50000000) {\n  firmographicDetails.budgetScore = 5;\n  firmographicDetails.budgetReason = '예산 5천만~1억';\n} else {\n  firmographicDetails.budgetScore = 0;\n  firmographicDetails.budgetReason = '예산 5천만 미만';\n}\nfirmographicScore += firmographicDetails.budgetScore;\n\n// Employee Count (10 pts)\nconst employeeCount = enrichment.company?.employee_count || 0;\nif (employeeCount >= 1000) {\n  firmographicDetails.employeeScore = 10;\n  firmographicDetails.employeeReason = '대기업 (1,000명 이상)';\n} else if (employeeCount >= 500) {\n  firmographicDetails.employeeScore = 8;\n  firmographicDetails.employeeReason = '중견기업 (500~1,000명)';\n} else if (employeeCount >= 100) {\n  firmographicDetails.employeeScore = 7;\n  firmographicDetails.employeeReason = '중소기업 (100~500명)';\n} else if (employeeCount >= 50) {\n  firmographicDetails.employeeScore = 5;\n  firmographicDetails.employeeReason = '소기업 (50~100명)';\n} else {\n  firmographicDetails.employeeScore = 3;\n  firmographicDetails.employeeReason = '영세기업 (50명 미만)';\n}\nfirmographicScore += firmographicDetails.employeeScore;\n\n// Industry Fit (10 pts)\nconst targetIndustries = ['상하수도', '환경', '제조', '에너지', '플랜트', 'water', 'environment'];\nconst industry = (enrichment.company?.industry || '').toLowerCase();\nconst industryMatch = targetIndustries.some(ind => industry.includes(ind.toLowerCase()));\n\nif (industryMatch) {\n  firmographicDetails.industryScore = 10;\n  firmographicDetails.industryReason = `타겟 산업 (${industry})`;\n} else {\n  firmographicDetails.industryScore = 5;\n  firmographicDetails.industryReason = `기타 산업 (${industry || '미확인'})`;\n}\nfirmographicScore += firmographicDetails.industryScore;\n\n// Location (5 pts) - 한국 기업 모두 만점\nfirmographicDetails.locationScore = 5;\nfirmographicDetails.locationReason = '한국 소재';\nfirmographicScore += firmographicDetails.locationScore;\n\n// ============================================\n// BEHAVIORAL SCORE (30 points)\n// ============================================\n\nlet behavioralScore = 0;\nlet behavioralDetails = {};\n\n// Past Purchases (15 pts) - TODO: Query from DB\n// For now, assume no history\nbehavioralDetails.purchaseHistoryScore = 0;\nbehavioralDetails.purchaseReason = '거래 이력 없음';\nbehavioralScore += behavioralDetails.purchaseHistoryScore;\n\n// Engagement (10 pts) - No engagement yet for new leads\nbehavioralDetails.engagementScore = 0;\nbehavioralDetails.engagementReason = '신규 리드 (접촉 전)';\nbehavioralScore += behavioralDetails.engagementScore;\n\n// Timeline Fit (5 pts)\nconst daysToDeadline = lead.deadline \n  ? Math.floor((new Date(lead.deadline) - new Date()) / (1000 * 60 * 60 * 24))\n  : null;\n\nif (daysToDeadline !== null && daysToDeadline > 0) {\n  if (daysToDeadline <= 7) {\n    behavioralDetails.timelineScore = 5;\n    behavioralDetails.timelineReason = `긴급 (${daysToDeadline}일 남음)`;\n  } else if (daysToDeadline <= 14) {\n    behavioralDetails.timelineScore = 4;\n    behavioralDetails.timelineReason = `1~2주 (${daysToDeadline}일)`;\n  } else if (daysToDeadline <= 30) {\n    behavioralDetails.timelineScore = 3;\n    behavioralDetails.timelineReason = `2~4주 (${daysToDeadline}일)`;\n  } else {\n    behavioralDetails.timelineScore = 2;\n    behavioralDetails.timelineReason = `1개월 이상 (${daysToDeadline}일)`;\n  }\n} else {\n  behavioralDetails.timelineScore = 0;\n  behavioralDetails.timelineReason = '마감일 없음';\n}\nbehavioralScore += behavioralDetails.timelineScore;\n\n// ============================================\n// CONTACT QUALITY SCORE (20 points)\n// ============================================\n\nlet contactQualityScore = 0;\nlet contactQualityDetails = {};\n\n// Email Verified (10 pts)\nconst email = enrichment.contact?.email;\nconst emailConfidence = enrichment.contact?.email_confidence || 0;\n\nif (email && emailConfidence >= 90) {\n  contactQualityDetails.emailScore = 10;\n  contactQualityDetails.emailReason = `이메일 확인 (신뢰도 ${emailConfidence}%)`;\n} else if (email && emailConfidence >= 70) {\n  contactQualityDetails.emailScore = 7;\n  contactQualityDetails.emailReason = `이메일 추정 (신뢰도 ${emailConfidence}%)`;\n} else if (email) {\n  contactQualityDetails.emailScore = 5;\n  contactQualityDetails.emailReason = `이메일 저신뢰도 (${emailConfidence}%)`;\n} else {\n  contactQualityDetails.emailScore = 0;\n  contactQualityDetails.emailReason = '이메일 없음';\n}\ncontactQualityScore += contactQualityDetails.emailScore;\n\n// Phone Verified (5 pts)\nconst phone = enrichment.contact?.phone || lead.contact_phone;\nif (phone) {\n  contactQualityDetails.phoneScore = 5;\n  contactQualityDetails.phoneReason = '전화번호 확인';\n} else {\n  contactQualityDetails.phoneScore = 0;\n  contactQualityDetails.phoneReason = '전화번호 없음';\n}\ncontactQualityScore += contactQualityDetails.phoneScore;\n\n// Decision Maker (5 pts)\nconst jobTitle = (enrichment.contact?.job_title || '').toLowerCase();\nconst decisionMakerKeywords = ['담당', '팀장', '부장', '이사', '본부장', 'manager', 'director'];\nconst isDecisionMaker = decisionMakerKeywords.some(kw => jobTitle.includes(kw));\n\nif (isDecisionMaker) {\n  contactQualityDetails.decisionMakerScore = 5;\n  contactQualityDetails.decisionMakerReason = `의사결정자 (${jobTitle})`;\n} else if (jobTitle) {\n  contactQualityDetails.decisionMakerScore = 2;\n  contactQualityDetails.decisionMakerReason = `담당자 (${jobTitle})`;\n} else {\n  contactQualityDetails.decisionMakerScore = 0;\n  contactQualityDetails.decisionMakerReason = '직책 미확인';\n}\ncontactQualityScore += contactQualityDetails.decisionMakerScore;\n\n// ============================================\n// INTENT SCORE (10 points)\n// ============================================\n\nlet intentScore = 0;\nlet intentDetails = {};\n\n// Buying Signals (5 pts)\nconst keywords = lead.raw_data?.matchedKeywords || [];\nif (keywords.length >= 3) {\n  intentDetails.buyingSignalScore = 5;\n  intentDetails.buyingSignalReason = `키워드 ${keywords.length}개 매칭`;\n} else if (keywords.length >= 2) {\n  intentDetails.buyingSignalScore = 3;\n  intentDetails.buyingSignalReason = `키워드 ${keywords.length}개 매칭`;\n} else {\n  intentDetails.buyingSignalScore = 1;\n  intentDetails.buyingSignalReason = `키워드 ${keywords.length}개 매칭`;\n}\nintentScore += intentDetails.buyingSignalScore;\n\n// Urgency (5 pts)\nif (daysToDeadline !== null && daysToDeadline > 0) {\n  if (daysToDeadline <= 7) {\n    intentDetails.urgencyScore = 5;\n    intentDetails.urgencyReason = `초긴급 (D-${daysToDeadline})`;\n  } else if (daysToDeadline <= 14) {\n    intentDetails.urgencyScore = 4;\n    intentDetails.urgencyReason = `긴급 (D-${daysToDeadline})`;\n  } else if (daysToDeadline <= 30) {\n    intentDetails.urgencyScore = 3;\n    intentDetails.urgencyReason = `보통 (D-${daysToDeadline})`;\n  } else {\n    intentDetails.urgencyScore = 2;\n    intentDetails.urgencyReason = `여유 (D-${daysToDeadline})`;\n  }\n} else {\n  intentDetails.urgencyScore = 0;\n  intentDetails.urgencyReason = '마감일 없음';\n}\nintentScore += intentDetails.urgencyScore;\n\n// ============================================\n// TOTAL SCORE & GRADING\n// ============================================\n\nconst totalScore = firmographicScore + behavioralScore + contactQualityScore + intentScore;\n\nlet grade, priority, slaHours, recommendedAction;\n\nif (totalScore >= 90) {\n  grade = 'A+';\n  priority = 'immediate';\n  slaHours = 2;\n  recommendedAction = 'contact_now';\n} else if (totalScore >= 80) {\n  grade = 'A';\n  priority = 'high';\n  slaHours = 24;\n  recommendedAction = 'contact_now';\n} else if (totalScore >= 70) {\n  grade = 'B';\n  priority = 'medium';\n  slaHours = 72;\n  recommendedAction = 'schedule_followup';\n} else if (totalScore >= 60) {\n  grade = 'C';\n  priority = 'low';\n  slaHours = 168;\n  recommendedAction = 'nurture';\n} else {\n  grade = 'D';\n  priority = 'low';\n  slaHours = 336;\n  recommendedAction = 'disqualify';\n}\n\n// ============================================\n// RETURN RESULT\n// ============================================\n\nreturn {\n  json: {\n    leadId: lead.id,\n    source: lead.source,\n    companyName: lead.company_name,\n    \n    // Enrichment Data\n    enrichment: {\n      company: enrichment.company || {},\n      contact: enrichment.contact || {},\n      enrichedAt: new Date().toISOString(),\n      confidence: enrichment.confidence || 0\n    },\n    \n    // Score Components\n    score: {\n      totalScore: totalScore,\n      firmographicScore: firmographicScore,\n      behavioralScore: behavioralScore,\n      contactQualityScore: contactQualityScore,\n      intentScore: intentScore,\n      \n      grade: grade,\n      priority: priority,\n      slaHours: slaHours,\n      recommendedAction: recommendedAction,\n      \n      // Detailed breakdowns\n      firmographicDetails: firmographicDetails,\n      behavioralDetails: behavioralDetails,\n      contactQualityDetails: contactQualityDetails,\n      intentDetails: intentDetails,\n      \n      scoredAt: new Date().toISOString(),\n      modelVersion: '1.0.0'\n    },\n    \n    // Stage Update\n    newStage: totalScore >= 65 ? 'qualified' : 'enriched',\n    \n    // Original Lead Data\n    originalLead: lead\n  }\n};"
+      },
+      "id": "calculate-score",
+      "name": "Calculate Lead Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.score.totalScore}}",
+              "operation": "largerEqual",
+              "value2": 65
+            }
+          ]
+        }
+      },
+      "id": "filter-qualified",
+      "name": "Filter: Score >= 65 (Qualified)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1440, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/leads",
+        "method": "PATCH",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "eq.={{$json.leadId}}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"enrichment_data\": {{JSON.stringify($json.enrichment)}},\n  \"score\": {{JSON.stringify($json.score)}},\n  \"stage\": \"{{$json.newStage}}\",\n  \"priority\": \"{{$json.score.priority}}\",\n  \"grade\": \"{{$json.score.grade}}\",\n  \"updated_at\": \"{{$now.toISO()}}\"\n}"
+      },
+      "id": "update-lead",
+      "name": "Update Lead in Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1640, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.score.priority}}",
+              "operation": "equals",
+              "value2": "immediate"
+            }
+          ]
+        }
+      },
+      "id": "check-immediate",
+      "name": "If Priority = Immediate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1840, 200]
+    },
+    {
+      "parameters": {
+        "channel": "#sales-hot-leads",
+        "text": "=🔥 **HOT LEAD ALERT** 🔥\n\n*Grade*: {{$json.score.grade}}\n*Score*: {{$json.score.totalScore}}/100\n*Priority*: {{$json.score.priority}}\n*SLA*: {{$json.score.slaHours}}시간 내 대응\n\n*━━━━━━━━━━━━━━━━━━━━━━*\n\n*🏢 Company*\nName: {{$json.companyName}}\nIndustry: {{$json.enrichment.company.industry || 'N/A'}}\nEmployees: {{$json.enrichment.company.employee_count || 'N/A'}}\nRevenue: ₩{{($json.enrichment.company.estimated_revenue || 0).toLocaleString()}}\n\n*💰 Bid Info*\nTitle: {{$json.originalLead.title}}\nBudget: ₩{{($json.originalLead.budget || 0).toLocaleString()}}\nDeadline: {{$json.originalLead.deadline ? new Date($json.originalLead.deadline).toLocaleDateString('ko-KR') : 'N/A'}}\nDays Left: {{$json.score.intentDetails.urgencyReason}}\n\n*👤 Contact*\nName: {{$json.enrichment.contact.full_name || $json.originalLead.contact_name || 'N/A'}}\nTitle: {{$json.enrichment.contact.job_title || 'N/A'}}\nEmail: {{$json.enrichment.contact.email || 'N/A'}}\nPhone: {{$json.enrichment.contact.phone || $json.originalLead.contact_phone || 'N/A'}}\nLinkedIn: {{$json.enrichment.contact.linkedin_url || 'N/A'}}\n\n*📊 Score Breakdown*\nFirmographic: {{$json.score.firmographicScore}}/40\nBehavioral: {{$json.score.behavioralScore}}/30\nContact Quality: {{$json.score.contactQualityScore}}/20\nIntent: {{$json.score.intentScore}}/10\n\n*🎯 Recommended Action*\n{{$json.score.recommendedAction}}\n\n*━━━━━━━━━━━━━━━━━━━━━━*\n\n👉 [View Bid]({{$json.originalLead.url}})\n👉 [Open in BIDFLOW]({{$env.BIDFLOW_URL}}/dashboard/leads/{{$json.leadId}})",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "slack-alert",
+      "name": "Send Slack Alert (Hot Lead)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [2040, 100]
+    },
+    {
+      "parameters": {
+        "fromEmail": "leads@bidflow.io",
+        "toEmail": "sales@cmntech.com",
+        "subject": "=🔥 신규 HOT LEAD: {{$json.companyName}} ({{$json.score.grade}} / {{$json.score.totalScore}}점)",
+        "emailType": "html",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: 'Malgun Gothic', sans-serif; line-height: 1.6; }\n    .container { max-width: 600px; margin: 0 auto; }\n    .header { background: #FF5722; color: white; padding: 20px; text-align: center; }\n    .content { padding: 20px; background: #f9f9f9; }\n    .section { background: white; margin: 15px 0; padding: 15px; border-radius: 5px; }\n    .label { font-weight: bold; color: #333; }\n    .value { color: #666; }\n    .score { font-size: 48px; font-weight: bold; color: #FF5722; }\n    .grade { font-size: 36px; font-weight: bold; color: #4CAF50; }\n    .cta { background: #FF5722; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>🔥 신규 HOT LEAD 알림</h1>\n    </div>\n    \n    <div class=\"content\">\n      <div class=\"section\" style=\"text-align: center;\">\n        <div class=\"grade\">{{$json.score.grade}}</div>\n        <div class=\"score\">{{$json.score.totalScore}}점</div>\n        <p>⏰ <strong>{{$json.score.slaHours}}시간 내 대응 필요</strong></p>\n      </div>\n      \n      <div class=\"section\">\n        <h2>🏢 기업 정보</h2>\n        <p><span class=\"label\">회사명:</span> <span class=\"value\">{{$json.companyName}}</span></p>\n        <p><span class=\"label\">산업:</span> <span class=\"value\">{{$json.enrichment.company.industry || 'N/A'}}</span></p>\n        <p><span class=\"label\">직원수:</span> <span class=\"value\">{{$json.enrichment.company.employee_count || 'N/A'}}명</span></p>\n        <p><span class=\"label\">매출:</span> <span class=\"value\">₩{{($json.enrichment.company.estimated_revenue || 0).toLocaleString()}}</span></p>\n      </div>\n      \n      <div class=\"section\">\n        <h2>💰 입찰 정보</h2>\n        <p><span class=\"label\">공고명:</span> <span class=\"value\">{{$json.originalLead.title}}</span></p>\n        <p><span class=\"label\">예산:</span> <span class=\"value\">₩{{($json.originalLead.budget || 0).toLocaleString()}}</span></p>\n        <p><span class=\"label\">마감일:</span> <span class=\"value\">{{$json.originalLead.deadline ? new Date($json.originalLead.deadline).toLocaleDateString('ko-KR') : 'N/A'}}</span></p>\n        <p><span class=\"label\">남은 시간:</span> <span class=\"value\">{{$json.score.intentDetails.urgencyReason}}</span></p>\n      </div>\n      \n      <div class=\"section\">\n        <h2>👤 담당자 정보</h2>\n        <p><span class=\"label\">이름:</span> <span class=\"value\">{{$json.enrichment.contact.full_name || $json.originalLead.contact_name || 'N/A'}}</span></p>\n        <p><span class=\"label\">직책:</span> <span class=\"value\">{{$json.enrichment.contact.job_title || 'N/A'}}</span></p>\n        <p><span class=\"label\">이메일:</span> <span class=\"value\">{{$json.enrichment.contact.email || 'N/A'}}</span></p>\n        <p><span class=\"label\">전화:</span> <span class=\"value\">{{$json.enrichment.contact.phone || $json.originalLead.contact_phone || 'N/A'}}</span></p>\n        <p><span class=\"label\">LinkedIn:</span> <span class=\"value\">{{$json.enrichment.contact.linkedin_url || 'N/A'}}</span></p>\n      </div>\n      \n      <div class=\"section\">\n        <h2>📊 점수 상세</h2>\n        <p><span class=\"label\">Firmographic:</span> <span class=\"value\">{{$json.score.firmographicScore}}/40</span></p>\n        <p><span class=\"label\">Behavioral:</span> <span class=\"value\">{{$json.score.behavioralScore}}/30</span></p>\n        <p><span class=\"label\">Contact Quality:</span> <span class=\"value\">{{$json.score.contactQualityScore}}/20</span></p>\n        <p><span class=\"label\">Intent:</span> <span class=\"value\">{{$json.score.intentScore}}/10</span></p>\n      </div>\n      \n      <div class=\"section\" style=\"text-align: center;\">\n        <h2>🎯 권장 조치</h2>\n        <p><strong>{{$json.score.recommendedAction}}</strong></p>\n        <a href=\"{{$json.originalLead.url}}\" class=\"cta\">입찰 공고 보기</a>\n        <a href=\"{{$env.BIDFLOW_URL}}/dashboard/leads/{{$json.leadId}}\" class=\"cta\">BIDFLOW에서 열기</a>\n      </div>\n    </div>\n  </div>\n</body>\n</html>"
+      },
+      "id": "email-alert",
+      "name": "Send Email Alert (Hot Lead)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [2040, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Every Hour)": {
+      "main": [
+        [
+          {
+            "node": "Fetch G2B Bids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch G2B Bids": {
+      "main": [
+        [
+          {
+            "node": "Parse and Filter Bids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse and Filter Bids": {
+      "main": [
+        [
+          {
+            "node": "Save Raw Lead to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Raw Lead to Supabase": {
+      "main": [
+        [
+          {
+            "node": "Enrich with Clay.com",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich with Clay.com": {
+      "main": [
+        [
+          {
+            "node": "Calculate Lead Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Lead Score": {
+      "main": [
+        [
+          {
+            "node": "Filter: Score >= 65 (Qualified)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter: Score >= 65 (Qualified)": {
+      "main": [
+        [
+          {
+            "node": "Update Lead in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Update Lead in Supabase": {
+      "main": [
+        [
+          {
+            "node": "If Priority = Immediate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Priority = Immediate": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Alert (Hot Lead)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Email Alert (Hot Lead)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-12-24T00:00:00.000Z",
+  "versionId": "1.0.0"
+}

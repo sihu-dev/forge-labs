@@ -378,3 +378,21 @@ export * as DryonTypes from './dryon/index.js';
  * 입찰 자동화 시스템
  */
 export * as BiddingTypes from './bidding/index.js';
+
+/**
+ * OUTREACH 상세 타입 (L0 구현체)
+ * 멀티채널 아웃리치 자동화 시스템
+ */
+export * from './outreach/index.js';
+
+/**
+ * CRM 상세 타입 (L0 구현체)
+ * 멀티 플랫폼 CRM 동기화 시스템
+ */
+export * as CRMTypes from './crm/index.js';
+
+/**
+ * Marketing Automation 타입 (L0 구현체)
+ * 영업/마케팅 자동화 시스템
+ */
+export * as MarketingTypes from './marketing/index.js';

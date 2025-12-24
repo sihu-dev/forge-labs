@@ -1,0 +1,620 @@
+{
+  "name": "Blog Generation Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "databaseId": "{{ $env.NOTION_CONTENT_CALENDAR_DB }}",
+        "event": "pageUpdated",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Status|select",
+              "operator": "equals",
+              "value": "Ready to Write"
+            }
+          ]
+        }
+      },
+      "id": "notion-trigger",
+      "name": "Notion: Status → Ready to Write",
+      "type": "n8n-nodes-base.notionTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "auto-generated"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "pageId": "={{ $json.id }}"
+      },
+      "id": "notion-get-page",
+      "name": "Get Page Details",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract page properties\nconst properties = $input.item.json.properties;\n\nreturn {\n  json: {\n    page_id: $input.item.json.id,\n    title: properties.Title.title[0]?.plain_text || '',\n    primary_keyword: properties['Primary Keyword']?.rich_text[0]?.plain_text || '',\n    secondary_keywords: properties['Secondary Keywords']?.rich_text[0]?.plain_text?.split(',') || [],\n    target_audience: properties['Target Audience']?.select?.name || 'Solo developers',\n    content_type: properties['Content Type']?.select?.name || 'Tutorial',\n    unique_angle: properties['Unique Angle']?.rich_text[0]?.plain_text || '',\n    word_count_target: properties['Word Count']?.number || 2000\n  }\n};"
+      },
+      "id": "extract-metadata",
+      "name": "Extract Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/customsearch/v1",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCustomSearchApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.primary_keyword }}"
+            },
+            {
+              "name": "cx",
+              "value": "={{ $env.GOOGLE_CSE_ID }}"
+            },
+            {
+              "name": "num",
+              "value": "5"
+            }
+          ]
+        }
+      },
+      "id": "fetch-top-5-serp",
+      "name": "Fetch Top 5 SERP Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "model": "claude-opus-4-5-20251101",
+        "prompt": "=Analyze these top 5 search results for the keyword \"{{ $json.primary_keyword }}\".\n\nSERP RESULTS:\n{{ $json.items.map(item => `Title: ${item.title}\\nSnippet: ${item.snippet}\\nURL: ${item.link}`).join('\\n\\n') }}\n\nProvide:\n1. Common topics covered by all results\n2. Unique angles each result takes\n3. Content gaps (what's missing or shallow)\n4. User intent (informational, commercial, transactional)\n5. Recommended content format (guide, tutorial, comparison)\n\nOutput as JSON.",
+        "options": {
+          "maxTokens": 2048
+        }
+      },
+      "id": "claude-analyze-serp",
+      "name": "Claude: Analyze SERP",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "model": "claude-opus-4-5-20251101",
+        "prompt": "=You are an expert blog content strategist.\n\nCreate a detailed outline for a blog post with these specifications:\n\n**Title**: {{ $json.title }}\n**Primary Keyword**: {{ $json.primary_keyword }}\n**Secondary Keywords**: {{ $json.secondary_keywords.join(', ') }}\n**Target Audience**: {{ $json.target_audience }}\n**Content Type**: {{ $json.content_type }}\n**Unique Angle**: {{ $json.unique_angle }}\n**Target Word Count**: {{ $json.word_count_target }}\n\n**SERP Analysis**:\n{{ $json.serp_analysis }}\n\nCreate an outline with:\n1. SEO-optimized H1 title (include primary keyword)\n2. Hook (first 100 words)\n3. H2/H3 structure (8-12 sections)\n4. Key points for each section\n5. Where to include code examples/screenshots\n6. Internal linking opportunities\n7. Conclusion with CTA\n\nOutput as JSON:\n{\n  \"seo_title\": \"\",\n  \"meta_description\": \"\",\n  \"url_slug\": \"\",\n  \"hook\": \"\",\n  \"sections\": [\n    {\n      \"heading\": \"H2 heading\",\n      \"subheadings\": [\"H3\", \"H3\"],\n      \"key_points\": [],\n      \"include\": \"code example\" or \"screenshot\"\n    }\n  ],\n  \"conclusion\": \"\",\n  \"cta\": \"\"\n}",
+        "options": {
+          "maxTokens": 4096
+        }
+      },
+      "id": "claude-create-outline",
+      "name": "Claude: Create Outline",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "pageId": "={{ $json.page_id }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|select",
+              "selectValue": "Outline Review"
+            },
+            {
+              "key": "Meta Description|text",
+              "textContent": "={{ $json.outline.meta_description }}"
+            },
+            {
+              "key": "URL Slug|text",
+              "textContent": "={{ $json.outline.url_slug }}"
+            }
+          ]
+        },
+        "blockUi": {
+          "blockValues": [
+            {
+              "type": "paragraph",
+              "textContent": "={{ $json.outline.hook }}"
+            }
+          ]
+        }
+      },
+      "id": "notion-update-outline",
+      "name": "Save Outline to Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "path": "/approve-outline",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-approval",
+      "name": "Wait for Outline Approval",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [1250, 400],
+      "webhookId": "auto-generated"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-approved",
+      "name": "If Approved",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "model": "claude-opus-4-5-20251101",
+        "prompt": "=You are an expert technical blog writer. Use the Blog Writer Project custom instructions.\n\n**TASK**: Write the full blog post based on this approved outline.\n\n**OUTLINE**:\n{{ JSON.stringify($json.outline, null, 2) }}\n\n**REQUIREMENTS**:\n- Follow the exact structure from the outline\n- Include primary keyword: {{ $json.primary_keyword }}\n- Include secondary keywords: {{ $json.secondary_keywords.join(', ') }}\n- Target word count: {{ $json.word_count_target }}\n- Writing style: Conversational, helpful, technical but accessible\n- Include code examples where indicated\n- Add internal linking placeholders: [link to: related topic]\n\n**OUTPUT**: Full markdown blog post ready to publish.",
+        "options": {
+          "maxTokens": 8192
+        }
+      },
+      "id": "claude-write-draft",
+      "name": "Claude: Write Full Draft",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1650, 400]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-5-20250929",
+        "prompt": "=You are an SEO optimizer. Use the SEO Optimizer Project custom instructions.\n\n**TASK**: Audit this blog post for SEO.\n\n**BLOG POST**:\n{{ $json.blog_content }}\n\n**PRIMARY KEYWORD**: {{ $json.primary_keyword }}\n**SECONDARY KEYWORDS**: {{ $json.secondary_keywords.join(', ') }}\n\n**OUTPUT**: SEO audit with score and specific recommendations in JSON format.",
+        "options": {
+          "maxTokens": 4096
+        }
+      },
+      "id": "claude-seo-audit",
+      "name": "Claude: SEO Audit",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1850, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://api.grammarly.com/v2/check",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "grammarlyApi",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": {{ JSON.stringify($json.blog_content) }},\n  \"documentDialect\": \"american\",\n  \"documentDomain\": \"technical\",\n  \"audience\": \"expert\",\n  \"formality\": \"neutral\",\n  \"goals\": [\"inform\"]\n}"
+      },
+      "id": "grammarly-check",
+      "name": "Grammarly Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2050, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate overall quality score\nconst seo_score = $input.item.json.seo_audit.overall_score || 0;\nconst grammarly_score = $input.item.json.grammarly.score || 0;\nconst readability_score = $input.item.json.readability?.flesch_reading_ease || 60;\n\n// Weight: SEO 40%, Grammar 30%, Readability 30%\nconst overall_score = (seo_score * 0.4) + (grammarly_score * 0.3) + (readability_score * 0.3);\n\nconst passed = seo_score >= 80 && grammarly_score >= 90 && overall_score >= 75;\n\nreturn {\n  json: {\n    ...$input.item.json,\n    quality_scores: {\n      seo: seo_score,\n      grammar: grammarly_score,\n      readability: readability_score,\n      overall: Math.round(overall_score)\n    },\n    passed,\n    status: passed ? 'Ready to Publish' : 'Needs Revision'\n  }\n};"
+      },
+      "id": "calculate-quality-score",
+      "name": "Calculate Quality Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2250, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.passed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-quality-passed",
+      "name": "If Quality Passed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2450, 400]
+    },
+    {
+      "parameters": {
+        "channel": "#content-review",
+        "text": "=✅ *New Blog Post Ready for Review*\n\n**Title**: {{ $json.title }}\n**Keyword**: {{ $json.primary_keyword }}\n\n**Quality Scores**:\n• SEO: {{ $json.quality_scores.seo }}/100\n• Grammar: {{ $json.quality_scores.grammar }}/100\n• Readability: {{ $json.quality_scores.readability }}/100\n• *Overall*: {{ $json.quality_scores.overall }}/100\n\n**Status**: {{ $json.status }}\n\n[Review in Notion]({{ $env.NOTION_BASE_URL }}/{{ $json.page_id }})\n\nReply 'approve' to publish or 'revise' for changes.",
+        "attachments": []
+      },
+      "id": "slack-review-notification",
+      "name": "Send to Slack for Review",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [2650, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#content-review",
+        "text": "=⚠️ *Blog Post Needs Revision*\n\n**Title**: {{ $json.title }}\n\n**Issues**:\n{{ $json.seo_audit.critical_issues?.map(issue => `• ${issue}`).join('\\n') }}\n\n**SEO Score**: {{ $json.quality_scores.seo }}/100 (needs 80+)\n**Grammar Score**: {{ $json.quality_scores.grammar }}/100 (needs 90+)\n\n[Edit in Notion]({{ $env.NOTION_BASE_URL }}/{{ $json.page_id }})",
+        "attachments": []
+      },
+      "id": "slack-revision-needed",
+      "name": "Needs Revision Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [2650, 500]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "pageId": "={{ $json.page_id }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|select",
+              "selectValue": "={{ $json.status }}"
+            },
+            {
+              "key": "SEO Score|number",
+              "numberValue": "={{ $json.quality_scores.seo }}"
+            },
+            {
+              "key": "Overall Score|number",
+              "numberValue": "={{ $json.quality_scores.overall }}"
+            }
+          ]
+        }
+      },
+      "id": "notion-update-status",
+      "name": "Update Notion Status",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [2850, 400]
+    },
+    {
+      "parameters": {
+        "path": "/publish-approve",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-publish-approval",
+      "name": "Wait for Publish Approval",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [3050, 300],
+      "webhookId": "auto-generated"
+    },
+    {
+      "parameters": {
+        "operation": "post",
+        "site": "={{ $env.WORDPRESS_SITE_URL }}",
+        "title": "={{ $json.title }}",
+        "content": "={{ $json.blog_content }}",
+        "status": "publish",
+        "authorId": "={{ $env.WORDPRESS_AUTHOR_ID }}",
+        "additionalFields": {
+          "slug": "={{ $json.outline.url_slug }}",
+          "excerpt": "={{ $json.outline.meta_description }}",
+          "categories": [],
+          "tags": "={{ $json.secondary_keywords }}",
+          "featuredMedia": ""
+        }
+      },
+      "id": "wordpress-publish",
+      "name": "Publish to WordPress",
+      "type": "n8n-nodes-base.wordpress",
+      "typeVersion": 1,
+      "position": [3250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "pageId": "={{ $json.page_id }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|select",
+              "selectValue": "Published"
+            },
+            {
+              "key": "Publish Date|date",
+              "dateValue": "={{ new Date().toISOString() }}"
+            },
+            {
+              "key": "Published URL|url",
+              "urlValue": "={{ $json.wordpress_url }}"
+            }
+          ]
+        }
+      },
+      "id": "notion-mark-published",
+      "name": "Mark as Published in Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [3450, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#content-published",
+        "text": "=🎉 *New Blog Post Published!*\n\n**{{ $json.title }}**\n\n📊 **Metrics**:\n• Word Count: {{ $json.word_count }}\n• SEO Score: {{ $json.quality_scores.seo }}/100\n• Primary Keyword: {{ $json.primary_keyword }}\n\n🔗 **Live URL**: {{ $json.wordpress_url }}\n\n📝 **Next Steps**:\n1. Share on LinkedIn\n2. Create Twitter thread\n3. Send in newsletter\n\n[View in Notion]({{ $env.NOTION_BASE_URL }}/{{ $json.page_id }})",
+        "attachments": []
+      },
+      "id": "slack-published-notification",
+      "name": "Publish Success Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [3650, 300]
+    }
+  ],
+  "connections": {
+    "Notion: Status → Ready to Write": {
+      "main": [
+        [
+          {
+            "node": "Get Page Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Page Details": {
+      "main": [
+        [
+          {
+            "node": "Extract Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Metadata": {
+      "main": [
+        [
+          {
+            "node": "Fetch Top 5 SERP Results",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Claude: Create Outline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Top 5 SERP Results": {
+      "main": [
+        [
+          {
+            "node": "Claude: Analyze SERP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: Create Outline": {
+      "main": [
+        [
+          {
+            "node": "Save Outline to Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Outline to Notion": {
+      "main": [
+        [
+          {
+            "node": "Wait for Outline Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Outline Approval": {
+      "main": [
+        [
+          {
+            "node": "If Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Approved": {
+      "main": [
+        [
+          {
+            "node": "Claude: Write Full Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: Write Full Draft": {
+      "main": [
+        [
+          {
+            "node": "Claude: SEO Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: SEO Audit": {
+      "main": [
+        [
+          {
+            "node": "Grammarly Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Grammarly Check": {
+      "main": [
+        [
+          {
+            "node": "Calculate Quality Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Quality Score": {
+      "main": [
+        [
+          {
+            "node": "If Quality Passed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Quality Passed": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack for Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Needs Revision Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Slack for Review": {
+      "main": [
+        [
+          {
+            "node": "Update Notion Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Revision Alert": {
+      "main": [
+        [
+          {
+            "node": "Update Notion Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Notion Status": {
+      "main": [
+        [
+          {
+            "node": "Wait for Publish Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Publish Approval": {
+      "main": [
+        [
+          {
+            "node": "Publish to WordPress",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish to WordPress": {
+      "main": [
+        [
+          {
+            "node": "Mark as Published in Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Published in Notion": {
+      "main": [
+        [
+          {
+            "node": "Publish Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-15T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -1,0 +1,402 @@
+{
+  "name": "Keyword Research Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every Monday 9AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/webmasters/v3/sites/{{ $env.SITE_URL }}/searchAnalytics/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSearchConsoleOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "startDate",
+              "value": "={{ new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }}"
+            },
+            {
+              "name": "endDate",
+              "value": "={{ new Date().toISOString().split('T')[0] }}"
+            },
+            {
+              "name": "dimensions",
+              "value": "query"
+            },
+            {
+              "name": "rowLimit",
+              "value": "50"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"startDate\": \"{{ new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }}\",\n  \"endDate\": \"{{ new Date().toISOString().split('T')[0] }}\",\n  \"dimensions\": [\"query\"],\n  \"rowLimit\": 50\n}"
+      },
+      "id": "fetch-gsc-keywords",
+      "name": "Fetch Top 50 Keywords from GSC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-opus-4-5-20251101",
+        "prompt": "=You are a keyword research expert. Analyze these top 50 keywords from Google Search Console and generate 20 long-tail keyword variations for each.\n\nSEED KEYWORDS:\n{{ $json.rows.map(row => row.keys[0]).join('\\n') }}\n\nFor each seed keyword:\n1. Generate 20 related long-tail keywords\n2. Consider question-based keywords (how to, what is, why)\n3. Focus on solo developers and indie hackers as the audience\n4. Include variations for different search intents (informational, commercial)\n\nOutput as JSON:\n[\n  {\n    \"seed_keyword\": \"original keyword\",\n    \"long_tail_variations\": [\n      \"keyword variation 1\",\n      \"keyword variation 2\",\n      ...\n    ]\n  }\n]",
+        "options": {
+          "maxTokens": 4096
+        }
+      },
+      "id": "claude-expand-keywords",
+      "name": "Claude: Expand Keywords",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1",
+          "name": "Claude API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex"
+      },
+      "id": "merge-keywords",
+      "name": "Merge Keywords",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Claude's response and flatten keyword list\nconst claudeResponse = JSON.parse($input.item.json.response);\n\nconst allKeywords = [];\n\nfor (const item of claudeResponse) {\n  // Add seed keyword\n  allKeywords.push({\n    keyword: item.seed_keyword,\n    type: 'seed',\n    source: 'Google Search Console'\n  });\n  \n  // Add variations\n  for (const variation of item.long_tail_variations) {\n    allKeywords.push({\n      keyword: variation,\n      type: 'long_tail',\n      source: 'Claude AI expansion'\n    });\n  }\n}\n\nreturn allKeywords.map(kw => ({ json: kw }));"
+      },
+      "id": "flatten-keywords",
+      "name": "Flatten Keyword List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "dataForSeoApi",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"keywords\": {{ $json.keyword }},\n    \"location_code\": 2840,\n    \"language_code\": \"en\"\n  }\n]"
+      },
+      "id": "fetch-search-volume",
+      "name": "Fetch Search Volume & Difficulty",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate keyword opportunity score\nconst keyword = $input.item.json.keyword;\nconst volume = $input.item.json.search_volume || 0;\nconst difficulty = $input.item.json.keyword_difficulty || 100;\nconst cpc = $input.item.json.cpc || 0;\n\n// Intent scoring (based on CPC)\nlet intent_score = 1; // informational\nif (cpc > 2) intent_score = 3; // transactional\nelse if (cpc > 0.5) intent_score = 2; // commercial\n\n// Opportunity score formula: (Volume * Intent) / (Difficulty + 1)\nconst opportunity_score = (volume * intent_score) / (difficulty + 1);\n\nreturn {\n  json: {\n    keyword,\n    search_volume: volume,\n    keyword_difficulty: difficulty,\n    cpc,\n    intent_score,\n    opportunity_score: Math.round(opportunity_score * 100) / 100,\n    status: difficulty < 40 ? 'Low Competition' : difficulty < 70 ? 'Medium Competition' : 'High Competition'\n  }\n};"
+      },
+      "id": "calculate-opportunity-score",
+      "name": "Calculate Opportunity Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.search_volume }}",
+              "rightValue": 100,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "leftValue": "={{ $json.keyword_difficulty }}",
+              "rightValue": 60,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-viable-keywords",
+      "name": "Filter Viable Keywords",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "sort",
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "={{ $json.opportunity_score }}",
+              "order": "descending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sort-by-opportunity",
+      "name": "Sort by Opportunity Score",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [1850, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-opus-4-5-20251101",
+        "prompt": "=You are a content strategist. Create 5-7 content clusters from these keywords.\n\nKEYWORDS:\n{{ $json.keyword }}\n\nFor each cluster:\n1. Core topic (1-3 words)\n2. Pillar content title (comprehensive guide)\n3. 8-10 supporting article titles\n4. Internal linking strategy\n5. Target keyword for each piece\n\nOutput as JSON:\n[\n  {\n    \"cluster_name\": \"Content Automation\",\n    \"pillar_page\": {\n      \"title\": \"Complete Guide to Content Automation\",\n      \"target_keyword\": \"content automation\"\n    },\n    \"supporting_articles\": [\n      {\n        \"title\": \"How to Automate Blog Writing with AI\",\n        \"target_keyword\": \"automate blog writing\",\n        \"link_to\": [\"pillar_page\", \"article_2\"]\n      }\n    ]\n  }\n]",
+        "options": {
+          "maxTokens": 4096
+        }
+      },
+      "id": "claude-create-clusters",
+      "name": "Claude: Create Topic Clusters",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [2050, 300],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1",
+          "name": "Claude API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "databaseId": "{{ $env.NOTION_CONTENT_CALENDAR_DB }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Title|title",
+              "textContent": "={{ $json.title }}"
+            },
+            {
+              "key": "Status|select",
+              "selectValue": "Idea"
+            },
+            {
+              "key": "Primary Keyword|text",
+              "textContent": "={{ $json.target_keyword }}"
+            },
+            {
+              "key": "Search Volume|number",
+              "numberValue": "={{ $json.search_volume }}"
+            },
+            {
+              "key": "Keyword Difficulty|number",
+              "numberValue": "={{ $json.keyword_difficulty }}"
+            },
+            {
+              "key": "Opportunity Score|number",
+              "numberValue": "={{ $json.opportunity_score }}"
+            },
+            {
+              "key": "Content Type|select",
+              "selectValue": "Blog"
+            },
+            {
+              "key": "Cluster|text",
+              "textContent": "={{ $json.cluster_name }}"
+            }
+          ]
+        }
+      },
+      "id": "notion-create-pages",
+      "name": "Create Pages in Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [2250, 300],
+      "credentials": {
+        "notionApi": {
+          "id": "2",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#content-strategy",
+        "text": "=✅ *Weekly Keyword Research Complete*\n\nFound {{ $json.keyword_count }} high-opportunity keywords.\n\nTop 5 Keywords:\n{{ $json.top_keywords.map(kw => `• ${kw.keyword} (Vol: ${kw.search_volume}, Diff: ${kw.keyword_difficulty}, Score: ${kw.opportunity_score})`).join('\\n') }}\n\nCreated {{ $json.cluster_count }} content clusters.\n\nView in Notion: {{ $env.NOTION_CONTENT_CALENDAR_URL }}",
+        "attachments": []
+      },
+      "id": "slack-notification",
+      "name": "Send Slack Summary",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [2450, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "3",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every Monday 9AM": {
+      "main": [
+        [
+          {
+            "node": "Fetch Top 50 Keywords from GSC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Top 50 Keywords from GSC": {
+      "main": [
+        [
+          {
+            "node": "Claude: Expand Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: Expand Keywords": {
+      "main": [
+        [
+          {
+            "node": "Merge Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Keywords": {
+      "main": [
+        [
+          {
+            "node": "Flatten Keyword List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten Keyword List": {
+      "main": [
+        [
+          {
+            "node": "Fetch Search Volume & Difficulty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Search Volume & Difficulty": {
+      "main": [
+        [
+          {
+            "node": "Calculate Opportunity Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Opportunity Score": {
+      "main": [
+        [
+          {
+            "node": "Filter Viable Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Viable Keywords": {
+      "main": [
+        [
+          {
+            "node": "Sort by Opportunity Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort by Opportunity Score": {
+      "main": [
+        [
+          {
+            "node": "Claude: Create Topic Clusters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: Create Topic Clusters": {
+      "main": [
+        [
+          {
+            "node": "Create Pages in Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Pages in Notion": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-15T00:00:00.000Z",
+  "versionId": "1"
+}
