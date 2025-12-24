@@ -8,7 +8,7 @@
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { Bid } from '@/components/spreadsheet/SpreadsheetView';
 
@@ -260,7 +260,22 @@ const SAMPLE_BIDS = [
   },
 ];
 
-// 통계 계산
+// DashboardStats 타입 정의
+interface DashboardStats {
+  totalBids: number;
+  byStatus: Record<string, number>;
+  upcomingDeadlines: number;
+  highPriority: number;
+  wonRate: number;
+  recentActivity: Array<{
+    id: string;
+    title: string;
+    action: string;
+    timestamp: string;
+  }>;
+}
+
+// 로컬 통계 계산 (폴백용)
 function calculateStats(bids: typeof SAMPLE_BIDS) {
   const now = new Date();
   return {
@@ -287,8 +302,43 @@ export default function DashboardPage() {
   const [showBanner, setShowBanner] = useState(true);
   const [bids, setBids] = useState<Bid[]>(SAMPLE_BIDS as unknown as Bid[]);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiStats, setApiStats] = useState<DashboardStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const stats = calculateStats(bids as unknown as typeof SAMPLE_BIDS);
+  // 로컬 계산된 통계 (폴백용)
+  const localStats = calculateStats(bids as unknown as typeof SAMPLE_BIDS);
+
+  // API 통계 우선, 없으면 로컬 통계 사용
+  const stats = apiStats ? {
+    total: apiStats.totalBids,
+    new: apiStats.byStatus['new'] || 0,
+    reviewing: apiStats.byStatus['reviewing'] || 0,
+    preparing: apiStats.byStatus['preparing'] || 0,
+    submitted: apiStats.byStatus['submitted'] || 0,
+    won: apiStats.byStatus['won'] || 0,
+    lost: apiStats.byStatus['lost'] || 0,
+    urgent: apiStats.upcomingDeadlines,
+    highMatch: apiStats.highPriority,
+    totalAmount: localStats.totalAmount, // API에 없으므로 로컬 계산 사용
+  } : localStats;
+
+  // 통계 API 호출
+  const fetchStats = useCallback(async () => {
+    if (isDemo) return; // 데모 모드에서는 API 호출 안 함
+
+    try {
+      const response = await fetch('/api/v1/stats');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setApiStats(data.data);
+        }
+      }
+    } catch (error) {
+      console.error('Stats fetch failed:', error);
+      // 실패해도 로컬 통계 사용하므로 조용히 실패
+    }
+  }, [isDemo]);
 
   // Bid 수정 API 호출
   const handleBidUpdate = useCallback(async (id: string, updates: Partial<Bid>) => {
@@ -307,15 +357,20 @@ export default function DashboardPage() {
       setBids(prev => prev.map(bid =>
         bid.id === id ? { ...bid, ...updates } : bid
       ));
+
+      // 통계 재로드
+      fetchStats();
     } catch (error) {
       console.error('Bid update failed:', error);
+      setError('입찰 정보 업데이트에 실패했습니다');
       throw error;
     }
-  }, []);
+  }, [fetchStats]);
 
   // 새로고침 API 호출
   const handleRefresh = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const response = await fetch('/api/v1/bids');
       if (!response.ok) {
@@ -325,8 +380,11 @@ export default function DashboardPage() {
       if (data.data) {
         setBids(data.data);
       }
+      // 통계도 함께 새로고침
+      await fetchStats();
     } catch (error) {
       console.error('Refresh failed:', error);
+      setError('데이터를 불러오는 데 실패했습니다');
       // 데모 모드에서는 샘플 데이터 유지
       if (isDemo) {
         setBids(SAMPLE_BIDS as unknown as Bid[]);
@@ -334,7 +392,14 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [isDemo]);
+  }, [isDemo, fetchStats]);
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    if (!isDemo) {
+      handleRefresh();
+    }
+  }, [isDemo, handleRefresh]);
 
   return (
     <main className="h-screen flex flex-col bg-slate-50">
@@ -399,6 +464,22 @@ export default function DashboardPage() {
           )}
         </div>
       </header>
+
+      {/* 에러 배너 */}
+      {error && (
+        <div className="bg-red-50 border-b border-red-200 px-4 md:px-6 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-red-700">{error}</span>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-500 hover:text-red-700"
+            aria-label="Close error message"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* 통계 바 - 반응형 */}
       <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-3 overflow-x-auto">
