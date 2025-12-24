@@ -67,9 +67,10 @@ import {
 // Strategy Generator
 import { AIStrategyGenerator } from './AIStrategyGenerator'
 import { BacktestConfigModal } from './BacktestConfigModal'
+import { BacktestResultModal } from '../backtest/BacktestResultModal'
 
 // Hooks
-import { useBacktest } from '@/hooks/use-backtest'
+import { useBacktestAPI } from '@/hooks/use-backtest-api'
 
 // i18n
 import { useI18n } from '@/i18n/client'
@@ -173,11 +174,12 @@ function StrategyBuilderInner() {
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [showAIGenerator, setShowAIGenerator] = useState(false)
   const [showBacktestModal, setShowBacktestModal] = useState(false)
+  const [showResultModal, setShowResultModal] = useState(false)
 
   // Custom hooks
   const { isSaving, error: saveError, saveStrategy, loadStrategy } = useStrategyPersistence()
   const { canUndo, canRedo, undo, redo, takeSnapshot, clear: clearHistory } = useUndoRedo(initialNodes, initialEdges)
-  const { runBacktest, isRunning: isBacktestRunning } = useBacktest()
+  const { runBacktest, isRunning: isBacktestRunning, result: backtestResult, clearResult } = useBacktestAPI()
   const toast = useToast()
   const { notify } = useNotifications()
 
@@ -386,11 +388,15 @@ function StrategyBuilderInner() {
 
     if (result) {
       toast.success(
-        '백테스트 시작',
-        `전략 "${strategyName}"의 백테스트가 시작되었습니다`
+        '백테스트 완료',
+        `전략 "${strategyName}"의 백테스트가 완료되었습니다`
       )
       setShowBacktestModal(false)
-      // TODO: 결과 페이지로 이동 또는 결과 모달 표시
+
+      // 결과가 있으면 결과 모달 표시
+      if (result.resultData) {
+        setShowResultModal(true)
+      }
     } else {
       toast.error(
         '백테스트 실패',
@@ -807,6 +813,16 @@ function StrategyBuilderInner() {
         onClose={() => setShowBacktestModal(false)}
         onRun={handleRunBacktest}
         isRunning={isBacktestRunning}
+      />
+
+      {/* Backtest Result Modal */}
+      <BacktestResultModal
+        isOpen={showResultModal}
+        onClose={() => {
+          setShowResultModal(false)
+          clearResult()
+        }}
+        result={backtestResult?.resultData || null}
       />
     </div>
   )

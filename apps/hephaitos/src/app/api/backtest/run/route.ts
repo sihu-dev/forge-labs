@@ -76,24 +76,29 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 백테스트 실행 (비동기)
-    // TODO: BacktestAgent 연동
-    // const agent = new BacktestAgent(...)
-    // const result = await agent.runBacktest(backtestConfig)
+    // TODO: BacktestAgent 실제 연동
+    // 현재는 임시 데모 데이터 반환
 
-    // 임시 응답
+    // 임시 백테스트 결과 생성
+    const demoResult = generateDemoBacktestResult(
+      strategy,
+      body.config
+    )
+
     return NextResponse.json({
       success: true,
-      message: '백테스트가 시작되었습니다',
+      message: '백테스트가 완료되었습니다',
       data: {
         strategyId: strategy.id,
         backtestId: backtestConfig.id,
-        status: 'queued',
+        status: 'completed',
         strategy: {
           name: strategy.name,
           description: strategy.description,
           symbols: strategy.symbols,
           timeframe: strategy.timeframe,
         },
+        resultData: demoResult,
       },
     })
   } catch (error) {
@@ -106,5 +111,57 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     )
+  }
+}
+
+/**
+ * 임시 백테스트 결과 생성 (데모용)
+ */
+function generateDemoBacktestResult(strategy: any, config: any) {
+  const initialCapital = config.initialCapital
+  const finalReturn = Math.random() * 40 - 10 // -10% ~ +30% 랜덤
+  const finalCapital = initialCapital * (1 + finalReturn / 100)
+
+  return {
+    strategyName: strategy.name,
+    symbol: strategy.symbols[0] || 'BTC/USDT',
+    timeframe: strategy.timeframe,
+    period: {
+      start: config.startDate,
+      end: config.endDate,
+    },
+    metrics: {
+      totalReturn: finalReturn,
+      annualizedReturn: finalReturn * 4, // 간단한 연환산
+      sharpeRatio: 1.2 + Math.random() * 0.8,
+      maxDrawdown: Math.random() * 15 + 5,
+      volatility: Math.random() * 20 + 10,
+      totalTrades: Math.floor(Math.random() * 50 + 20),
+      winRate: 45 + Math.random() * 20,
+      profitFactor: 1.1 + Math.random() * 0.9,
+      avgWin: 100 + Math.random() * 200,
+      avgLoss: -(50 + Math.random() * 100),
+      initialCapital,
+      finalCapital,
+    },
+    // 간단한 자산 곡선 (10개 포인트)
+    equityCurve: Array.from({ length: 10 }, (_, i) => ({
+      date: new Date(
+        new Date(config.startDate).getTime() +
+          (i * (new Date(config.endDate).getTime() - new Date(config.startDate).getTime())) / 10
+      ).toISOString(),
+      value: initialCapital + (finalCapital - initialCapital) * (i / 10) + (Math.random() - 0.5) * 1000,
+    })),
+    // 임시 거래 내역 (5개)
+    trades: Array.from({ length: 5 }, (_, i) => ({
+      date: new Date(
+        new Date(config.startDate).getTime() +
+          Math.random() * (new Date(config.endDate).getTime() - new Date(config.startDate).getTime())
+      ).toISOString(),
+      type: i % 2 === 0 ? 'buy' as const : 'sell' as const,
+      price: 40000 + Math.random() * 10000,
+      quantity: Math.random() * 0.1,
+      profit: i % 2 === 1 ? (Math.random() - 0.3) * 500 : undefined,
+    })),
   }
 }
