@@ -330,7 +330,7 @@ export async function submitReport(reportId: string): Promise<SludgeReport> {
   return repo.updateReportStatus(reportId, 'submitted');
 }
 
-function generateDummyReportData(dto: GenerateReportDto): ReportData {
+function generateDummyReportData(_dto: GenerateReportDto): ReportData {
   const totalBiogas = Math.round(10000 + Math.random() * 5000);
   const methaneContent = 55 + Math.random() * 10;
   const targetPercent = 50; // 2025년 목표
@@ -401,14 +401,12 @@ export async function getMonitoringStats(): Promise<MonitoringStats> {
   const repo = getSludgeRepository();
   const sites = await repo.getSites();
 
-  let totalSensors = 0;
   let activeSensors = 0;
   let totalEfficiency = 0;
   let efficiencyCount = 0;
 
   for (const site of sites) {
     const sensors = await repo.getSensorsBySite(site.id);
-    totalSensors += sensors.length;
     activeSensors += sensors.filter((s) => s.isActive).length;
 
     // 사이트별 효율 계산
@@ -479,7 +477,7 @@ async function calculateSiteEfficiency(siteId: SiteId): Promise<number> {
   return 0;
 }
 
-async function countAlertsToday(since: Date): Promise<number> {
+async function countAlertsToday(_since: Date): Promise<number> {
   // TODO: repository에 alerts 조회 메서드 추가 필요
   // 현재는 임시로 계산
   return Math.floor(Math.random() * 5);
@@ -492,7 +490,6 @@ async function generateAlerts(
   const alerts: SiteAlert[] = [];
 
   // DB에서 센서별 임계값 설정 가져오기
-  const repo = getSludgeRepository();
   const thresholds = await getThresholdsForSensors(sensors.map(s => s.id));
 
   for (const sensor of sensors) {
@@ -543,7 +540,7 @@ async function generateAlerts(
 }
 
 async function getThresholdsForSensors(
-  sensorIds: SensorId[]
+  _sensorIds: SensorId[]
 ): Promise<Record<string, { min?: number; max?: number; warningMin?: number; warningMax?: number }>> {
   // TODO: repository에 threshold 조회 메서드 추가 필요
   // 현재는 빈 객체 반환

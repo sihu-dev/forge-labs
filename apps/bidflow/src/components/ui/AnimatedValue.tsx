@@ -69,17 +69,28 @@ export function AnimatedValue({
   const previousValue = useRef(value)
   const animationRef = useRef<number | undefined>(undefined)
 
+  // Flash effect - triggered on value change
+  useEffect(() => {
+    if (!flashOnChange) return
+
+    const prev = previousValue.current
+    if (prev !== value) {
+      const direction = value > prev ? 'up' : 'down'
+      // Use setTimeout to avoid direct setState in effect
+      const flashTimer = setTimeout(() => setFlash(direction), 0)
+      const resetTimer = setTimeout(() => setFlash(null), 500)
+      return () => {
+        clearTimeout(flashTimer)
+        clearTimeout(resetTimer)
+      }
+    }
+  }, [value, flashOnChange])
+
+  // Animation effect
   useEffect(() => {
     const startValue = previousValue.current
     const endValue = value
     const startTime = performance.now()
-
-    // Trigger flash effect
-    if (flashOnChange && startValue !== endValue) {
-      setFlash(endValue > startValue ? 'up' : 'down')
-      const timer = setTimeout(() => setFlash(null), 500)
-      return () => clearTimeout(timer)
-    }
 
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime
@@ -103,7 +114,7 @@ export function AnimatedValue({
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [value, duration, flashOnChange])
+  }, [value, duration])
 
   const formattedValue = formatValue(displayValue, format, decimals, locale)
 

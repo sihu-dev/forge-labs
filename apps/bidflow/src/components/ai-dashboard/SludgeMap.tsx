@@ -175,10 +175,12 @@ export function SludgeMap() {
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    // Check WebGL support
+    // Check WebGL support - use setTimeout to avoid sync setState in effect
     if (!detectWebGLSupport()) {
-      setHasWebGL(false);
-      setMapError('WebGL이 지원되지 않습니다');
+      setTimeout(() => {
+        setHasWebGL(false);
+        setMapError('WebGL이 지원되지 않습니다');
+      }, 0);
       return;
     }
 
@@ -298,8 +300,11 @@ export function SludgeMap() {
     });
     } catch (error) {
       console.error('[SludgeMap] 지도 초기화 실패:', error);
-      setMapError('지도를 초기화할 수 없습니다');
-      setHasWebGL(false);
+      // Use setTimeout to avoid sync setState in effect
+      setTimeout(() => {
+        setMapError('지도를 초기화할 수 없습니다');
+        setHasWebGL(false);
+      }, 0);
     }
 
     return () => {
