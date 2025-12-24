@@ -308,6 +308,9 @@ export default function DashboardPage() {
   const [selectedBidForAnalysis, setSelectedBidForAnalysis] = useState<Bid | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // 로컬 계산된 통계 (폴백용)
   const localStats = calculateStats(bids as unknown as typeof SAMPLE_BIDS);
@@ -343,6 +346,47 @@ export default function DashboardPage() {
       // 실패해도 로컬 통계 사용하므로 조용히 실패
     }
   }, [isDemo]);
+
+  // 알림 가져오기
+  const fetchNotifications = useCallback(async () => {
+    if (isDemo) return; // 데모 모드에서는 API 호출 안 함
+
+    try {
+      const response = await fetch('/api/v1/notifications?limit=10');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setNotifications(data.data);
+          setUnreadCount(data.data.filter((n: any) => !n.read).length);
+        }
+      }
+    } catch (error) {
+      console.error('Notifications fetch failed:', error);
+    }
+  }, [isDemo]);
+
+  // 알림 읽음 처리
+  const markNotificationsAsRead = useCallback(async (notificationIds: string[]) => {
+    try {
+      const response = await fetch('/api/v1/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationIds }),
+      });
+
+      if (response.ok) {
+        // 로컬 상태 업데이트
+        setNotifications(prev =>
+          prev.map(n =>
+            notificationIds.includes(n.id) ? { ...n, read: true } : n
+          )
+        );
+        setUnreadCount(prev => Math.max(0, prev - notificationIds.length));
+      }
+    } catch (error) {
+      console.error('Mark as read failed:', error);
+    }
+  }, []);
 
   // AI 분석 API 호출
   const analyzeBid = useCallback(async (bid: Bid) => {
@@ -458,11 +502,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!isDemo) {
       handleRefresh();
+      fetchNotifications();
     } else {
       // 데모 모드에서도 마감 임박 입찰은 표시
       fetchUpcoming();
     }
-  }, [isDemo, handleRefresh, fetchUpcoming]);
+  }, [isDemo, handleRefresh, fetchUpcoming, fetchNotifications]);
 
   return (
     <main className="h-screen flex flex-col bg-slate-50">
@@ -513,6 +558,95 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
+          {/* 알림 벨 */}
+          {!isDemo && (
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  if (!showNotifications && unreadCount > 0) {
+                    // 드롭다운 열 때 안읽은 알림을 읽음 처리
+                    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+                    if (unreadIds.length > 0) {
+                      markNotificationsAsRead(unreadIds);
+                    }
+                  }
+                }}
+                className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                aria-label="알림"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-xs font-semibold rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* 알림 드롭다운 */}
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-slate-200 z-50">
+                  <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
+                    <button
+                      onClick={() => setShowNotifications(false)}
+                      className="text-slate-400 hover:text-slate-600"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-slate-500">
+                        알림이 없습니다
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={cn(
+                            "px-4 py-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer",
+                            !notif.read && "bg-blue-50/50"
+                          )}
+                          onClick={() => {
+                            if (notif.bidId) {
+                              // TODO: 입찰 상세 페이지로 이동
+                              setShowNotifications(false);
+                            }
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <span className="text-xs mt-0.5">
+                              {notif.type === 'deadline' && '⏰'}
+                              {notif.type === 'new_bid' && '📢'}
+                              {notif.type === 'match' && '✓'}
+                              {notif.type === 'status_change' && '🔄'}
+                              {notif.type === 'system' && 'ℹ️'}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900">{notif.title}</p>
+                              <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">{notif.message}</p>
+                              <p className="text-xs text-slate-400 mt-1">
+                                {new Date(notif.createdAt).toLocaleString('ko-KR', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {isDemo ? (
             <Link
               href="/signup"
