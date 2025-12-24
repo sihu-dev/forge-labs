@@ -53,7 +53,7 @@ export function applyEventFilter(
       }
     } else if (typeof expectedValue === 'object' && expectedValue !== null) {
       // 복잡한 조건 (예: { $gt: 50 })
-      if (!evaluateCondition(actualValue, expectedValue)) {
+      if (!evaluateCondition(actualValue, expectedValue as Record<string, unknown>)) {
         return false;
       }
     } else {

@@ -150,7 +150,7 @@ export class AttioSyncService {
           throw new Error(`Failed to fetch ${objectType}: ${response.statusText}`);
         }
 
-        const data = await response.json();
+        const data = await response.json() as any;
         const records = data.data || [];
         result.total += records.length;
 
@@ -199,7 +199,7 @@ export class AttioSyncService {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -213,7 +213,7 @@ export class AttioSyncService {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
 
       return {
         success: true,

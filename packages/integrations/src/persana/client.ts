@@ -100,13 +100,13 @@ export class PersanaClient {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+          const errorData = await response.json().catch(() => ({})) as any;
           throw new Error(
             `Persana API error: ${response.status} - ${errorData.message || response.statusText}`
           );
         }
 
-        const data = await response.json();
+        const data = await response.json() as any;
         return {
           success: true,
           data: data.data || data,

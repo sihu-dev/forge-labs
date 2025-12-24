@@ -51,7 +51,7 @@ export class AttioLeadManager implements ILeadManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -65,7 +65,7 @@ export class AttioLeadManager implements ILeadManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const lead = this.transformAttioLead(result.data);
 
       return {
@@ -100,7 +100,7 @@ export class AttioLeadManager implements ILeadManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -114,7 +114,7 @@ export class AttioLeadManager implements ILeadManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const lead = this.transformAttioLead(result.data);
 
       return {
@@ -160,7 +160,7 @@ export class AttioLeadManager implements ILeadManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -174,7 +174,7 @@ export class AttioLeadManager implements ILeadManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const lead = result.data.length > 0 ? this.transformAttioLead(result.data[0]) : null;
 
       return {
@@ -228,7 +228,7 @@ export class AttioLeadManager implements ILeadManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -242,7 +242,7 @@ export class AttioLeadManager implements ILeadManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const lead = this.transformAttioLead(result.data);
 
       return {
@@ -278,7 +278,7 @@ export class AttioLeadManager implements ILeadManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -333,7 +333,7 @@ export class AttioLeadManager implements ILeadManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -347,7 +347,7 @@ export class AttioLeadManager implements ILeadManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const leads = result.data.map((item: unknown) => this.transformAttioLead(item));
 
       return {
@@ -433,7 +433,7 @@ export class AttioLeadManager implements ILeadManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -447,7 +447,7 @@ export class AttioLeadManager implements ILeadManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
 
       // 리드 상태를 'converted'로 업데이트
       await this.updateStatus(id, 'converted');

@@ -5,11 +5,19 @@
  * 순수 함수 기반 - 부작용 없음
  */
 
-import type { FolioTypes } from '@forge/types';
+// 로컬 타입 정의 (Folio 타입 제거됨)
+type DayOfWeek = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
-type DayOfWeek = FolioTypes.DayOfWeek;
-type ISalesRecord = FolioTypes.ISalesRecord;
-type ISeasonalPattern = FolioTypes.ISeasonalPattern;
+interface ISalesRecord {
+  date: string;
+  revenue: number;
+  dayOfWeek: DayOfWeek;
+}
+
+interface ISeasonalPattern {
+  dayOfWeekIndex: Record<DayOfWeek, number>;
+  monthIndex: Record<number, number>;
+}
 
 /**
  * 시계열 분해 결과

@@ -8,11 +8,15 @@ import { createClient } from '@supabase/supabase-js';
 import { sendSlackMessage } from '@/lib/notifications/slack';
 import { sendEmail } from '@/lib/notifications/email';
 
-// Supabase 클라이언트 (서비스 역할)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Supabase 클라이언트 (서비스 역할) - 런타임에 생성
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase environment variables are not configured');
+  }
+  return createClient(url, key);
+}
 
 // 문의 스키마
 const contactSchema = z.object({
@@ -56,6 +60,7 @@ export async function POST(request: NextRequest) {
     const utmCampaign = url.searchParams.get('utm_campaign');
 
     // 1. Supabase에 저장
+    const supabase = getSupabaseAdmin();
     const { data: submission, error: dbError } = await supabase
       .from('contact_submissions')
       .insert({

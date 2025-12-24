@@ -177,7 +177,9 @@ export function SludgeMap() {
 
     // Check WebGL support
     if (!detectWebGLSupport()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHasWebGL(false);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMapError('WebGL이 지원되지 않습니다');
       return;
     }

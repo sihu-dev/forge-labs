@@ -37,6 +37,7 @@ export function LanguageSwitcher({ currentLocale, className = '' }: LanguageSwit
     }
 
     // 쿠키에 로케일 저장
+    // eslint-disable-next-line react-hooks/immutability
     document.cookie = `locale=${newLocale}; path=/; max-age=31536000`;
 
     router.push(newPath);

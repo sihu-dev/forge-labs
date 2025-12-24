@@ -56,7 +56,7 @@ export class AttioCompanyManager implements ICompanyManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -70,7 +70,7 @@ export class AttioCompanyManager implements ICompanyManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const company = this.transformAttioCompany(result.data);
 
       return {
@@ -105,7 +105,7 @@ export class AttioCompanyManager implements ICompanyManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -119,7 +119,7 @@ export class AttioCompanyManager implements ICompanyManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const company = this.transformAttioCompany(result.data);
 
       return {
@@ -161,7 +161,7 @@ export class AttioCompanyManager implements ICompanyManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -175,7 +175,7 @@ export class AttioCompanyManager implements ICompanyManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const company = result.data.length > 0 ? this.transformAttioCompany(result.data[0]) : null;
 
       return {
@@ -234,7 +234,7 @@ export class AttioCompanyManager implements ICompanyManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -248,7 +248,7 @@ export class AttioCompanyManager implements ICompanyManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const company = this.transformAttioCompany(result.data);
 
       return {
@@ -284,7 +284,7 @@ export class AttioCompanyManager implements ICompanyManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -339,7 +339,7 @@ export class AttioCompanyManager implements ICompanyManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -353,7 +353,7 @@ export class AttioCompanyManager implements ICompanyManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const companies = result.data.map((item: unknown) => this.transformAttioCompany(item));
 
       return {
@@ -419,7 +419,7 @@ export class AttioCompanyManager implements ICompanyManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -433,7 +433,7 @@ export class AttioCompanyManager implements ICompanyManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
 
       return {
         success: true,
@@ -467,7 +467,7 @@ export class AttioCompanyManager implements ICompanyManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -481,7 +481,7 @@ export class AttioCompanyManager implements ICompanyManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
 
       return {
         success: true,
@@ -519,7 +519,7 @@ export class AttioCompanyManager implements ICompanyManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -533,7 +533,7 @@ export class AttioCompanyManager implements ICompanyManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
 
       return {
         success: true,

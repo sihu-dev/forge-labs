@@ -76,6 +76,7 @@ export function AnimatedValue({
 
     // Trigger flash effect
     if (flashOnChange && startValue !== endValue) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFlash(endValue > startValue ? 'up' : 'down')
       const timer = setTimeout(() => setFlash(null), 500)
       return () => clearTimeout(timer)

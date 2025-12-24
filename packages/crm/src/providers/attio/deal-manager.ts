@@ -56,7 +56,7 @@ export class AttioDealManager implements IDealManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -70,7 +70,7 @@ export class AttioDealManager implements IDealManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const deal = this.transformAttioDeal(result.data);
 
       return {
@@ -105,7 +105,7 @@ export class AttioDealManager implements IDealManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -119,7 +119,7 @@ export class AttioDealManager implements IDealManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const deal = this.transformAttioDeal(result.data);
 
       return {
@@ -176,7 +176,7 @@ export class AttioDealManager implements IDealManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -190,7 +190,7 @@ export class AttioDealManager implements IDealManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const deal = this.transformAttioDeal(result.data);
 
       return {
@@ -226,7 +226,7 @@ export class AttioDealManager implements IDealManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -281,7 +281,7 @@ export class AttioDealManager implements IDealManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         return {
           success: false,
           error: {
@@ -295,7 +295,7 @@ export class AttioDealManager implements IDealManager {
         };
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
       const deals = result.data.map((item: unknown) => this.transformAttioDeal(item));
 
       return {
@@ -360,7 +360,7 @@ export class AttioDealManager implements IDealManager {
     // 모든 딜 조회 후 통계 계산
     const listResult = await this.list(filter, { limit: 1000 });
     if (!listResult.success || !listResult.data) {
-      return listResult as ICRMResponse<IDealStats>;
+      return listResult as unknown as ICRMResponse<IDealStats>;
     }
 
     const deals = listResult.data.items;

@@ -4,7 +4,9 @@
  * n8n JSON 형식과 호환되는 타입 시스템
  */
 
-import type { UUID, Timestamp } from '@forge/types';
+// 로컬 타입 정의
+export type UUID = string;
+export type Timestamp = string;
 
 // ============================================
 // n8n 워크플로우 구조
@@ -93,7 +95,7 @@ export interface IWorkflowExecution {
 }
 
 export interface IExecutionData {
-  resultData: {
+  resultData?: {
     runData: Record<string, INodeExecutionData[]>;
     lastNodeExecuted?: string;
     error?: IExecutionError;
