@@ -304,6 +304,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [apiStats, setApiStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [upcomingBids, setUpcomingBids] = useState<Bid[]>([]);
 
   // 로컬 계산된 통계 (폴백용)
   const localStats = calculateStats(bids as unknown as typeof SAMPLE_BIDS);
@@ -339,6 +340,33 @@ export default function DashboardPage() {
       // 실패해도 로컬 통계 사용하므로 조용히 실패
     }
   }, [isDemo]);
+
+  // 마감 임박 입찰 API 호출
+  const fetchUpcoming = useCallback(async () => {
+    if (isDemo) {
+      // 데모 모드: 로컬 데이터에서 마감 임박 입찰 필터링
+      const now = new Date();
+      const urgent = (bids as unknown as typeof SAMPLE_BIDS).filter(b => {
+        const deadline = new Date(b.deadline);
+        const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return daysLeft <= 7 && daysLeft > 0 && !['won', 'lost', 'cancelled'].includes(b.status);
+      });
+      setUpcomingBids(urgent as unknown as Bid[]);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/v1/bids/upcoming?days=7');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setUpcomingBids(data.data);
+        }
+      }
+    } catch (error) {
+      console.error('Upcoming bids fetch failed:', error);
+    }
+  }, [isDemo, bids]);
 
   // Bid 수정 API 호출
   const handleBidUpdate = useCallback(async (id: string, updates: Partial<Bid>) => {
@@ -380,8 +408,8 @@ export default function DashboardPage() {
       if (data.data) {
         setBids(data.data);
       }
-      // 통계도 함께 새로고침
-      await fetchStats();
+      // 통계 및 마감 임박 입찰도 함께 새로고침
+      await Promise.all([fetchStats(), fetchUpcoming()]);
     } catch (error) {
       console.error('Refresh failed:', error);
       setError('데이터를 불러오는 데 실패했습니다');
@@ -392,14 +420,17 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [isDemo, fetchStats]);
+  }, [isDemo, fetchStats, fetchUpcoming]);
 
   // 초기 데이터 로드
   useEffect(() => {
     if (!isDemo) {
       handleRefresh();
+    } else {
+      // 데모 모드에서도 마감 임박 입찰은 표시
+      fetchUpcoming();
     }
-  }, [isDemo, handleRefresh]);
+  }, [isDemo, handleRefresh, fetchUpcoming]);
 
   return (
     <main className="h-screen flex flex-col bg-slate-50">
@@ -508,6 +539,61 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* 마감 임박 입찰 */}
+      {upcomingBids.length > 0 && (
+        <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-3">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-slate-900">Upcoming Deadlines (7 days)</h3>
+            <span className="text-xs text-slate-500">{upcomingBids.length} bids</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {upcomingBids.slice(0, 5).map((bid) => {
+              const deadline = new Date((bid as any).deadline);
+              const now = new Date();
+              const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              const isUrgent = daysLeft <= 3;
+
+              return (
+                <div
+                  key={bid.id}
+                  className={cn(
+                    "min-w-[280px] rounded border p-3 bg-white",
+                    isUrgent ? "border-red-300 bg-red-50" : "border-amber-300 bg-amber-50"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h4 className="text-sm font-medium text-slate-900 line-clamp-2 flex-1">
+                      {(bid as any).title}
+                    </h4>
+                    <span
+                      className={cn(
+                        "text-xs font-semibold px-2 py-0.5 rounded flex-shrink-0",
+                        isUrgent
+                          ? "bg-red-100 text-red-700"
+                          : "bg-amber-100 text-amber-700"
+                      )}
+                    >
+                      {daysLeft}d
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-600 mb-1">
+                    {(bid as any).organization}
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">
+                      {deadline.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                    </span>
+                    <span className="font-mono text-slate-700">
+                      ₩{((bid as any).estimated_amount / 100000000).toFixed(1)}B
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 스프레드시트 */}
       <div className="flex-1 overflow-hidden relative">
