@@ -16,6 +16,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline'
+import { EquityCurveChart } from '@/components/charts/EquityCurveChart'
 
 interface BacktestResultModalProps {
   isOpen: boolean
@@ -144,7 +145,10 @@ export function BacktestResultModal({
             <OverviewTab metrics={metrics} period={result.period} />
           )}
           {activeTab === 'chart' && (
-            <ChartTab equityCurve={result.equityCurve} />
+            <ChartTab
+              equityCurve={result.equityCurve}
+              initialCapital={metrics.initialCapital}
+            />
           )}
           {activeTab === 'trades' && (
             <TradesTab trades={result.trades} />
@@ -314,8 +318,10 @@ function OverviewTab({
 // Chart Tab
 function ChartTab({
   equityCurve,
+  initialCapital,
 }: {
   equityCurve?: BacktestResultData['equityCurve']
+  initialCapital: number
 }) {
   if (!equityCurve || equityCurve.length === 0) {
     return (
@@ -329,10 +335,7 @@ function ChartTab({
     <div className="space-y-4">
       <div className="p-4 bg-white/[0.02] border border-white/[0.06] rounded">
         <h4 className="text-sm font-medium text-white mb-3">자산 곡선</h4>
-        <div className="h-64 flex items-center justify-center text-zinc-400">
-          {/* TODO: TradingView Lightweight Charts 통합 */}
-          차트 컴포넌트 (구현 예정)
-        </div>
+        <EquityCurveChart data={equityCurve} initialCapital={initialCapital} />
       </div>
     </div>
   )
