@@ -305,6 +305,9 @@ export default function DashboardPage() {
   const [apiStats, setApiStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [upcomingBids, setUpcomingBids] = useState<Bid[]>([]);
+  const [selectedBidForAnalysis, setSelectedBidForAnalysis] = useState<Bid | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // 로컬 계산된 통계 (폴백용)
   const localStats = calculateStats(bids as unknown as typeof SAMPLE_BIDS);
@@ -340,6 +343,35 @@ export default function DashboardPage() {
       // 실패해도 로컬 통계 사용하므로 조용히 실패
     }
   }, [isDemo]);
+
+  // AI 분석 API 호출
+  const analyzeBid = useCallback(async (bid: Bid) => {
+    setSelectedBidForAnalysis(bid);
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+
+    try {
+      const response = await fetch(`/api/v1/bids/${bid.id}/analyze`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('AI 분석 요청 실패');
+      }
+
+      const data = await response.json();
+      if (data.success && data.data) {
+        setAnalysisResult(data.data);
+      } else {
+        setError('AI 분석에 실패했습니다');
+      }
+    } catch (error) {
+      console.error('AI analysis failed:', error);
+      setError('AI 분석 중 오류가 발생했습니다');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, []);
 
   // 마감 임박 입찰 API 호출
   const fetchUpcoming = useCallback(async () => {
@@ -580,7 +612,7 @@ export default function DashboardPage() {
                   <div className="text-xs text-slate-600 mb-1">
                     {(bid as any).organization}
                   </div>
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between text-xs mb-2">
                     <span className="text-slate-500">
                       {deadline.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                     </span>
@@ -588,6 +620,12 @@ export default function DashboardPage() {
                       ₩{((bid as any).estimated_amount / 100000000).toFixed(1)}B
                     </span>
                   </div>
+                  <button
+                    onClick={() => analyzeBid(bid)}
+                    className="w-full text-xs px-2 py-1 bg-slate-900 text-white rounded hover:bg-slate-800 transition-colors"
+                  >
+                    AI Analyze
+                  </button>
                 </div>
               );
             })}
@@ -608,6 +646,139 @@ export default function DashboardPage() {
           onRefresh={handleRefresh}
         />
       </div>
+
+      {/* AI 분석 모달 */}
+      {selectedBidForAnalysis && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setSelectedBidForAnalysis(null);
+            setAnalysisResult(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 모달 헤더 */}
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">AI Analysis</h2>
+                <p className="text-sm text-slate-600 mt-1 line-clamp-1">
+                  {(selectedBidForAnalysis as any).title}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedBidForAnalysis(null);
+                  setAnalysisResult(null);
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* 모달 내용 */}
+            <div className="p-6">
+              {isAnalyzing ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin mb-4" />
+                  <p className="text-sm text-slate-600">AI 분석 중...</p>
+                </div>
+              ) : analysisResult ? (
+                <div className="space-y-6">
+                  {/* 요약 */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-2">Summary</h3>
+                    <p className="text-sm text-slate-700 leading-relaxed">{analysisResult.summary}</p>
+                  </div>
+
+                  {/* 승률 & 난이도 */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 rounded p-4">
+                      <div className="text-xs text-slate-500 mb-1">Win Probability</div>
+                      <div className="text-2xl font-semibold text-slate-900">
+                        {analysisResult.winProbability}%
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 rounded p-4">
+                      <div className="text-xs text-slate-500 mb-1">Estimated Effort</div>
+                      <div className="text-2xl font-semibold text-slate-900 capitalize">
+                        {analysisResult.estimatedEffort}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 핵심 요구사항 */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-2">Key Requirements</h3>
+                    <ul className="space-y-1">
+                      {analysisResult.keyRequirements.map((req: string, idx: number) => (
+                        <li key={idx} className="text-sm text-slate-700 flex items-start gap-2">
+                          <span className="text-slate-400 mt-1">•</span>
+                          <span>{req}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 추천 제품 */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-2">Recommended Products</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {analysisResult.recommendedProducts.map((product: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="px-3 py-1 bg-slate-100 text-slate-700 text-sm rounded"
+                        >
+                          {product}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 리스크 요인 */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-2">Risk Factors</h3>
+                    <ul className="space-y-1">
+                      {analysisResult.riskFactors.map((risk: string, idx: number) => (
+                        <li key={idx} className="text-sm text-red-600 flex items-start gap-2">
+                          <span className="text-red-400 mt-1">⚠</span>
+                          <span>{risk}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 제안 가격 */}
+                  {analysisResult.suggestedPrice && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900 mb-2">Suggested Price Range</h3>
+                      <div className="bg-slate-50 rounded p-4 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Minimum:</span>
+                          <span className="font-mono text-slate-900">{analysisResult.suggestedPrice.min}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Recommended:</span>
+                          <span className="font-mono font-semibold text-slate-900">{analysisResult.suggestedPrice.recommended}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Maximum:</span>
+                          <span className="font-mono text-slate-900">{analysisResult.suggestedPrice.max}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
