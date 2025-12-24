@@ -98,138 +98,6 @@ export namespace Hephaitos {
   }
 }
 
-/**
- * FOLIO 도메인 타입
- */
-export namespace Folio {
-  /** 경쟁사 정보 */
-  export interface ICompetitor {
-    id: UUID;
-    name: string;
-    category: string;
-    location: ILocation;
-    price_range: IPriceRange;
-    rating: number;
-    review_count: number;
-    products: IProduct[];
-    crawled_at: Timestamp;
-  }
-
-  /** 위치 정보 */
-  export interface ILocation {
-    address: string;
-    lat: number;
-    lng: number;
-    region: string;
-  }
-
-  /** 가격 범위 */
-  export interface IPriceRange {
-    min: number;
-    max: number;
-    currency: string;
-  }
-
-  /** 상품 정보 */
-  export interface IProduct {
-    id: UUID;
-    name: string;
-    price: number;
-    category: string;
-    description?: string;
-    image_url?: string;
-  }
-
-  /** 매출 예측 */
-  export interface ISalesForecast {
-    period: string;
-    predicted_revenue: number;
-    confidence: number;
-    factors: IForecastFactor[];
-  }
-
-  export interface IForecastFactor {
-    name: string;
-    impact: number; // -1 to 1
-    description: string;
-  }
-
-  /** 카드 매출 분석 */
-  export interface ICardAnalysis {
-    period: string;
-    total_sales: number;
-    transaction_count: number;
-    average_ticket: number;
-    peak_hours: string[];
-    customer_segments: ICustomerSegment[];
-  }
-
-  export interface ICustomerSegment {
-    name: string;
-    percentage: number;
-    average_spend: number;
-  }
-}
-
-/**
- * DRYON 도메인 타입
- */
-export namespace Dryon {
-  /** 센서 종류 */
-  export type SensorType = 'temperature' | 'humidity' | 'pressure' | 'flow' | 'level' | 'vibration';
-
-  /** 센서 프로토콜 */
-  export type SensorProtocol = 'modbus' | 'opcua' | 'mqtt';
-
-  /** 센서 정보 */
-  export interface ISensor {
-    id: UUID;
-    name: string;
-    type: SensorType;
-    protocol: SensorProtocol;
-    unit: string;
-    location: string;
-    config: ISensorConfig;
-  }
-
-  export interface ISensorConfig {
-    address?: string;
-    register?: number;
-    topic?: string;
-    polling_interval_ms: number;
-  }
-
-  /** 센서 데이터 */
-  export interface ISensorData {
-    sensor_id: UUID;
-    value: number;
-    timestamp: Timestamp;
-    quality: 'good' | 'uncertain' | 'bad';
-  }
-
-  /** 공정 최적화 권장사항 */
-  export interface IOptimizationRecommendation {
-    id: UUID;
-    type: 'energy' | 'quality' | 'throughput';
-    priority: 'high' | 'medium' | 'low';
-    title: string;
-    description: string;
-    expected_saving: number;
-    parameters: Record<string, number>;
-    confidence: number;
-  }
-
-  /** 슬러지 분석 결과 */
-  export interface ISludgeAnalysis {
-    id: UUID;
-    moisture_content: number;
-    dry_matter: number;
-    energy_consumption: number;
-    throughput: number;
-    efficiency_score: number;
-    timestamp: Timestamp;
-  }
-}
 
 // ============================================
 // 크롤러 타입
@@ -363,18 +231,25 @@ export type CurrencyCode = 'USD' | 'KRW' | 'EUR' | 'JPY' | 'CNY' | 'BTC' | 'ETH'
 export * as HephaitosTypes from './hephaitos/index.js';
 
 /**
- * FOLIO 상세 타입 (L0 구현체)
- */
-export * as FolioTypes from './folio/index.js';
-
-/**
- * DRYON 상세 타입 (L0 구현체)
- * 자가개선 성장 루프 패턴 적용
- */
-export * as DryonTypes from './dryon/index.js';
-
-/**
  * BIDFLOW 상세 타입 (L0 구현체)
  * 입찰 자동화 시스템
  */
 export * as BiddingTypes from './bidding/index.js';
+
+/**
+ * 자동화 타입 (L0 구현체)
+ * 세일즈/마케팅 자동화 시스템
+ */
+export * as AutomationTypes from './automation/index.js';
+
+/**
+ * CRM 타입 (L0 구현체)
+ * CRM 추상화 레이어
+ */
+export * as CRMTypes from './crm/index.js';
+
+/**
+ * 통합 타입 (L0 구현체)
+ * 외부 서비스 연동 (Persana, Apollo, n8n, Attio)
+ */
+export * as IntegrationTypes from './integrations/index.js';

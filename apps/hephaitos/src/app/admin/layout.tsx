@@ -39,6 +39,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <AdminNavLink href="/admin/cs" label="환불 관리" />
                 <AdminNavLink href="/admin/users" label="사용자 관리" />
                 <AdminNavLink href="/admin/strategies" label="전략 관리" />
+                <AdminNavLink href="/admin/automation" label="자동화" />
+                <AdminNavLink href="/admin/automation/leads" label="리드 관리" />
+                <AdminNavLink href="/admin/automation/campaigns" label="캠페인" />
               </div>
             </div>
             <div className="flex items-center gap-4">

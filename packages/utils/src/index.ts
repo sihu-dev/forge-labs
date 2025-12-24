@@ -49,29 +49,6 @@ export {
   type IValidationResult,
 } from './validation.js';
 
-// Geo Utilities
-export {
-  calculateDistance,
-  createBoundingBox,
-  isWithinBoundingBox,
-  isWithinRadius,
-  calculateCentroid,
-  sortByDistance,
-  formatDistance,
-} from './geo.js';
-
-// Reward Utilities (자가개선 성장 루프)
-export {
-  computeReward,
-  calculateStateChange,
-  updateConfidence,
-  shouldExplore,
-  calculatePatternMatchScore,
-  DEFAULT_REWARD_WEIGHTS,
-  type IRewardWeights,
-  type IRewardBreakdown,
-} from './reward.js';
-
 // Backtest Calculation Utilities (HEPHAITOS)
 export {
   calculateTotalReturn,
@@ -110,7 +87,7 @@ export {
   detectExitSignal,
 } from './signal-detector.js';
 
-// Time Series Analysis (FOLIO)
+// Time Series Analysis
 export {
   calculateSimpleMovingAverage,
   calculateWeightedMovingAverage,
@@ -124,41 +101,6 @@ export {
   calculateCAGR,
   type IDecompositionResult,
 } from './time-series.js';
-
-// Forecast Calculation (FOLIO)
-export {
-  forecastSimpleMA,
-  forecastWeightedMA,
-  forecastExponential,
-  forecastHoltLinear,
-  applySeasonalAdjustment,
-  calculateWeatherImpact,
-  calculateHolidayImpact,
-  calculateEventImpact,
-  applyExternalFactors,
-  calculateConfidenceInterval,
-  calculateSimpleConfidenceInterval,
-  calculateMAPE,
-  calculateRMSE,
-  calculateMAE,
-  type ISimpleForecast,
-} from './forecast-calc.js';
-
-// Alarm Evaluation (DRYON)
-export {
-  evaluateCondition as evaluateAlarmCondition,
-  evaluateRule as evaluateAlarmRule,
-  checkDeadband,
-  calculateAlarmScore,
-  prioritizeAlarms,
-  filterUnacknowledged,
-  filterNeedingEscalation,
-  calculateAvgAcknowledgeTime,
-  calculateAvgResolutionTime,
-  countAlarmsByCode,
-  type IConditionEvalResult,
-  type IRuleEvalResult,
-} from './alarm-eval.js';
 
 // Order Calculation (HEPHAITOS)
 export {
@@ -184,56 +126,3 @@ export {
   type IPositionSizeResult,
   type IOrderValidation,
 } from './order-calc.js';
-
-// Inventory Calculation (FOLIO)
-export {
-  calculateEOQ,
-  calculateROP,
-  calculateSafetyStock,
-  calculateSafetyStockByDays,
-  calculateTurnoverRate,
-  calculateDaysOfSupply,
-  estimateStockoutDate,
-  calculateAnnualHoldingCost,
-  calculateHoldingCostPerUnit,
-  calculateStockoutRisk,
-  determineStockStatus,
-  classifyABC,
-  calculateOrderQuantity,
-  calculateOrderUrgency,
-  calculateDemandStatistics,
-  type IEOQInput,
-  type IEOQResult,
-  type IROPInput,
-  type ISafetyStockInput,
-  type IABCInput,
-  type IABCResult,
-  type IOrderQuantityInput,
-} from './inventory-calc.js';
-
-// Energy Calculation (DRYON)
-export {
-  calculateSEC,
-  calculateSECPerformance,
-  calculateCOP,
-  calculateDryingEfficiency,
-  calculateMoistureRemoved,
-  calculateLoadFactor,
-  calculatePowerFactor,
-  calculateApparentPower,
-  analyzePeakDemand,
-  calculatePeakUtilization,
-  calculateEnergyCostByTOU,
-  calculateDemandCharge,
-  calculateUnitEnergyCost,
-  convertToKwh,
-  calculateTotalEnergy,
-  determineTimeOfUse,
-  isSummerSeason,
-  detectEnergyAnomaly,
-  compareToBenchmark,
-  predictConsumption,
-  type ITOURates,
-  type IAnomalyResult,
-  type IBenchmarkComparison,
-} from './energy-calc.js';
