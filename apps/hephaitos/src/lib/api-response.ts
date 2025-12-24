@@ -6,6 +6,8 @@
 import { NextResponse } from 'next/server'
 import type { ApiResponse } from '@/types'
 import { ERROR_CODES, type ErrorCode, getUserFriendlyMessage } from './error-handler'
+import { safeLogger } from '@/lib/utils/safe-logger'
+import { errorReporter, createAppError } from '@/lib/error-handler'
 
 /**
  * Create success response
@@ -130,9 +132,6 @@ export function withApiHandler<T>(
 ): Promise<NextResponse<T | ApiResponse<never>>> {
   return handler().catch((error: unknown) => {
     // ❌ console.error 대신 ✅ safeLogger 사용
-    const { safeLogger } = require('@/lib/utils/safe-logger')
-    const { errorReporter, createAppError } = require('@/lib/error-handler')
-
     safeLogger.error('[API Error]', { error }) // 민감정보 자동 마스킹
 
     // Sentry로 에러 리포팅

@@ -4,6 +4,7 @@
 // ============================================
 
 import { requireTossConfig } from '@/lib/config/env'
+import crypto from 'crypto'
 
 // ============================================
 // Types
@@ -549,7 +550,6 @@ export function verifyWebhookSignature(
   signature: string,
   secretKey: string
 ): boolean {
-  const crypto = require('crypto')
   const expectedSignature = crypto
     .createHmac('sha256', secretKey)
     .update(payload)

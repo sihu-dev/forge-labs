@@ -1,7 +1,6 @@
 // ============================================
 // Backtest Engine Integration Tests (E2E)
 // ============================================
-// @ts-nocheck - E2E tests have type mismatches with updated Strategy/Condition types
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createBacktestEngine } from '@/lib/backtest'

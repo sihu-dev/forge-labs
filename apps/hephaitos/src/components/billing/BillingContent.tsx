@@ -374,8 +374,6 @@ function BillingContentInner() {
           message: (t('dashboard.billing.notifications.upgradedTo') as string).replace('{plan}', getPlanById(selectedPlan)?.name || ''),
         })
       }
-    } catch (error) {
-      throw error
     } finally {
       setIsLoading(false)
     }

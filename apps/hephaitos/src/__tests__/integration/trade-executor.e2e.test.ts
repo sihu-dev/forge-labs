@@ -7,7 +7,6 @@
 // - Event handling should emit 'position' type events
 // - Pause/resume should update state.isPaused flag
 // ============================================
-// @ts-nocheck - This entire test file is skipped, types need updating when re-enabled
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createTradeExecutor } from '@/lib/trading'

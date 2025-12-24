@@ -32,6 +32,8 @@ const nextConfig = {
       'date-fns',
     ],
   },
+  // Use webpack instead of turbopack (custom webpack config)
+  turbopack: {},
   images: {
     remotePatterns: [
       {
@@ -51,10 +53,6 @@ const nextConfig = {
   typescript: {
     // Ignore build errors for MVP (remove in production)
     ignoreBuildErrors: true,
-  },
-  // ESLint - ignore during builds to avoid circular reference issues
-  eslint: {
-    ignoreDuringBuilds: true,
   },
   // Security headers
   async headers() {

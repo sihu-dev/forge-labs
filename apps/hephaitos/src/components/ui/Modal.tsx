@@ -196,7 +196,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
 Modal.displayName = 'Modal'
 
 // Modal Footer Helper
-interface ModalFooterProps extends HTMLAttributes<HTMLDivElement> {}
+type ModalFooterProps = HTMLAttributes<HTMLDivElement>
 
 export const ModalFooter = forwardRef<HTMLDivElement, ModalFooterProps>(
   ({ className, children, ...props }, ref) => {
