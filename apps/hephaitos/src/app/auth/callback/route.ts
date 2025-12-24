@@ -1,24 +1,26 @@
-// ============================================
-// Auth Callback Handler
-// ============================================
+/**
+ * OAuth Callback Handler
+ * Google/Github OAuth 콜백 처리
+ */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
+export async function GET(request: Request) {
+  const requestUrl = new URL(request.url)
+  const code = requestUrl.searchParams.get('code')
+  const origin = requestUrl.origin
 
   if (code) {
-    const supabase = await createServerSupabaseClient()
+    const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+      // 인증 성공 - 대시보드로 리다이렉트
+      return NextResponse.redirect(`${origin}/dashboard`)
     }
   }
 
-  // Return to login page with error
-  return NextResponse.redirect(`${origin}/auth/login?error=callback_error`)
+  // 인증 실패 - 로그인 페이지로 리다이렉트 (에러 메시지 포함)
+  return NextResponse.redirect(`${origin}/auth/login?error=auth_failed`)
 }
