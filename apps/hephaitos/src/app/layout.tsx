@@ -3,6 +3,7 @@ import { Inter, IBM_Plex_Mono } from 'next/font/google'
 import { Suspense } from 'react'
 import '@/styles/globals.css'
 import { Providers } from './providers'
+import { KoreanKeyboardShortcuts } from '@/components/dashboard/KoreanKeyboardShortcuts'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const ibmPlexMono = IBM_Plex_Mono({
@@ -80,7 +81,9 @@ export default function RootLayout({
         {/* Main Content */}
         <div className="relative z-10 min-h-screen">
           <Providers>
-            {children}
+            <KoreanKeyboardShortcuts>
+              {children}
+            </KoreanKeyboardShortcuts>
           </Providers>
         </div>
       </body>
