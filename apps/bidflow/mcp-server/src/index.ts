@@ -7,7 +7,7 @@
  * @spec MCP 2025-11-25
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { Server } from '@modelcontextprotocol/sdk/server';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
@@ -17,10 +17,7 @@ import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
+import 'dotenv/config';
 
 // Import tool handlers
 import { tools, handleToolCall } from './tools/index.js';

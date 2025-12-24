@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "bidflow": {
+      "command": "npx",
+      "args": ["tsx", "/home/user/forge-labs/apps/bidflow/mcp-server/src/index.ts"],
+      "env": {
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}",
+        "BIDFLOW_API_URL": "http://localhost:3010"
+      }
+    }
+  }
+}

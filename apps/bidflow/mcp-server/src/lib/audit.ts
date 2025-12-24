@@ -39,8 +39,8 @@ function getAuditLogStream(): WriteStream {
 
 export async function logAuditEvent(event: AuditEvent): Promise<void> {
   const logEntry = {
-    timestamp: new Date().toISOString(),
     ...event,
+    timestamp: event.timestamp || new Date().toISOString(),
   };
 
   // Write to file

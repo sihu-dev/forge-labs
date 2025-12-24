@@ -35,13 +35,13 @@ export async function callBidflowAPI<T = unknown>(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => ({})) as Record<string, any>;
       return {
         success: false,
         error: {
           code: `HTTP_${response.status}`,
-          message: errorData.error?.message || response.statusText,
-          details: errorData.error?.details,
+          message: errorData?.error?.message || response.statusText,
+          details: errorData?.error?.details,
         },
       };
     }

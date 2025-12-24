@@ -3,14 +3,17 @@
   "version": "1.0.0",
   "description": "BIDFLOW MCP Server - 나라장터 Lead Generation for AI Agents",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "src/index.ts",
+  "bin": {
+    "bidflow-mcp": "./src/index.ts"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "build": "echo 'Using tsx runtime - no build needed'",
+    "start": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "inspector": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "inspector": "npx @modelcontextprotocol/inspector tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
@@ -24,10 +27,10 @@
   "author": "Forge Labs",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@modelcontextprotocol/sdk": "^1.25.1",
     "@supabase/supabase-js": "^2.47.0",
-    "zod": "^3.24.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.6.1",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

@@ -194,7 +194,8 @@ export async function handleSearchBids(args: unknown) {
   }
 
   // Apply pagination
-  query = query.range(input.offset, input.offset + input.limit - 1);
+  const offset = input.offset ?? 0;
+  query = query.range(offset, offset + input.limit - 1);
 
   // Execute query
   const { data, error, count } = await query;

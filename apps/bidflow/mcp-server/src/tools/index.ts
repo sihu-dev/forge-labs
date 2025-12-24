@@ -71,9 +71,9 @@ export async function handleToolCall(name: string, args: unknown): Promise<unkno
     case 'remove_keyword':
       return await handleRemoveKeyword(args);
     case 'get_keywords':
-      return await handleGetKeywords(args);
+      return await handleGetKeywords();
     case 'health_check':
-      return await handleHealthCheck(args);
+      return await handleHealthCheck();
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
