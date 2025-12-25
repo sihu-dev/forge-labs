@@ -1,5 +1,5 @@
 {
-  "name": "Forge Labs - Full Stack Monorepo",
+  "name": "Forge Labs - Full Stack Monorepo + MCP",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
 
   "features": {
@@ -19,7 +19,8 @@
         "prisma.prisma",
         "ms-playwright.playwright",
         "github.copilot",
-        "github.copilot-chat"
+        "github.copilot-chat",
+        "anthropic.claude-code"
       ],
       "settings": {
         "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -29,7 +30,11 @@
         },
         "typescript.tsdk": "node_modules/typescript/lib",
         "typescript.enablePromptUseWorkspaceTsdk": true,
-        "terminal.integrated.defaultProfile.linux": "bash"
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "chat.mcp.discovery.enabled": true,
+        "chat.mcp.enabled": true,
+        "chat.mcp.autostart": true,
+        "chat.mcp.gallery.enabled": true
       }
     }
   },
@@ -37,6 +42,7 @@
   "forwardPorts": [
     3000,
     3010,
+    3333,
     54321,
     54322
   ],
@@ -50,17 +56,25 @@
       "label": "BIDFLOW (Bid Automation)",
       "onAutoForward": "notify"
     },
+    "3333": {
+      "label": "MCP Server",
+      "onAutoForward": "silent"
+    },
     "54321": {
       "label": "Supabase Studio",
       "onAutoForward": "openPreview"
     }
   },
 
-  "postCreateCommand": "npm install && npm install -g @anthropic-ai/claude-code",
-  "postStartCommand": "echo '🔥 FORGE LABS Ready! Run: claude'",
+  "postCreateCommand": "pnpm install && npm install -g @anthropic-ai/claude-code @anthropic-ai/mcp-server-filesystem @anthropic-ai/mcp-server-memory @anthropic-ai/mcp-server-playwright",
+  "postStartCommand": "echo '🔥 FORGE LABS + MCP Ready! Run: claude'",
 
   "remoteEnv": {
     "NODE_ENV": "development",
-    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
+    "SUPABASE_URL": "${localEnv:SUPABASE_URL}",
+    "SUPABASE_ANON_KEY": "${localEnv:SUPABASE_ANON_KEY}",
+    "SUPABASE_SERVICE_ROLE_KEY": "${localEnv:SUPABASE_SERVICE_ROLE_KEY}"
   }
 }

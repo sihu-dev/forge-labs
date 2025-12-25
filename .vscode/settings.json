@@ -115,6 +115,27 @@
 
   // === Claude Code 연동 ===
   "editor.inlineSuggest.enabled": true,
-  "workbench.colorTheme": "One Dark Pro",
-  "workbench.iconTheme": "material-icon-theme"
+  "workbench.colorTheme": "GitHub Dark Default",
+  "workbench.iconTheme": "material-icon-theme",
+
+  // === MCP (Model Context Protocol) 설정 ===
+  "chat.mcp.discovery.enabled": {
+    "claude-desktop": true,
+    "windsurf": true,
+    "cursor-global": true,
+    "cursor-workspace": true
+  },
+  "chat.mcp.autostart": true,
+  "chat.mcp.gallery.enabled": true,
+
+  // === Claude Code + MCP 통합 ===
+  "claude.mcp.enabled": true,
+  "claude.mcp.servers": [
+    "github",
+    "supabase",
+    "playwright",
+    "filesystem",
+    "memory"
+  ],
+  "chat.mcp.access": "all"
 }

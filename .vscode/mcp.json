@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json.schemastore.org/mcp.json",
+  "version": "1.0.0",
+  "description": "FORGE LABS MCP Server Configuration",
+
+  "servers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp",
+      "description": "GitHub MCP Server - PR, Issues, Repo 관리",
+      "headers": {
+        "Authorization": "Bearer ${input:github_token}"
+      }
+    },
+
+    "supabase": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server"],
+      "description": "Supabase MCP Server - DB 연동",
+      "env": {
+        "SUPABASE_URL": "${input:supabase_url}",
+        "SUPABASE_ANON_KEY": "${input:supabase_anon_key}",
+        "SUPABASE_SERVICE_ROLE_KEY": "${input:supabase_service_key}"
+      }
+    },
+
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-playwright"],
+      "description": "Playwright MCP Server - E2E 테스트 및 브라우저 자동화"
+    },
+
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic-ai/mcp-server-filesystem",
+        "/workspaces/forge-labs"
+      ],
+      "description": "Filesystem MCP Server - 파일 시스템 접근"
+    },
+
+    "memory": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-memory"],
+      "description": "Memory MCP Server - 세션 간 컨텍스트 유지"
+    }
+  },
+
+  "inputs": {
+    "github_token": {
+      "type": "promptString",
+      "description": "GitHub Personal Access Token",
+      "password": true
+    },
+    "supabase_url": {
+      "type": "promptString",
+      "description": "Supabase Project URL",
+      "default": "https://your-project.supabase.co"
+    },
+    "supabase_anon_key": {
+      "type": "promptString",
+      "description": "Supabase Anon Key",
+      "password": true
+    },
+    "supabase_service_key": {
+      "type": "promptString",
+      "description": "Supabase Service Role Key",
+      "password": true
+    }
+  }
+}
