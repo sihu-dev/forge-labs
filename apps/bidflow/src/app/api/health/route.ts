@@ -1,11 +1,10 @@
 /**
- * Health Check Endpoint for HEPHAITOS
- * Monitors: Supabase, Redis, System
+ * Health Check Endpoint for BIDFLOW
+ * Monitors: Supabase, System
  */
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { Redis } from '@upstash/redis';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -15,7 +14,6 @@ interface HealthCheck {
   timestamp: string;
   checks: {
     database: 'healthy' | 'unhealthy' | 'unknown';
-    redis: 'healthy' | 'unhealthy' | 'unknown';
     system: 'healthy' | 'unhealthy' | 'unknown';
   };
   version?: string;
@@ -30,7 +28,6 @@ export async function GET() {
     timestamp: new Date().toISOString(),
     checks: {
       database: 'unknown',
-      redis: 'unknown',
       system: 'healthy',
     },
     version: process.env.VERCEL_GIT_COMMIT_SHA || 'development',
@@ -41,7 +38,7 @@ export async function GET() {
   try {
     const supabase = await createClient();
     const { error } = await supabase
-      .from('strategies')
+      .from('bids')
       .select('id')
       .limit(1);
 
@@ -49,28 +46,6 @@ export async function GET() {
   } catch (error) {
     console.error('Health check - Database error:', error);
     checks.checks.database = 'unhealthy';
-  }
-
-  // Check Redis
-  try {
-    if (
-      process.env.UPSTASH_REDIS_REST_URL &&
-      process.env.UPSTASH_REDIS_REST_TOKEN
-    ) {
-      const redis = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
-
-      const response = await redis.ping();
-      checks.checks.redis = response === 'PONG' ? 'healthy' : 'unhealthy';
-    } else {
-      // Redis is optional in development
-      checks.checks.redis = 'healthy';
-    }
-  } catch (error) {
-    console.error('Health check - Redis error:', error);
-    checks.checks.redis = 'unhealthy';
   }
 
   // Determine overall status
