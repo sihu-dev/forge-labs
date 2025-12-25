@@ -5,6 +5,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { DisclaimerBanner } from '@/components/ui/Disclaimer'
 import { KeyboardShortcuts } from '@/components/dashboard/KeyboardShortcuts'
 import { ShortcutsModal } from '@/components/ui/ShortcutsModal'
+import { ShortcutsHelpModal } from '@/components/dashboard/ShortcutsHelpModal'
 import { CommandPalette } from '@/components/ui/CommandPalette'
 import { NotificationToast } from '@/components/notifications/NotificationToast'
 
@@ -34,6 +35,7 @@ export default function DashboardLayout({
       {/* Global Modals */}
       <CommandPalette />
       <ShortcutsModal />
+      <ShortcutsHelpModal />
       {/* Toast Notifications */}
       <NotificationToast position="top-right" maxToasts={3} />
     </KeyboardShortcuts>

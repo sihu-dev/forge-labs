@@ -8,7 +8,7 @@
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { Bid } from '@/components/spreadsheet/SpreadsheetView';
 
@@ -260,7 +260,22 @@ const SAMPLE_BIDS = [
   },
 ];
 
-// 통계 계산
+// DashboardStats 타입 정의
+interface DashboardStats {
+  totalBids: number;
+  byStatus: Record<string, number>;
+  upcomingDeadlines: number;
+  highPriority: number;
+  wonRate: number;
+  recentActivity: Array<{
+    id: string;
+    title: string;
+    action: string;
+    timestamp: string;
+  }>;
+}
+
+// 로컬 통계 계산 (폴백용)
 function calculateStats(bids: typeof SAMPLE_BIDS) {
   const now = new Date();
   return {
@@ -287,8 +302,147 @@ export default function DashboardPage() {
   const [showBanner, setShowBanner] = useState(true);
   const [bids, setBids] = useState<Bid[]>(SAMPLE_BIDS as unknown as Bid[]);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiStats, setApiStats] = useState<DashboardStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [upcomingBids, setUpcomingBids] = useState<Bid[]>([]);
+  const [selectedBidForAnalysis, setSelectedBidForAnalysis] = useState<Bid | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const stats = calculateStats(bids as unknown as typeof SAMPLE_BIDS);
+  // 로컬 계산된 통계 (폴백용)
+  const localStats = calculateStats(bids as unknown as typeof SAMPLE_BIDS);
+
+  // API 통계 우선, 없으면 로컬 통계 사용
+  const stats = apiStats ? {
+    total: apiStats.totalBids,
+    new: apiStats.byStatus['new'] || 0,
+    reviewing: apiStats.byStatus['reviewing'] || 0,
+    preparing: apiStats.byStatus['preparing'] || 0,
+    submitted: apiStats.byStatus['submitted'] || 0,
+    won: apiStats.byStatus['won'] || 0,
+    lost: apiStats.byStatus['lost'] || 0,
+    urgent: apiStats.upcomingDeadlines,
+    highMatch: apiStats.highPriority,
+    totalAmount: localStats.totalAmount, // API에 없으므로 로컬 계산 사용
+  } : localStats;
+
+  // 통계 API 호출
+  const fetchStats = useCallback(async () => {
+    if (isDemo) return; // 데모 모드에서는 API 호출 안 함
+
+    try {
+      const response = await fetch('/api/v1/stats');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setApiStats(data.data);
+        }
+      }
+    } catch (error) {
+      console.error('Stats fetch failed:', error);
+      // 실패해도 로컬 통계 사용하므로 조용히 실패
+    }
+  }, [isDemo]);
+
+  // 알림 가져오기
+  const fetchNotifications = useCallback(async () => {
+    if (isDemo) return; // 데모 모드에서는 API 호출 안 함
+
+    try {
+      const response = await fetch('/api/v1/notifications?limit=10');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setNotifications(data.data);
+          setUnreadCount(data.data.filter((n: any) => !n.read).length);
+        }
+      }
+    } catch (error) {
+      console.error('Notifications fetch failed:', error);
+    }
+  }, [isDemo]);
+
+  // 알림 읽음 처리
+  const markNotificationsAsRead = useCallback(async (notificationIds: string[]) => {
+    try {
+      const response = await fetch('/api/v1/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationIds }),
+      });
+
+      if (response.ok) {
+        // 로컬 상태 업데이트
+        setNotifications(prev =>
+          prev.map(n =>
+            notificationIds.includes(n.id) ? { ...n, read: true } : n
+          )
+        );
+        setUnreadCount(prev => Math.max(0, prev - notificationIds.length));
+      }
+    } catch (error) {
+      console.error('Mark as read failed:', error);
+    }
+  }, []);
+
+  // AI 분석 API 호출
+  const analyzeBid = useCallback(async (bid: Bid) => {
+    setSelectedBidForAnalysis(bid);
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+
+    try {
+      const response = await fetch(`/api/v1/bids/${bid.id}/analyze`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('AI 분석 요청 실패');
+      }
+
+      const data = await response.json();
+      if (data.success && data.data) {
+        setAnalysisResult(data.data);
+      } else {
+        setError('AI 분석에 실패했습니다');
+      }
+    } catch (error) {
+      console.error('AI analysis failed:', error);
+      setError('AI 분석 중 오류가 발생했습니다');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, []);
+
+  // 마감 임박 입찰 API 호출
+  const fetchUpcoming = useCallback(async () => {
+    if (isDemo) {
+      // 데모 모드: 로컬 데이터에서 마감 임박 입찰 필터링
+      const now = new Date();
+      const urgent = (bids as unknown as typeof SAMPLE_BIDS).filter(b => {
+        const deadline = new Date(b.deadline);
+        const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return daysLeft <= 7 && daysLeft > 0 && !['won', 'lost', 'cancelled'].includes(b.status);
+      });
+      setUpcomingBids(urgent as unknown as Bid[]);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/v1/bids/upcoming?days=7');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setUpcomingBids(data.data);
+        }
+      }
+    } catch (error) {
+      console.error('Upcoming bids fetch failed:', error);
+    }
+  }, [isDemo, bids]);
 
   // Bid 수정 API 호출
   const handleBidUpdate = useCallback(async (id: string, updates: Partial<Bid>) => {
@@ -307,15 +461,20 @@ export default function DashboardPage() {
       setBids(prev => prev.map(bid =>
         bid.id === id ? { ...bid, ...updates } : bid
       ));
+
+      // 통계 재로드
+      fetchStats();
     } catch (error) {
       console.error('Bid update failed:', error);
+      setError('입찰 정보 업데이트에 실패했습니다');
       throw error;
     }
-  }, []);
+  }, [fetchStats]);
 
   // 새로고침 API 호출
   const handleRefresh = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const response = await fetch('/api/v1/bids');
       if (!response.ok) {
@@ -325,8 +484,11 @@ export default function DashboardPage() {
       if (data.data) {
         setBids(data.data);
       }
+      // 통계 및 마감 임박 입찰도 함께 새로고침
+      await Promise.all([fetchStats(), fetchUpcoming()]);
     } catch (error) {
       console.error('Refresh failed:', error);
+      setError('데이터를 불러오는 데 실패했습니다');
       // 데모 모드에서는 샘플 데이터 유지
       if (isDemo) {
         setBids(SAMPLE_BIDS as unknown as Bid[]);
@@ -334,7 +496,18 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [isDemo]);
+  }, [isDemo, fetchStats, fetchUpcoming]);
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    if (!isDemo) {
+      handleRefresh();
+      fetchNotifications();
+    } else {
+      // 데모 모드에서도 마감 임박 입찰은 표시
+      fetchUpcoming();
+    }
+  }, [isDemo, handleRefresh, fetchUpcoming, fetchNotifications]);
 
   return (
     <main className="h-screen flex flex-col bg-slate-50">
@@ -385,6 +558,95 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
+          {/* 알림 벨 */}
+          {!isDemo && (
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  if (!showNotifications && unreadCount > 0) {
+                    // 드롭다운 열 때 안읽은 알림을 읽음 처리
+                    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+                    if (unreadIds.length > 0) {
+                      markNotificationsAsRead(unreadIds);
+                    }
+                  }
+                }}
+                className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                aria-label="알림"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-xs font-semibold rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* 알림 드롭다운 */}
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-slate-200 z-50">
+                  <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
+                    <button
+                      onClick={() => setShowNotifications(false)}
+                      className="text-slate-400 hover:text-slate-600"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-slate-500">
+                        알림이 없습니다
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={cn(
+                            "px-4 py-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer",
+                            !notif.read && "bg-blue-50/50"
+                          )}
+                          onClick={() => {
+                            if (notif.bidId) {
+                              // TODO: 입찰 상세 페이지로 이동
+                              setShowNotifications(false);
+                            }
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <span className="text-xs mt-0.5">
+                              {notif.type === 'deadline' && '⏰'}
+                              {notif.type === 'new_bid' && '📢'}
+                              {notif.type === 'match' && '✓'}
+                              {notif.type === 'status_change' && '🔄'}
+                              {notif.type === 'system' && 'ℹ️'}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900">{notif.title}</p>
+                              <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">{notif.message}</p>
+                              <p className="text-xs text-slate-400 mt-1">
+                                {new Date(notif.createdAt).toLocaleString('ko-KR', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {isDemo ? (
             <Link
               href="/signup"
@@ -399,6 +661,22 @@ export default function DashboardPage() {
           )}
         </div>
       </header>
+
+      {/* 에러 배너 */}
+      {error && (
+        <div className="bg-red-50 border-b border-red-200 px-4 md:px-6 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-red-700">{error}</span>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-500 hover:text-red-700"
+            aria-label="Close error message"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* 통계 바 - 반응형 */}
       <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-3 overflow-x-auto">
@@ -428,6 +706,67 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* 마감 임박 입찰 */}
+      {upcomingBids.length > 0 && (
+        <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-3">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-slate-900">Upcoming Deadlines (7 days)</h3>
+            <span className="text-xs text-slate-500">{upcomingBids.length} bids</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {upcomingBids.slice(0, 5).map((bid) => {
+              const deadline = new Date((bid as any).deadline);
+              const now = new Date();
+              const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              const isUrgent = daysLeft <= 3;
+
+              return (
+                <div
+                  key={bid.id}
+                  className={cn(
+                    "min-w-[280px] rounded border p-3 bg-white",
+                    isUrgent ? "border-red-300 bg-red-50" : "border-amber-300 bg-amber-50"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h4 className="text-sm font-medium text-slate-900 line-clamp-2 flex-1">
+                      {(bid as any).title}
+                    </h4>
+                    <span
+                      className={cn(
+                        "text-xs font-semibold px-2 py-0.5 rounded flex-shrink-0",
+                        isUrgent
+                          ? "bg-red-100 text-red-700"
+                          : "bg-amber-100 text-amber-700"
+                      )}
+                    >
+                      {daysLeft}d
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-600 mb-1">
+                    {(bid as any).organization}
+                  </div>
+                  <div className="flex items-center justify-between text-xs mb-2">
+                    <span className="text-slate-500">
+                      {deadline.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                    </span>
+                    <span className="font-mono text-slate-700">
+                      ₩{((bid as any).estimated_amount / 100000000).toFixed(1)}B
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => analyzeBid(bid)}
+                    className="w-full text-xs px-2 py-1 bg-slate-900 text-white rounded hover:bg-slate-800 transition-colors"
+                  >
+                    AI Analyze
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 스프레드시트 */}
       <div className="flex-1 overflow-hidden relative">
         {isLoading && (
@@ -441,6 +780,139 @@ export default function DashboardPage() {
           onRefresh={handleRefresh}
         />
       </div>
+
+      {/* AI 분석 모달 */}
+      {selectedBidForAnalysis && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setSelectedBidForAnalysis(null);
+            setAnalysisResult(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 모달 헤더 */}
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">AI Analysis</h2>
+                <p className="text-sm text-slate-600 mt-1 line-clamp-1">
+                  {(selectedBidForAnalysis as any).title}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedBidForAnalysis(null);
+                  setAnalysisResult(null);
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* 모달 내용 */}
+            <div className="p-6">
+              {isAnalyzing ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin mb-4" />
+                  <p className="text-sm text-slate-600">AI 분석 중...</p>
+                </div>
+              ) : analysisResult ? (
+                <div className="space-y-6">
+                  {/* 요약 */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-2">Summary</h3>
+                    <p className="text-sm text-slate-700 leading-relaxed">{analysisResult.summary}</p>
+                  </div>
+
+                  {/* 승률 & 난이도 */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 rounded p-4">
+                      <div className="text-xs text-slate-500 mb-1">Win Probability</div>
+                      <div className="text-2xl font-semibold text-slate-900">
+                        {analysisResult.winProbability}%
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 rounded p-4">
+                      <div className="text-xs text-slate-500 mb-1">Estimated Effort</div>
+                      <div className="text-2xl font-semibold text-slate-900 capitalize">
+                        {analysisResult.estimatedEffort}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 핵심 요구사항 */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-2">Key Requirements</h3>
+                    <ul className="space-y-1">
+                      {analysisResult.keyRequirements.map((req: string, idx: number) => (
+                        <li key={idx} className="text-sm text-slate-700 flex items-start gap-2">
+                          <span className="text-slate-400 mt-1">•</span>
+                          <span>{req}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 추천 제품 */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-2">Recommended Products</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {analysisResult.recommendedProducts.map((product: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="px-3 py-1 bg-slate-100 text-slate-700 text-sm rounded"
+                        >
+                          {product}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 리스크 요인 */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-2">Risk Factors</h3>
+                    <ul className="space-y-1">
+                      {analysisResult.riskFactors.map((risk: string, idx: number) => (
+                        <li key={idx} className="text-sm text-red-600 flex items-start gap-2">
+                          <span className="text-red-400 mt-1">⚠</span>
+                          <span>{risk}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 제안 가격 */}
+                  {analysisResult.suggestedPrice && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900 mb-2">Suggested Price Range</h3>
+                      <div className="bg-slate-50 rounded p-4 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Minimum:</span>
+                          <span className="font-mono text-slate-900">{analysisResult.suggestedPrice.min}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Recommended:</span>
+                          <span className="font-mono font-semibold text-slate-900">{analysisResult.suggestedPrice.recommended}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Maximum:</span>
+                          <span className="font-mono text-slate-900">{analysisResult.suggestedPrice.max}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

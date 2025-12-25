@@ -1,394 +1,250 @@
-// ============================================
-// WebSocket React Hook
-// Real-time data connection management
-// ============================================
+/**
+ * WebSocket Hook for Real-time Updates
+ * Client-side hook for connecting to WebSocket streaming
+ *
+ * Usage:
+ * const { progress, status, connect, disconnect } = useWebSocket(taskId);
+ */
 
-'use client'
+'use client';
 
-import { useEffect, useRef, useCallback, useState } from 'react'
-import { WSManager, WSConfig, WSConnectionState, createWSManager } from '@/lib/websocket/ws-manager'
-import type { WSMessage, WSSubscription, WSEventType, Ticker } from '@/lib/exchange/types'
-import { useExchangeStore } from '@/stores'
-import {
-  getTickerStreamName,
-  formatSubscribeMessage,
-  formatUnsubscribeMessage,
-  parseBinanceMessage,
-} from '@/lib/websocket/binance-adapter'
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { WebSocketMessage, ProgressUpdate, TaskCompletionMessage } from '@/lib/mobile/websocket-manager';
 
-// ============================================
-// Types
-// ============================================
-
-interface UseWebSocketOptions {
-  url: string
-  autoConnect?: boolean
-  reconnectAttempts?: number
-  reconnectDelay?: number
+export interface UseWebSocketOptions {
+  autoConnect?: boolean;
+  reconnectInterval?: number;
+  maxReconnectAttempts?: number;
+  heartbeatInterval?: number;
+  onMessage?: (message: WebSocketMessage) => void;
+  onProgress?: (update: ProgressUpdate) => void;
+  onComplete?: (completion: TaskCompletionMessage) => void;
+  onError?: (error: string) => void;
 }
 
-interface UseWebSocketReturn {
-  isConnected: boolean
-  connectionState: WSConnectionState
-  connect: () => void
-  disconnect: () => void
-  subscribe: (subscription: WSSubscription) => void
-  unsubscribe: (subscription: WSSubscription) => void
-  onMessage: (type: WSEventType, callback: (data: unknown) => void, symbol?: string) => () => void
-  send: (data: unknown) => void
+export interface UseWebSocketReturn {
+  isConnected: boolean;
+  progress: number;
+  message: string;
+  status: 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
+  error: string | null;
+  latestUpdate: ProgressUpdate | null;
+  completion: TaskCompletionMessage | null;
+  connect: () => void;
+  disconnect: () => void;
+  reconnect: () => void;
 }
 
-// ============================================
-// Hook: useWebSocket
-// ============================================
-
-export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
-  const { url, autoConnect = true, reconnectAttempts = 5, reconnectDelay = 1000 } = options
-
-  const managerRef = useRef<WSManager | null>(null)
-  const [connectionState, setConnectionState] = useState<WSConnectionState>('disconnected')
-  const { setWsConnected, handleWsMessage } = useExchangeStore()
-
-  // Initialize WebSocket manager
-  useEffect(() => {
-    const config: WSConfig = {
-      url,
-      exchangeId: 'binance', // Default, can be made configurable
-      reconnectAttempts,
-      reconnectDelay,
-      onOpen: () => {
-        setConnectionState('connected')
-        setWsConnected(true)
-      },
-      onClose: () => {
-        setConnectionState('disconnected')
-        setWsConnected(false)
-      },
-      onError: (error) => {
-        console.error('[useWebSocket] Error:', error)
-      },
-      onMessage: (message) => {
-        handleWsMessage(message)
-      },
-      onReconnect: (attempt) => {
-        setConnectionState('reconnecting')
-        console.log(`[useWebSocket] Reconnecting... attempt ${attempt}`)
-      },
-    }
-
-    managerRef.current = createWSManager(config)
-
-    if (autoConnect) {
-      managerRef.current.connect()
-    }
-
-    return () => {
-      managerRef.current?.disconnect()
-    }
-  }, [url, autoConnect, reconnectAttempts, reconnectDelay, setWsConnected, handleWsMessage])
-
-  // Connection methods
-  const connect = useCallback(() => {
-    managerRef.current?.connect()
-  }, [])
-
-  const disconnect = useCallback(() => {
-    managerRef.current?.disconnect()
-  }, [])
-
-  // Subscription methods
-  const subscribe = useCallback((subscription: WSSubscription) => {
-    managerRef.current?.subscribe(subscription)
-  }, [])
-
-  const unsubscribe = useCallback((subscription: WSSubscription) => {
-    managerRef.current?.unsubscribe(subscription)
-  }, [])
-
-  // Message handling
-  const onMessage = useCallback(
-    (type: WSEventType, callback: (data: unknown) => void, symbol?: string) => {
-      if (!managerRef.current) {
-        return () => {}
-      }
-      return managerRef.current.onMessage(type, callback, symbol)
-    },
-    []
-  )
-
-  // Send method
-  const send = useCallback((data: unknown) => {
-    managerRef.current?.send(data)
-  }, [])
-
-  return {
-    isConnected: connectionState === 'connected',
-    connectionState,
-    connect,
-    disconnect,
-    subscribe,
-    unsubscribe,
+export function useWebSocket(
+  taskId: string,
+  token: string,
+  options: UseWebSocketOptions = {}
+): UseWebSocketReturn {
+  const {
+    autoConnect = true,
+    reconnectInterval = 3000,
+    maxReconnectAttempts = 5,
+    heartbeatInterval = 30000,
     onMessage,
-    send,
-  }
-}
+    onProgress,
+    onComplete,
+    onError,
+  } = options;
 
-// ============================================
-// Hook: useTickerStream
-// Subscribe to ticker updates for symbols
-// Uses direct Binance WebSocket with proper protocol
-// ============================================
+  const [isConnected, setIsConnected] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const [latestUpdate, setLatestUpdate] = useState<ProgressUpdate | null>(null);
+  const [completion, setCompletion] = useState<TaskCompletionMessage | null>(null);
 
-interface UseTickerStreamOptions {
-  symbols: string[]
-  wsUrl?: string
-}
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-interface UseTickerStreamReturn {
-  tickers: Record<string, Ticker>
-  isConnected: boolean
-  subscribe: (symbol: string) => void
-  unsubscribe: (symbol: string) => void
-}
+  const clearTimers = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+  }, []);
 
-export function useTickerStream(options: UseTickerStreamOptions): UseTickerStreamReturn {
-  const { symbols, wsUrl = 'wss://stream.binance.com:9443/ws' } = options
-
-  const { tickers, updateTicker } = useExchangeStore()
-  const [isConnected, setIsConnected] = useState(false)
-  const wsRef = useRef<WebSocket | null>(null)
-  const subscribedRef = useRef<Set<string>>(new Set())
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const reconnectAttemptsRef = useRef(0)
-  const maxReconnectAttempts = 5
-
-  // Connect to WebSocket
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    setStatus('connecting');
+    setError(null);
 
     try {
-      wsRef.current = new WebSocket(wsUrl)
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const url = \`\${protocol}//\${host}/api/claude/commands/stream/\${taskId}?token=\${token}\`;
 
-      wsRef.current.onopen = () => {
-        console.log('[BinanceWS] Connected')
-        setIsConnected(true)
-        reconnectAttemptsRef.current = 0
+      const ws = new WebSocket(url);
+      wsRef.current = ws;
 
-        // Resubscribe to existing symbols
-        if (subscribedRef.current.size > 0) {
-          const streams = Array.from(subscribedRef.current).map(s => getTickerStreamName(s))
-          const message = formatSubscribeMessage(streams)
-          wsRef.current?.send(message)
+      ws.onopen = () => {
+        setIsConnected(true);
+        setStatus('connected');
+        reconnectAttemptsRef.current = 0;
+
+        heartbeatIntervalRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, heartbeatInterval);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message: WebSocketMessage = JSON.parse(event.data);
+
+          if (onMessage) {
+            onMessage(message);
+          }
+
+          switch (message.type) {
+            case 'progress':
+              const progressData = message.data as ProgressUpdate;
+              setProgress(progressData.progress);
+              setMessage(progressData.message);
+              setLatestUpdate(progressData);
+              if (onProgress) {
+                onProgress(progressData);
+              }
+              break;
+
+            case 'complete':
+              const completionData = message.data as TaskCompletionMessage;
+              setCompletion(completionData);
+              if (onComplete) {
+                onComplete(completionData);
+              }
+              setTimeout(() => disconnect(), 2000);
+              break;
+
+            case 'error':
+              const errorMessage = message.data?.error || 'Unknown error';
+              setError(errorMessage);
+              setStatus('error');
+              if (onError) {
+                onError(errorMessage);
+              }
+              break;
+
+            case 'pong':
+              break;
+
+            default:
+              console.log('[WebSocket] Unknown message type:', message.type);
+          }
+        } catch (err) {
+          console.error('[WebSocket] Failed to parse message:', err);
         }
-      }
+      };
 
-      wsRef.current.onmessage = (event) => {
-        const message = parseBinanceMessage(event.data)
-        if (message && message.type === 'ticker') {
-          const tickerData = message.data as Ticker
-          updateTicker(tickerData.symbol, tickerData)
-        }
-      }
+      ws.onerror = (event) => {
+        console.error('[WebSocket] Error:', event);
+        setError('WebSocket connection error');
+        setStatus('error');
+      };
 
-      wsRef.current.onclose = () => {
-        console.log('[BinanceWS] Disconnected')
-        setIsConnected(false)
+      ws.onclose = (event) => {
+        setIsConnected(false);
+        setStatus('disconnected');
+        clearTimers();
 
-        // Auto-reconnect with exponential backoff
-        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000)
+        if (!event.wasClean && reconnectAttemptsRef.current < maxReconnectAttempts) {
+          reconnectAttemptsRef.current++;
           reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttemptsRef.current++
-            connect()
-          }, delay)
+            connect();
+          }, reconnectInterval);
+        } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+          setError('Max reconnection attempts reached');
+          setStatus('error');
         }
-      }
-
-      wsRef.current.onerror = (error) => {
-        console.error('[BinanceWS] Error:', error)
-      }
-    } catch (error) {
-      console.error('[BinanceWS] Connection failed:', error)
+      };
+    } catch (err) {
+      console.error('[WebSocket] Connection failed:', err);
+      setError(err instanceof Error ? err.message : 'Connection failed');
+      setStatus('error');
     }
-  }, [wsUrl, updateTicker])
+  }, [taskId, token, heartbeatInterval, reconnectInterval, maxReconnectAttempts, onMessage, onProgress, onComplete, onError, clearTimers]);
 
-  // Disconnect from WebSocket
   const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-    }
+    clearTimers();
+
     if (wsRef.current) {
-      wsRef.current.close(1000, 'Client disconnect')
-      wsRef.current = null
+      wsRef.current.close();
+      wsRef.current = null;
     }
-    setIsConnected(false)
-  }, [])
 
-  // Subscribe to a symbol
-  const subscribeSymbol = useCallback((symbol: string) => {
-    const upperSymbol = symbol.toUpperCase()
-    if (subscribedRef.current.has(upperSymbol)) return
+    setIsConnected(false);
+    setStatus('disconnected');
+  }, [clearTimers]);
 
-    subscribedRef.current.add(upperSymbol)
+  const reconnect = useCallback(() => {
+    disconnect();
+    reconnectAttemptsRef.current = 0;
+    connect();
+  }, [connect, disconnect]);
 
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      const message = formatSubscribeMessage([getTickerStreamName(upperSymbol)])
-      wsRef.current.send(message)
-    }
-  }, [])
-
-  // Unsubscribe from a symbol
-  const unsubscribeSymbol = useCallback((symbol: string) => {
-    const upperSymbol = symbol.toUpperCase()
-    if (!subscribedRef.current.has(upperSymbol)) return
-
-    subscribedRef.current.delete(upperSymbol)
-
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      const message = formatUnsubscribeMessage([getTickerStreamName(upperSymbol)])
-      wsRef.current.send(message)
-    }
-  }, [])
-
-  // Initial connection
   useEffect(() => {
-    if (symbols.length > 0) {
-      connect()
-    }
-    return () => disconnect()
-  }, [connect, disconnect, symbols.length])
-
-  // Handle symbol changes
-  useEffect(() => {
-    if (!isConnected) return
-
-    const currentSymbols = new Set(symbols.map(s => s.toUpperCase()))
-
-    // Subscribe to new symbols
-    for (const symbol of currentSymbols) {
-      if (!subscribedRef.current.has(symbol)) {
-        subscribeSymbol(symbol)
-      }
+    if (autoConnect && taskId && token) {
+      connect();
     }
 
-    // Unsubscribe from removed symbols
-    for (const symbol of subscribedRef.current) {
-      if (!currentSymbols.has(symbol)) {
-        unsubscribeSymbol(symbol)
-      }
-    }
-  }, [symbols, isConnected, subscribeSymbol, unsubscribeSymbol])
+    return () => {
+      disconnect();
+    };
+  }, [autoConnect, taskId, token]);
 
   return {
-    tickers,
     isConnected,
-    subscribe: subscribeSymbol,
-    unsubscribe: unsubscribeSymbol,
-  }
+    progress,
+    message,
+    status,
+    error,
+    latestUpdate,
+    completion,
+    connect,
+    disconnect,
+    reconnect,
+  };
 }
 
-// ============================================
-// Hook: useOrderBookStream
-// Subscribe to orderbook updates
-// ============================================
+export function useTaskProgress(taskId: string, token: string) {
+  const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState('');
+  const [isComplete, setIsComplete] = useState(false);
 
-interface OrderBookData {
-  bids: [number, number][]
-  asks: [number, number][]
-  lastUpdateId: number
-}
-
-interface UseOrderBookStreamReturn {
-  orderBook: OrderBookData | null
-  isConnected: boolean
-}
-
-export function useOrderBookStream(
-  symbol: string,
-  wsUrl?: string
-): UseOrderBookStreamReturn {
-  const [orderBook, setOrderBook] = useState<OrderBookData | null>(null)
-
-  const ws = useWebSocket({
-    url: wsUrl || 'wss://stream.binance.com:9443/ws',
+  const { status, error } = useWebSocket(taskId, token, {
     autoConnect: true,
-  })
-
-  useEffect(() => {
-    if (!ws.isConnected || !symbol) return
-
-    ws.subscribe({ type: 'orderbook', symbol: symbol.toLowerCase() })
-
-    const unsubscribe = ws.onMessage('orderbook', (data) => {
-      const obData = data as OrderBookData
-      setOrderBook(obData)
-    }, symbol.toLowerCase())
-
-    return () => {
-      ws.unsubscribe({ type: 'orderbook', symbol: symbol.toLowerCase() })
-      unsubscribe()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol, ws.isConnected, ws.subscribe, ws.unsubscribe, ws.onMessage])
+    onProgress: (update) => {
+      setProgress(update.progress);
+      setMessage(update.message);
+    },
+    onComplete: () => {
+      setProgress(100);
+      setIsComplete(true);
+    },
+  });
 
   return {
-    orderBook,
-    isConnected: ws.isConnected,
-  }
+    progress,
+    message,
+    isComplete,
+    isLoading: status === 'connecting' || status === 'connected',
+    error,
+  };
 }
 
-// ============================================
-// Hook: useRealtimePrice
-// Simple hook for real-time price of single symbol
-// ============================================
-
-interface UseRealtimePriceReturn {
-  price: number | null
-  change24h: number | null
-  changePercent24h: number | null
-  isConnected: boolean
-}
-
-export function useRealtimePrice(symbol: string): UseRealtimePriceReturn {
-  const [priceData, setPriceData] = useState<{
-    price: number | null
-    change24h: number | null
-    changePercent24h: number | null
-  }>({
-    price: null,
-    change24h: null,
-    changePercent24h: null,
-  })
-
-  const ws = useWebSocket({
-    url: 'wss://stream.binance.com:9443/ws',
-    autoConnect: !!symbol,
-  })
-
-  useEffect(() => {
-    if (!ws.isConnected || !symbol) return
-
-    ws.subscribe({ type: 'ticker', symbol: symbol.toLowerCase() })
-
-    const unsubscribe = ws.onMessage('ticker', (data) => {
-      const tickerData = data as Partial<Ticker>
-      setPriceData({
-        price: tickerData.lastPrice || null,
-        change24h: tickerData.change24h || null,
-        changePercent24h: tickerData.changePercent24h || null,
-      })
-    }, symbol.toLowerCase())
-
-    return () => {
-      ws.unsubscribe({ type: 'ticker', symbol: symbol.toLowerCase() })
-      unsubscribe()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol, ws.isConnected, ws.subscribe, ws.unsubscribe, ws.onMessage])
-
-  return {
-    ...priceData,
-    isConnected: ws.isConnected,
-  }
-}
+export default useWebSocket;

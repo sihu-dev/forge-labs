@@ -54,12 +54,8 @@ async function fetchSites(): Promise<Site[]> {
   const res = await fetch('/api/v1/sludge/sites', { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to fetch sites');
   const json = await res.json();
-  return json.data.map((site: any) => ({
-    ...site,
-    status: 'online' as const, // TODO: 실제 상태 계산
-    sensorsCount: 0, // TODO: 센서 카운트
-    alertsCount: 0, // TODO: 알림 카운트
-  }));
+  // API에서 이미 sensorsCount, alertsCount, status를 계산하여 반환
+  return json.data;
 }
 
 // ============================================
