@@ -233,8 +233,316 @@ export class InMemoryPriceDataService implements IPriceDataService {
 }
 
 /**
+ * 실제 거래소 API 기반 가격 데이터 서비스
+ * Binance와 Upbit의 공개 API를 사용하여 실제 가격 데이터 제공
+ */
+export class RealPriceDataService implements IPriceDataService {
+  private cache: Map<string, { data: IOHLCV[], timestamp: number }> = new Map();
+  private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5분 캐시
+  private readonly BINANCE_BASE_URL = 'https://api.binance.com';
+  private readonly UPBIT_BASE_URL = 'https://api.upbit.com';
+
+  /**
+   * 타임프레임을 거래소별 형식으로 변환
+   */
+  private convertTimeframe(timeframe: Timeframe, exchange: 'binance' | 'upbit'): string {
+    if (exchange === 'binance') {
+      // Binance: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w, 1M
+      return timeframe;
+    } else {
+      // Upbit: minutes/1, minutes/5, minutes/15, minutes/30, hours/1, hours/4, days, weeks, months
+      const map: Record<Timeframe, string> = {
+        '1m': 'minutes/1',
+        '5m': 'minutes/5',
+        '15m': 'minutes/15',
+        '30m': 'minutes/30',
+        '1h': 'hours/1',
+        '4h': 'hours/4',
+        '1d': 'days',
+        '1w': 'weeks',
+        '1M': 'months',
+      };
+      return map[timeframe] || 'days';
+    }
+  }
+
+  /**
+   * 심볼을 거래소별 형식으로 변환
+   */
+  private convertSymbol(symbol: string, exchange: 'binance' | 'upbit'): string {
+    if (exchange === 'binance') {
+      // BTC/USDT → BTCUSDT
+      return symbol.replace('/', '');
+    } else {
+      // BTC/USDT → KRW-BTC (Upbit은 주로 KRW 마켓)
+      const [base] = symbol.split('/');
+      return `KRW-${base}`;
+    }
+  }
+
+  /**
+   * Binance에서 OHLCV 데이터 가져오기
+   */
+  private async fetchBinanceOHLCV(
+    symbol: string,
+    timeframe: Timeframe,
+    startTime?: number,
+    endTime?: number,
+    limit: number = 500
+  ): Promise<IOHLCV[]> {
+    const binanceSymbol = this.convertSymbol(symbol, 'binance');
+    const binanceInterval = this.convertTimeframe(timeframe, 'binance');
+
+    let url = `${this.BINANCE_BASE_URL}/api/v3/klines?symbol=${binanceSymbol}&interval=${binanceInterval}&limit=${limit}`;
+    if (startTime) url += `&startTime=${startTime}`;
+    if (endTime) url += `&endTime=${endTime}`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Binance API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json() as Array<[
+      number, string, string, string, string, string, // timestamp, open, high, low, close, volume
+      number, string, number, string, string, string
+    ]>;
+
+    return data.map(([timestamp, open, high, low, close, volume]) => ({
+      timestamp: new Date(timestamp).toISOString(),
+      open: parseFloat(open),
+      high: parseFloat(high),
+      low: parseFloat(low),
+      close: parseFloat(close),
+      volume: parseFloat(volume),
+    }));
+  }
+
+  /**
+   * Upbit에서 OHLCV 데이터 가져오기
+   */
+  private async fetchUpbitOHLCV(
+    symbol: string,
+    timeframe: Timeframe,
+    count: number = 200
+  ): Promise<IOHLCV[]> {
+    const upbitSymbol = this.convertSymbol(symbol, 'upbit');
+    const upbitInterval = this.convertTimeframe(timeframe, 'upbit');
+
+    const url = `${this.UPBIT_BASE_URL}/v1/candles/${upbitInterval}?market=${upbitSymbol}&count=${count}`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Upbit API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json() as Array<{
+      market: string;
+      candle_date_time_utc: string;
+      opening_price: number;
+      high_price: number;
+      low_price: number;
+      trade_price: number;
+      candle_acc_trade_volume: number;
+    }>;
+
+    // Upbit은 최신순으로 반환하므로 역순으로 정렬
+    return data.reverse().map(candle => ({
+      timestamp: candle.candle_date_time_utc,
+      open: candle.opening_price,
+      high: candle.high_price,
+      low: candle.low_price,
+      close: candle.trade_price,
+      volume: candle.candle_acc_trade_volume,
+    }));
+  }
+
+  /**
+   * 거래소 자동 감지 (심볼 기반)
+   */
+  private detectExchange(symbol: string): 'binance' | 'upbit' {
+    // USDT 페어는 Binance, 그 외는 Upbit (KRW)
+    return symbol.includes('USDT') || symbol.includes('USD') ? 'binance' : 'upbit';
+  }
+
+  async getHistoricalPrices(
+    symbol: string,
+    timeframe: Timeframe,
+    startDate: string,
+    endDate: string
+  ): Promise<IResult<IPriceData>> {
+    const startTime = Date.now();
+    const cacheKey = `${symbol}-${timeframe}-${startDate}-${endDate}`;
+
+    // 캐시 확인
+    const cached = this.cache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL_MS) {
+      return {
+        success: true,
+        data: {
+          symbol,
+          timeframe,
+          candles: cached.data,
+          startTime: startDate,
+          endTime: endDate,
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          duration_ms: Date.now() - startTime,
+          cached: true,
+        },
+      };
+    }
+
+    try {
+      const exchange = this.detectExchange(symbol);
+      let candles: IOHLCV[];
+
+      const startMs = new Date(startDate).getTime();
+      const endMs = new Date(endDate).getTime();
+
+      if (exchange === 'binance') {
+        candles = await this.fetchBinanceOHLCV(symbol, timeframe, startMs, endMs, 1000);
+      } else {
+        // Upbit은 최대 200개만 지원하므로 여러 번 호출 필요할 수 있음
+        candles = await this.fetchUpbitOHLCV(symbol, timeframe, 200);
+        // 날짜 필터링
+        candles = candles.filter(c => {
+          const ts = new Date(c.timestamp).getTime();
+          return ts >= startMs && ts <= endMs;
+        });
+      }
+
+      // 캐시 저장
+      this.cache.set(cacheKey, { data: candles, timestamp: Date.now() });
+
+      return {
+        success: true,
+        data: {
+          symbol,
+          timeframe,
+          candles,
+          startTime: startDate,
+          endTime: endDate,
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          duration_ms: Date.now() - startTime,
+          cached: false,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error : new Error(String(error)),
+        metadata: {
+          timestamp: new Date().toISOString(),
+          duration_ms: Date.now() - startTime,
+        },
+      };
+    }
+  }
+
+  async getOHLCV(
+    symbol: string,
+    timeframe: Timeframe,
+    limit: number = 500
+  ): Promise<IResult<IOHLCV[]>> {
+    const startTime = Date.now();
+    const cacheKey = `${symbol}-${timeframe}-latest-${limit}`;
+
+    // 캐시 확인 (최신 데이터는 1분 캐시)
+    const cached = this.cache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < 60 * 1000) {
+      return {
+        success: true,
+        data: cached.data,
+        metadata: {
+          timestamp: new Date().toISOString(),
+          duration_ms: Date.now() - startTime,
+          cached: true,
+        },
+      };
+    }
+
+    try {
+      const exchange = this.detectExchange(symbol);
+      let candles: IOHLCV[];
+
+      if (exchange === 'binance') {
+        candles = await this.fetchBinanceOHLCV(symbol, timeframe, undefined, undefined, limit);
+      } else {
+        candles = await this.fetchUpbitOHLCV(symbol, timeframe, Math.min(limit, 200));
+      }
+
+      // 캐시 저장
+      this.cache.set(cacheKey, { data: candles, timestamp: Date.now() });
+
+      return {
+        success: true,
+        data: candles,
+        metadata: {
+          timestamp: new Date().toISOString(),
+          duration_ms: Date.now() - startTime,
+          cached: false,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error : new Error(String(error)),
+        metadata: {
+          timestamp: new Date().toISOString(),
+          duration_ms: Date.now() - startTime,
+        },
+      };
+    }
+  }
+
+  resampleTimeframe(
+    candles: IOHLCV[],
+    sourceTimeframe: Timeframe,
+    targetTimeframe: Timeframe
+  ): IOHLCV[] {
+    const sourceMs = timeframeToMs(sourceTimeframe);
+    const targetMs = timeframeToMs(targetTimeframe);
+
+    if (targetMs <= sourceMs) {
+      return candles;
+    }
+
+    const ratio = targetMs / sourceMs;
+    const result: IOHLCV[] = [];
+
+    for (let i = 0; i < candles.length; i += ratio) {
+      const chunk = candles.slice(i, Math.min(i + ratio, candles.length));
+      if (chunk.length === 0) break;
+
+      const aggregated: IOHLCV = {
+        timestamp: chunk[0].timestamp,
+        open: chunk[0].open,
+        high: Math.max(...chunk.map(c => c.high)),
+        low: Math.min(...chunk.map(c => c.low)),
+        close: chunk[chunk.length - 1].close,
+        volume: chunk.reduce((sum, c) => sum + c.volume, 0),
+      };
+
+      result.push(aggregated);
+    }
+
+    return result;
+  }
+
+  /**
+   * 캐시 초기화
+   */
+  clearCache(): void {
+    this.cache.clear();
+  }
+}
+
+/**
  * 가격 데이터 서비스 팩토리
  */
-export function createPriceDataService(): IPriceDataService {
-  return new InMemoryPriceDataService();
+export function createPriceDataService(mode: 'real' | 'memory' = 'real'): IPriceDataService {
+  return mode === 'real' ? new RealPriceDataService() : new InMemoryPriceDataService();
 }

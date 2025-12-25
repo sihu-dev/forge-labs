@@ -66,6 +66,11 @@ import {
 
 // Strategy Generator
 import { AIStrategyGenerator } from './AIStrategyGenerator'
+import { BacktestConfigModal } from './BacktestConfigModal'
+import { BacktestResultModal } from '../backtest/BacktestResultModal'
+
+// Hooks
+import { useBacktestAPI } from '@/hooks/use-backtest-api'
 
 // i18n
 import { useI18n } from '@/i18n/client'
@@ -168,10 +173,13 @@ function StrategyBuilderInner() {
   const [showValidation, setShowValidation] = useState(false)
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [showAIGenerator, setShowAIGenerator] = useState(false)
+  const [showBacktestModal, setShowBacktestModal] = useState(false)
+  const [showResultModal, setShowResultModal] = useState(false)
 
   // Custom hooks
   const { isSaving, error: saveError, saveStrategy, loadStrategy } = useStrategyPersistence()
   const { canUndo, canRedo, undo, redo, takeSnapshot, clear: clearHistory } = useUndoRedo(initialNodes, initialEdges)
+  const { runBacktest, isRunning: isBacktestRunning, result: backtestResult, clearResult } = useBacktestAPI()
   const toast = useToast()
   const { notify } = useNotifications()
 
@@ -370,28 +378,32 @@ function StrategyBuilderInner() {
       return
     }
 
-    const newRunningState = !isRunning
-    setIsRunning(newRunningState)
+    // 백테스트 모달 열기
+    setShowBacktestModal(true)
+  }, [validationResult, toast, t])
 
-    if (newRunningState) {
-      // Strategy started
+  // 백테스트 실행
+  const handleRunBacktest = useCallback(async (config: any) => {
+    const result = await runBacktest(strategyName, nodes, edges, config)
+
+    if (result) {
       toast.success(
-        t('dashboard.strategyBuilder.toast.started.title') as string,
-        t('dashboard.strategyBuilder.toast.started.message') as string
+        '백테스트 완료',
+        `전략 "${strategyName}"의 백테스트가 완료되었습니다`
       )
-      // Send strategy signal notification
-      notify('strategy_signal', strategyName, t('dashboard.strategyBuilder.toast.started.notification') as string, {
-        priority: 'normal',
-        actionUrl: '/dashboard/strategies',
-      })
+      setShowBacktestModal(false)
+
+      // 결과가 있으면 결과 모달 표시
+      if (result.resultData) {
+        setShowResultModal(true)
+      }
     } else {
-      // Strategy stopped
-      toast.info(
-        t('dashboard.strategyBuilder.toast.stopped.title') as string,
-        t('dashboard.strategyBuilder.toast.stopped.message') as string
+      toast.error(
+        '백테스트 실패',
+        '백테스트를 시작할 수 없습니다'
       )
     }
-  }, [validationResult, isRunning, strategyName, toast, notify, t])
+  }, [strategyName, nodes, edges, runBacktest, toast])
 
   // Validate strategy and show results
   const handleValidate = useCallback(() => {
@@ -793,6 +805,24 @@ function StrategyBuilderInner() {
         isOpen={showAIGenerator}
         onClose={() => setShowAIGenerator(false)}
         onApply={handleAIStrategyApply}
+      />
+
+      {/* Backtest Config Modal */}
+      <BacktestConfigModal
+        isOpen={showBacktestModal}
+        onClose={() => setShowBacktestModal(false)}
+        onRun={handleRunBacktest}
+        isRunning={isBacktestRunning}
+      />
+
+      {/* Backtest Result Modal */}
+      <BacktestResultModal
+        isOpen={showResultModal}
+        onClose={() => {
+          setShowResultModal(false)
+          clearResult()
+        }}
+        result={backtestResult?.resultData || null}
       />
     </div>
   )

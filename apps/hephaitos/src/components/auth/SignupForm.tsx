@@ -1,316 +1,238 @@
+/**
+ * Signup Form Component
+ * 회원가입 폼 (이메일/비밀번호 + 소셜)
+ */
+
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
-import { getSupabaseBrowserClient } from '@/lib/supabase/client'
-import { useI18n } from '@/i18n/client'
+import { useAuth } from '@/lib/auth/context'
 
 export function SignupForm() {
-  const { locale } = useI18n()
-  const isKo = locale === 'ko'
-  const [name, setName] = useState('')
+  const router = useRouter()
+  const { signUp, signInWithGoogle, signInWithGithub } = useAuth()
+  
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [fullName, setFullName] = useState('')
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // Password strength calculation
-  const getPasswordStrength = (pwd: string): { score: number; label: string; color: string } => {
-    if (pwd.length === 0) return { score: 0, label: '', color: '' }
-
-    let score = 0
-    if (pwd.length >= 8) score++
-    if (pwd.length >= 12) score++
-    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++
-    if (/\d/.test(pwd)) score++
-    if (/[^a-zA-Z0-9]/.test(pwd)) score++
-
-    if (score <= 2) return { score: 1, label: isKo ? '약함' : 'Weak', color: 'bg-red-500' }
-    if (score <= 3) return { score: 2, label: isKo ? '보통' : 'Fair', color: 'bg-amber-500' }
-    if (score <= 4) return { score: 3, label: isKo ? '좋음' : 'Good', color: 'bg-emerald-500' }
-    return { score: 4, label: isKo ? '강력함' : 'Strong', color: 'bg-emerald-600' }
-  }
-
-  const passwordStrength = getPasswordStrength(password)
-
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    setLoading(true)
     setError(null)
 
-    if (password.length < 8) {
-      setError(isKo ? '비밀번호는 8자 이상이어야 합니다' : 'Password must be at least 8 characters')
-      setIsLoading(false)
-      return
-    }
+    const { error } = await signUp(email, password, fullName)
 
-    try {
-      const supabase = getSupabaseBrowserClient()
-      if (!supabase) {
-        setError(isKo ? '인증 서비스를 사용할 수 없습니다' : 'Authentication service unavailable')
-        return
-      }
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
-
-      if (error) {
-        setError(error.message)
-        return
-      }
-
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+    } else {
       setSuccess(true)
-    } catch {
-      setError(isKo ? '가입 중 오류가 발생했습니다' : 'An error occurred during sign up')
-    } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
-  const handleOAuthLogin = async (provider: 'google' | 'github') => {
-    try {
-      const supabase = getSupabaseBrowserClient()
-      if (!supabase) {
-        setError(isKo ? '인증 서비스를 사용할 수 없습니다' : 'Authentication service unavailable')
-        return
-      }
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
+  const handleGoogleSignup = async () => {
+    setLoading(true)
+    setError(null)
+    const { error } = await signInWithGoogle()
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+    }
+  }
 
-      if (error) {
-        setError(error.message)
-      }
-    } catch {
-      setError(isKo ? '로그인 중 오류가 발생했습니다' : 'An error occurred during login')
+  const handleGithubSignup = async () => {
+    setLoading(true)
+    setError(null)
+    const { error } = await signInWithGithub()
+    if (error) {
+      setError(error.message)
+      setLoading(false)
     }
   }
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4">
-        <div className="w-full max-w-sm text-center">
-          <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-amber-500/10 flex items-center justify-center">
-            <svg className="w-6 h-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+      <div className="min-h-screen flex items-center justify-center bg-[#0A0A0B] p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-[#111113] border border-white/[0.06] rounded-lg p-6 text-center">
+            <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-medium text-white mb-2">
+              회원가입 완료!
+            </h2>
+            <p className="text-sm text-zinc-400 mb-6">
+              이메일로 전송된 인증 링크를 클릭하여 계정을 활성화해주세요.
+            </p>
+            <Link
+              href="/auth/login"
+              className="inline-block px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors"
+            >
+              로그인 페이지로 이동
+            </Link>
           </div>
-          <h1 className="text-xl font-semibold text-white mb-2">
-            {isKo ? '이메일을 확인해주세요' : 'Check your email'}
-          </h1>
-          <p className="text-sm text-zinc-400 mb-6">
-            {isKo ? '인증 링크를 보냈습니다:' : 'We sent a verification link to:'}
-            <br />
-            <span className="text-white">{email}</span>
-          </p>
-          <Link
-            href="/auth/login"
-            className="inline-block px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-md text-sm text-white hover:bg-zinc-800 transition-colors"
-          >
-            {isKo ? '로그인 페이지로' : 'Back to login'}
-          </Link>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex flex-col">
-      {/* Header */}
-      <header className="w-full px-6 py-4">
-        <Link href="/" className="inline-flex items-center gap-2">
-          <div className="w-7 h-7 rounded bg-amber-500 flex items-center justify-center">
-            <span className="text-xs font-bold text-white">H</span>
-          </div>
-          <span className="text-sm font-medium text-white">HEPHAITOS</span>
-        </Link>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center px-4 pb-12">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-white">
-              {isKo ? '계정 만들기' : 'Create your account'}
-            </h1>
-            <p className="text-sm text-zinc-400 mt-2">
-              {isKo ? '무료로 시작하세요. 50 크레딧 지급!' : 'Start for free. Get 50 credits!'}
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {/* OAuth Buttons */}
-            <button
-              type="button"
-              onClick={() => handleOAuthLogin('github')}
-              className="w-full flex items-center justify-center gap-3 h-10 px-4 bg-white text-black rounded-md text-sm font-medium hover:bg-zinc-100 transition-colors"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-              </svg>
-              Continue with GitHub
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOAuthLogin('google')}
-              className="w-full flex items-center justify-center gap-3 h-10 px-4 bg-zinc-900 border border-zinc-800 text-white rounded-md text-sm font-medium hover:bg-zinc-800 transition-colors"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-              </svg>
-              Continue with Google
-            </button>
-
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-zinc-800" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[#0A0A0A] px-2 text-zinc-500">or</span>
-              </div>
-            </div>
-
-            {/* Email Form */}
-            <form onSubmit={handleSignUp} className="space-y-4">
-              {error && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-sm text-red-400">
-                  {error}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">
-                  {isKo ? '이름' : 'Name'}
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={isKo ? '홍길동' : 'John Doe'}
-                  required
-                  autoComplete="name"
-                  className="w-full h-10 px-3 bg-zinc-900 border border-zinc-800 rounded-md text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">
-                  {isKo ? '이메일' : 'Email'}
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                  autoComplete="email"
-                  className="w-full h-10 px-3 bg-zinc-900 border border-zinc-800 rounded-md text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">
-                  {isKo ? '비밀번호' : 'Password'}
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={isKo ? '8자 이상' : 'Min 8 characters'}
-                    required
-                    minLength={8}
-                    autoComplete="new-password"
-                    className="w-full h-10 px-3 pr-10 bg-zinc-900 border border-zinc-800 rounded-md text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-zinc-500 hover:text-white transition-colors"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? (
-                      <EyeSlashIcon className="w-4 h-4" />
-                    ) : (
-                      <EyeIcon className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Password Strength Indicator */}
-                {password.length > 0 && (
-                  <div className="mt-2 space-y-1.5">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4].map((level) => (
-                        <div
-                          key={level}
-                          className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                            level <= passwordStrength.score
-                              ? passwordStrength.color
-                              : 'bg-zinc-800'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    {passwordStrength.label && (
-                      <p className={`text-xs ${
-                        passwordStrength.score === 1
-                          ? 'text-red-400'
-                          : passwordStrength.score === 2
-                          ? 'text-amber-400'
-                          : 'text-emerald-400'
-                      }`}>
-                        {isKo ? '비밀번호 강도' : 'Password strength'}: {passwordStrength.label}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-10 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md text-sm font-medium transition-colors"
-              >
-                {isLoading ? (isKo ? '가입 중...' : 'Creating...') : (isKo ? '계정 만들기' : 'Create account')}
-              </button>
-            </form>
-          </div>
-
-          <p className="text-center text-sm text-zinc-500 mt-8">
-            {isKo ? '이미 계정이 있으신가요?' : 'Already have an account?'}{' '}
-            <Link href="/auth/login" className="text-white hover:underline">
-              {isKo ? '로그인' : 'Sign in'}
-            </Link>
+    <div className="min-h-screen flex items-center justify-center bg-[#0A0A0B] p-4">
+      <div className="w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-white mb-2">
+            HEPHAITOS 시작하기
+          </h1>
+          <p className="text-sm text-zinc-400">
+            무료로 시작하고 {process.env.NEXT_PUBLIC_WELCOME_BONUS || 50}크레딧을 받으세요
           </p>
         </div>
-      </main>
 
-      {/* Footer */}
-      <footer className="py-4 px-6 text-center">
-        <p className="text-xs text-zinc-600">
-          By continuing, you agree to HEPHAITOS's{' '}
-          <Link href="/terms" className="text-zinc-500 hover:text-white">Terms of Service</Link>
-          {' '}and{' '}
-          <Link href="/privacy" className="text-zinc-500 hover:text-white">Privacy Policy</Link>
-        </p>
-      </footer>
+        {/* Card */}
+        <div className="bg-[#111113] border border-white/[0.06] rounded-lg p-6">
+          {/* Social Signup */}
+          <div className="space-y-3 mb-6">
+            <button
+              type="button"
+              onClick={handleGoogleSignup}
+              disabled={loading}
+              className="w-full h-10 px-4 bg-white hover:bg-gray-100 text-gray-900 rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Google로 시작하기
+            </button>
+
+            <button
+              type="button"
+              onClick={handleGithubSignup}
+              disabled={loading}
+              className="w-full h-10 px-4 bg-[#24292F] hover:bg-[#2F353D] text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+              </svg>
+              Github으로 시작하기
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/[0.06]"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="px-2 bg-[#111113] text-zinc-500">또는</span>
+            </div>
+          </div>
+
+          {/* Email Signup Form */}
+          <form onSubmit={handleSignup} className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="fullName" className="block text-xs text-zinc-400 mb-1.5">
+                이름
+              </label>
+              <input
+                id="fullName"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full h-10 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-white/[0.12] transition-colors"
+                placeholder="홍길동"
+                disabled={loading}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="email" className="block text-xs text-zinc-400 mb-1.5">
+                이메일
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-10 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-white/[0.12] transition-colors"
+                placeholder="your@email.com"
+                required
+                disabled={loading}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-xs text-zinc-400 mb-1.5">
+                비밀번호 (최소 6자)
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full h-10 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-white/[0.12] transition-colors"
+                placeholder="••••••••"
+                required
+                minLength={6}
+                disabled={loading}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-10 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? '가입 중...' : '회원가입'}
+            </button>
+
+            <p className="text-xs text-zinc-500 text-center">
+              가입 시{' '}
+              <Link href="/terms" className="text-zinc-400 hover:text-zinc-300 underline">
+                서비스 약관
+              </Link>
+              과{' '}
+              <Link href="/privacy" className="text-zinc-400 hover:text-zinc-300 underline">
+                개인정보 처리방침
+              </Link>
+              에 동의합니다
+            </p>
+          </form>
+
+          {/* Footer */}
+          <div className="mt-6 text-center text-sm text-zinc-400">
+            이미 계정이 있으신가요?{' '}
+            <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 transition-colors">
+              로그인
+            </Link>
+          </div>
+        </div>
+
+        {/* Additional Links */}
+        <div className="mt-4 text-center text-xs text-zinc-500">
+          <Link href="/" className="hover:text-zinc-400 transition-colors">
+            홈으로 돌아가기
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }

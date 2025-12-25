@@ -8,3 +8,5 @@ export type { TradingChartProps, OHLCVData, IndicatorOverlay, IndicatorPane } fr
 
 export { IndicatorChart } from './IndicatorChart'
 export type { IndicatorChartProps } from './IndicatorChart'
+
+export { EquityCurveChart } from './EquityCurveChart'
