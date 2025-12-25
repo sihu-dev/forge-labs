@@ -22,6 +22,8 @@ build/
 !.vscode/launch.json
 !.vscode/tasks.json
 !.vscode/mcp.json
+!.vscode/keybindings.json
+!.vscode/*.code-snippets
 .idea/
 *.swp
 *.swo

@@ -1,0 +1,498 @@
+{
+  // ============================================
+  // FORGE LABS Code Snippets
+  // React, TypeScript, Next.js
+  // ============================================
+
+  // === React Component ===
+  "React Functional Component": {
+    "prefix": "rfc",
+    "scope": "typescriptreact",
+    "body": [
+      "interface ${1:${TM_FILENAME_BASE}}Props {",
+      "  $2",
+      "}",
+      "",
+      "export function ${1:${TM_FILENAME_BASE}}({ $3 }: ${1:${TM_FILENAME_BASE}}Props) {",
+      "  return (",
+      "    <div className=\"$4\">",
+      "      $0",
+      "    </div>",
+      "  );",
+      "}"
+    ],
+    "description": "React Functional Component with TypeScript"
+  },
+
+  "React Functional Component Export Default": {
+    "prefix": "rfce",
+    "scope": "typescriptreact",
+    "body": [
+      "interface ${1:${TM_FILENAME_BASE}}Props {",
+      "  $2",
+      "}",
+      "",
+      "export default function ${1:${TM_FILENAME_BASE}}({ $3 }: ${1:${TM_FILENAME_BASE}}Props) {",
+      "  return (",
+      "    <div className=\"$4\">",
+      "      $0",
+      "    </div>",
+      "  );",
+      "}"
+    ],
+    "description": "React Functional Component with Export Default"
+  },
+
+  "React Arrow Component": {
+    "prefix": "rac",
+    "scope": "typescriptreact",
+    "body": [
+      "interface ${1:${TM_FILENAME_BASE}}Props {",
+      "  $2",
+      "}",
+      "",
+      "export const ${1:${TM_FILENAME_BASE}} = ({ $3 }: ${1:${TM_FILENAME_BASE}}Props) => {",
+      "  return (",
+      "    <div className=\"$4\">",
+      "      $0",
+      "    </div>",
+      "  );",
+      "};"
+    ],
+    "description": "React Arrow Function Component"
+  },
+
+  // === Hooks ===
+  "useState Hook": {
+    "prefix": "us",
+    "scope": "typescriptreact,typescript",
+    "body": [
+      "const [${1:state}, set${1/(.*)/${1:/capitalize}/}] = useState<${2:type}>($3);"
+    ],
+    "description": "useState Hook with TypeScript"
+  },
+
+  "useEffect Hook": {
+    "prefix": "ue",
+    "scope": "typescriptreact,typescript",
+    "body": [
+      "useEffect(() => {",
+      "  $1",
+      "  ${2:return () => {",
+      "    $3",
+      "  };}",
+      "}, [$4]);"
+    ],
+    "description": "useEffect Hook"
+  },
+
+  "useCallback Hook": {
+    "prefix": "ucb",
+    "scope": "typescriptreact,typescript",
+    "body": [
+      "const ${1:callback} = useCallback(($2) => {",
+      "  $3",
+      "}, [$4]);"
+    ],
+    "description": "useCallback Hook"
+  },
+
+  "useMemo Hook": {
+    "prefix": "um",
+    "scope": "typescriptreact,typescript",
+    "body": [
+      "const ${1:memoized} = useMemo(() => {",
+      "  return $2;",
+      "}, [$3]);"
+    ],
+    "description": "useMemo Hook"
+  },
+
+  "useRef Hook": {
+    "prefix": "ur",
+    "scope": "typescriptreact,typescript",
+    "body": [
+      "const ${1:ref} = useRef<${2:HTMLDivElement}>(null);"
+    ],
+    "description": "useRef Hook with TypeScript"
+  },
+
+  "Custom Hook": {
+    "prefix": "hook",
+    "scope": "typescriptreact,typescript",
+    "body": [
+      "import { useState, useEffect } from 'react';",
+      "",
+      "interface Use${1:HookName}Options {",
+      "  $2",
+      "}",
+      "",
+      "interface Use${1:HookName}Return {",
+      "  $3",
+      "}",
+      "",
+      "export function use${1:HookName}(options: Use${1:HookName}Options): Use${1:HookName}Return {",
+      "  const [${4:state}, set${4/(.*)/${1:/capitalize}/}] = useState<${5:type}>();",
+      "",
+      "  useEffect(() => {",
+      "    $6",
+      "  }, []);",
+      "",
+      "  return {",
+      "    ${4:state},",
+      "    $0",
+      "  };",
+      "}"
+    ],
+    "description": "Custom React Hook"
+  },
+
+  // === Next.js ===
+  "Next.js Page": {
+    "prefix": "npage",
+    "scope": "typescriptreact",
+    "body": [
+      "export default function ${1:${TM_FILENAME_BASE}}Page() {",
+      "  return (",
+      "    <main className=\"$2\">",
+      "      $0",
+      "    </main>",
+      "  );",
+      "}"
+    ],
+    "description": "Next.js Page Component"
+  },
+
+  "Next.js Server Component": {
+    "prefix": "nsc",
+    "scope": "typescriptreact",
+    "body": [
+      "interface ${1:${TM_FILENAME_BASE}}Props {",
+      "  $2",
+      "}",
+      "",
+      "export default async function ${1:${TM_FILENAME_BASE}}({ $3 }: ${1:${TM_FILENAME_BASE}}Props) {",
+      "  $4",
+      "",
+      "  return (",
+      "    <div className=\"$5\">",
+      "      $0",
+      "    </div>",
+      "  );",
+      "}"
+    ],
+    "description": "Next.js Server Component"
+  },
+
+  "Next.js Client Component": {
+    "prefix": "ncc",
+    "scope": "typescriptreact",
+    "body": [
+      "'use client';",
+      "",
+      "interface ${1:${TM_FILENAME_BASE}}Props {",
+      "  $2",
+      "}",
+      "",
+      "export function ${1:${TM_FILENAME_BASE}}({ $3 }: ${1:${TM_FILENAME_BASE}}Props) {",
+      "  return (",
+      "    <div className=\"$4\">",
+      "      $0",
+      "    </div>",
+      "  );",
+      "}"
+    ],
+    "description": "Next.js Client Component with 'use client'"
+  },
+
+  "Next.js API Route": {
+    "prefix": "napi",
+    "scope": "typescript",
+    "body": [
+      "import { NextRequest, NextResponse } from 'next/server';",
+      "",
+      "export async function ${1|GET,POST,PUT,DELETE,PATCH|}(request: NextRequest) {",
+      "  try {",
+      "    $2",
+      "",
+      "    return NextResponse.json({ $3 });",
+      "  } catch (error) {",
+      "    console.error('API Error:', error);",
+      "    return NextResponse.json(",
+      "      { error: 'Internal Server Error' },",
+      "      { status: 500 }",
+      "    );",
+      "  }",
+      "}"
+    ],
+    "description": "Next.js 14 API Route Handler"
+  },
+
+  "Next.js Layout": {
+    "prefix": "nlayout",
+    "scope": "typescriptreact",
+    "body": [
+      "interface ${1:${TM_FILENAME_BASE}}LayoutProps {",
+      "  children: React.ReactNode;",
+      "}",
+      "",
+      "export default function ${1:${TM_FILENAME_BASE}}Layout({ children }: ${1:${TM_FILENAME_BASE}}LayoutProps) {",
+      "  return (",
+      "    <div className=\"$2\">",
+      "      $0",
+      "      {children}",
+      "    </div>",
+      "  );",
+      "}"
+    ],
+    "description": "Next.js Layout Component"
+  },
+
+  "Next.js Loading": {
+    "prefix": "nloading",
+    "scope": "typescriptreact",
+    "body": [
+      "export default function Loading() {",
+      "  return (",
+      "    <div className=\"flex items-center justify-center min-h-screen\">",
+      "      <div className=\"animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary\"></div>",
+      "    </div>",
+      "  );",
+      "}"
+    ],
+    "description": "Next.js Loading Component"
+  },
+
+  "Next.js Error": {
+    "prefix": "nerror",
+    "scope": "typescriptreact",
+    "body": [
+      "'use client';",
+      "",
+      "interface ErrorProps {",
+      "  error: Error & { digest?: string };",
+      "  reset: () => void;",
+      "}",
+      "",
+      "export default function Error({ error, reset }: ErrorProps) {",
+      "  return (",
+      "    <div className=\"flex flex-col items-center justify-center min-h-screen gap-4\">",
+      "      <h2 className=\"text-xl font-semibold\">Something went wrong!</h2>",
+      "      <button",
+      "        onClick={reset}",
+      "        className=\"px-4 py-2 bg-primary text-white rounded-md\"",
+      "      >",
+      "        Try again",
+      "      </button>",
+      "    </div>",
+      "  );",
+      "}"
+    ],
+    "description": "Next.js Error Component"
+  },
+
+  // === TypeScript ===
+  "TypeScript Interface": {
+    "prefix": "int",
+    "scope": "typescript,typescriptreact",
+    "body": [
+      "interface ${1:Name} {",
+      "  ${2:property}: ${3:type};$0",
+      "}"
+    ],
+    "description": "TypeScript Interface"
+  },
+
+  "TypeScript Type": {
+    "prefix": "type",
+    "scope": "typescript,typescriptreact",
+    "body": [
+      "type ${1:Name} = ${2:type};"
+    ],
+    "description": "TypeScript Type Alias"
+  },
+
+  "TypeScript Enum": {
+    "prefix": "enum",
+    "scope": "typescript,typescriptreact",
+    "body": [
+      "enum ${1:Name} {",
+      "  ${2:Value} = '${2:Value}',",
+      "  $0",
+      "}"
+    ],
+    "description": "TypeScript Enum"
+  },
+
+  "Export Type": {
+    "prefix": "expt",
+    "scope": "typescript,typescriptreact",
+    "body": [
+      "export type { ${1:TypeName} } from '${2:./path}';"
+    ],
+    "description": "Export Type"
+  },
+
+  // === Async/Promise ===
+  "Async Function": {
+    "prefix": "afn",
+    "scope": "typescript,typescriptreact",
+    "body": [
+      "async function ${1:name}(${2:params}): Promise<${3:ReturnType}> {",
+      "  try {",
+      "    $0",
+      "  } catch (error) {",
+      "    throw error;",
+      "  }",
+      "}"
+    ],
+    "description": "Async Function with try/catch"
+  },
+
+  "Async Arrow Function": {
+    "prefix": "aafn",
+    "scope": "typescript,typescriptreact",
+    "body": [
+      "const ${1:name} = async (${2:params}): Promise<${3:ReturnType}> => {",
+      "  try {",
+      "    $0",
+      "  } catch (error) {",
+      "    throw error;",
+      "  }",
+      "};"
+    ],
+    "description": "Async Arrow Function"
+  },
+
+  // === Console ===
+  "Console Log": {
+    "prefix": "cl",
+    "scope": "typescript,typescriptreact,javascript,javascriptreact",
+    "body": [
+      "console.log('${1:label}:', $2);"
+    ],
+    "description": "Console Log"
+  },
+
+  "Console Error": {
+    "prefix": "ce",
+    "scope": "typescript,typescriptreact,javascript,javascriptreact",
+    "body": [
+      "console.error('${1:Error}:', $2);"
+    ],
+    "description": "Console Error"
+  },
+
+  // === Imports ===
+  "Import React": {
+    "prefix": "imr",
+    "scope": "typescriptreact,javascriptreact",
+    "body": [
+      "import { ${1:useState} } from 'react';"
+    ],
+    "description": "Import from React"
+  },
+
+  "Import Next": {
+    "prefix": "imn",
+    "scope": "typescriptreact",
+    "body": [
+      "import { ${1:useRouter} } from 'next/${2:navigation}';"
+    ],
+    "description": "Import from Next.js"
+  },
+
+  // === Supabase ===
+  "Supabase Select": {
+    "prefix": "sbsel",
+    "scope": "typescript,typescriptreact",
+    "body": [
+      "const { data, error } = await supabase",
+      "  .from('${1:table}')",
+      "  .select('${2:*}')",
+      "  ${3:.eq('${4:column}', ${5:value})};"
+    ],
+    "description": "Supabase Select Query"
+  },
+
+  "Supabase Insert": {
+    "prefix": "sbins",
+    "scope": "typescript,typescriptreact",
+    "body": [
+      "const { data, error } = await supabase",
+      "  .from('${1:table}')",
+      "  .insert(${2:values})",
+      "  .select();"
+    ],
+    "description": "Supabase Insert Query"
+  },
+
+  "Supabase Update": {
+    "prefix": "sbupd",
+    "scope": "typescript,typescriptreact",
+    "body": [
+      "const { data, error } = await supabase",
+      "  .from('${1:table}')",
+      "  .update(${2:values})",
+      "  .eq('${3:column}', ${4:value})",
+      "  .select();"
+    ],
+    "description": "Supabase Update Query"
+  },
+
+  // === Zustand ===
+  "Zustand Store": {
+    "prefix": "zstore",
+    "scope": "typescript,typescriptreact",
+    "body": [
+      "import { create } from 'zustand';",
+      "",
+      "interface ${1:Store}State {",
+      "  ${2:property}: ${3:type};",
+      "  set${2/(.*)/${1:/capitalize}/}: (value: ${3:type}) => void;",
+      "}",
+      "",
+      "export const use${1:Store}Store = create<${1:Store}State>((set) => ({",
+      "  ${2:property}: ${4:initialValue},",
+      "  set${2/(.*)/${1:/capitalize}/}: (value) => set({ ${2:property}: value }),",
+      "}));"
+    ],
+    "description": "Zustand Store"
+  },
+
+  // === Testing ===
+  "Vitest Test": {
+    "prefix": "vtest",
+    "scope": "typescript,typescriptreact",
+    "body": [
+      "import { describe, it, expect } from 'vitest';",
+      "",
+      "describe('${1:Component}', () => {",
+      "  it('${2:should render correctly}', () => {",
+      "    $0",
+      "    expect(true).toBe(true);",
+      "  });",
+      "});"
+    ],
+    "description": "Vitest Test"
+  },
+
+  // === Comments ===
+  "TODO Comment": {
+    "prefix": "todo",
+    "scope": "typescript,typescriptreact,javascript,javascriptreact",
+    "body": [
+      "// TODO: $0"
+    ],
+    "description": "TODO Comment"
+  },
+
+  "FIXME Comment": {
+    "prefix": "fixme",
+    "scope": "typescript,typescriptreact,javascript,javascriptreact",
+    "body": [
+      "// FIXME: $0"
+    ],
+    "description": "FIXME Comment"
+  }
+}

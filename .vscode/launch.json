@@ -1,114 +1,248 @@
 {
   "version": "0.2.0",
   "configurations": [
-    // === HEPHAITOS 디버깅 ===
+    // ============================================
+    // HEPHAITOS 디버깅
+    // ============================================
     {
       "name": "HEPHAITOS: Dev Server",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/apps/hephaitos",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev"],
-      "skipFiles": ["<node_internals>/**"],
-      "env": {
-        "NODE_OPTIONS": "--inspect"
-      }
-    },
-    {
-      "name": "HEPHAITOS: Debug Server-side",
       "type": "node-terminal",
       "request": "launch",
       "command": "pnpm --filter hephaitos dev",
       "cwd": "${workspaceFolder}",
       "serverReadyAction": {
-        "pattern": "- Local:.+(https?://.+)",
+        "pattern": "- Local:.+(https?://[^\\s]+)",
         "uriFormat": "%s",
         "action": "debugWithChrome"
       }
     },
     {
-      "name": "HEPHAITOS: Debug Client-side",
+      "name": "HEPHAITOS: Chrome Debug",
       "type": "chrome",
       "request": "launch",
       "url": "http://localhost:3000",
       "webRoot": "${workspaceFolder}/apps/hephaitos",
-      "sourceMaps": true
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://_N_E/*": "${webRoot}/*"
+      }
     },
     {
-      "name": "HEPHAITOS: Full Stack Debug",
+      "name": "HEPHAITOS: Server-side Debug",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**"
+      ],
+      "cwd": "${workspaceFolder}/apps/hephaitos"
+    },
+
+    // ============================================
+    // BIDFLOW 디버깅
+    // ============================================
+    {
+      "name": "BIDFLOW: Dev Server",
       "type": "node-terminal",
       "request": "launch",
-      "command": "pnpm --filter hephaitos dev",
+      "command": "pnpm --filter bidflow-standalone dev",
       "cwd": "${workspaceFolder}",
       "serverReadyAction": {
-        "pattern": "- Local:.+(https?://.+)",
+        "pattern": "- Local:.+(https?://[^\\s]+)",
         "uriFormat": "%s",
         "action": "debugWithChrome"
       }
     },
-
-    // === BIDFLOW 디버깅 ===
     {
-      "name": "BIDFLOW: Dev Server",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/apps/bidflow",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev"],
-      "skipFiles": ["<node_internals>/**"],
-      "env": {
-        "NODE_OPTIONS": "--inspect"
-      }
-    },
-    {
-      "name": "BIDFLOW: Debug Client-side",
+      "name": "BIDFLOW: Chrome Debug",
       "type": "chrome",
       "request": "launch",
       "url": "http://localhost:3010",
       "webRoot": "${workspaceFolder}/apps/bidflow",
-      "sourceMaps": true
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://_N_E/*": "${webRoot}/*"
+      }
     },
 
-    // === Jest 테스트 디버깅 ===
+    // ============================================
+    // 전체 개발 (Turbo)
+    // ============================================
     {
-      "name": "Jest: Current File",
+      "name": "All Apps: Dev (Turbo)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm dev",
+      "cwd": "${workspaceFolder}"
+    },
+
+    // ============================================
+    // Vitest 테스트 디버깅
+    // ============================================
+    {
+      "name": "Vitest: Current File",
       "type": "node",
       "request": "launch",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
       "args": [
+        "run",
         "${relativeFile}",
-        "--config",
-        "${workspaceFolder}/jest.config.js",
-        "--runInBand"
+        "--reporter=verbose"
       ],
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**"
+      ]
+    },
+    {
+      "name": "Vitest: All Tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": [
+        "run",
+        "--reporter=verbose"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
       "internalConsoleOptions": "neverOpen"
     },
     {
-      "name": "Jest: All Tests",
+      "name": "Vitest: Watch Mode",
       "type": "node",
       "request": "launch",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": ["--runInBand"],
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": [
+        "watch",
+        "--reporter=verbose"
+      ],
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
       "internalConsoleOptions": "neverOpen"
     },
+    {
+      "name": "Vitest: Debug Current Test",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": [
+        "run",
+        "${relativeFile}",
+        "--no-file-parallelism"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "internalConsoleOptions": "neverOpen",
+      "stopOnEntry": false
+    },
 
-    // === Node.js 디버깅 ===
+    // ============================================
+    // Node.js 디버깅
+    // ============================================
     {
       "name": "Attach to Node Process",
       "type": "node",
       "request": "attach",
       "port": 9229,
       "restart": true,
-      "skipFiles": ["<node_internals>/**"]
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**"
+      ]
+    },
+    {
+      "name": "Node: Run Current File",
+      "type": "node",
+      "request": "launch",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "name": "Node: TypeScript File",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "tsx",
+        "${file}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+
+    // ============================================
+    // Playwright 테스트
+    // ============================================
+    {
+      "name": "Playwright: Run Tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/playwright",
+      "args": [
+        "test"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Playwright: Debug Test",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/playwright",
+      "args": [
+        "test",
+        "--debug"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
     }
   ],
   "compounds": [
     {
-      "name": "HEPHAITOS: Full Debug (Server + Client)",
-      "configurations": ["HEPHAITOS: Debug Server-side"],
-      "stopAll": true
+      "name": "HEPHAITOS: Full Stack Debug",
+      "configurations": [
+        "HEPHAITOS: Dev Server"
+      ],
+      "stopAll": true,
+      "presentation": {
+        "hidden": false,
+        "group": "HEPHAITOS"
+      }
+    },
+    {
+      "name": "BIDFLOW: Full Stack Debug",
+      "configurations": [
+        "BIDFLOW: Dev Server"
+      ],
+      "stopAll": true,
+      "presentation": {
+        "hidden": false,
+        "group": "BIDFLOW"
+      }
+    },
+    {
+      "name": "Both Apps: Full Stack Debug",
+      "configurations": [
+        "HEPHAITOS: Dev Server",
+        "BIDFLOW: Dev Server"
+      ],
+      "stopAll": true,
+      "presentation": {
+        "hidden": false,
+        "group": "All"
+      }
     }
   ]
 }

@@ -1,0 +1,112 @@
+{
+  "folders": [
+    {
+      "name": "Root",
+      "path": "."
+    },
+    {
+      "name": "HEPHAITOS (App)",
+      "path": "apps/hephaitos"
+    },
+    {
+      "name": "BIDFLOW (App)",
+      "path": "apps/bidflow"
+    },
+    {
+      "name": "@forge/types",
+      "path": "packages/types"
+    },
+    {
+      "name": "@forge/utils",
+      "path": "packages/utils"
+    },
+    {
+      "name": "@forge/core",
+      "path": "packages/core"
+    },
+    {
+      "name": "@forge/ui",
+      "path": "packages/ui"
+    },
+    {
+      "name": "@forge/crm",
+      "path": "packages/crm"
+    },
+    {
+      "name": "@forge/integrations",
+      "path": "packages/integrations"
+    },
+    {
+      "name": "@forge/workflows",
+      "path": "packages/workflows"
+    }
+  ],
+  "settings": {
+    // 워크스페이스 전용 설정 (기본 설정 상속)
+    "files.associations": {
+      "*.css": "tailwindcss"
+    },
+    "editor.quickSuggestions": {
+      "strings": true
+    },
+    "typescript.preferences.importModuleSpecifier": "relative",
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.next": true,
+      "**/.turbo": true,
+      "**/dist": true,
+      "**/coverage": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "bradlc.vscode-tailwindcss",
+      "usernamehw.errorlens",
+      "eamodio.gitlens",
+      "pkief.material-icon-theme",
+      "github.github-vscode-theme"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "compounds": [
+      {
+        "name": "FORGE LABS: All Apps",
+        "configurations": []
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "FORGE: Install",
+        "type": "shell",
+        "command": "pnpm install",
+        "problemMatcher": [],
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        }
+      },
+      {
+        "label": "FORGE: Build All",
+        "type": "shell",
+        "command": "pnpm build",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": "$tsc"
+      },
+      {
+        "label": "FORGE: TypeCheck",
+        "type": "shell",
+        "command": "pnpm typecheck",
+        "problemMatcher": "$tsc"
+      }
+    ]
+  }
+}

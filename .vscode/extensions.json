@@ -1,6 +1,6 @@
 {
   "recommendations": [
-    // === 필수 ===
+    // === 필수 (Core) ===
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
     "bradlc.vscode-tailwindcss",
@@ -11,43 +11,71 @@
     "usernamehw.errorlens",
     "christian-kohler.path-intellisense",
     "christian-kohler.npm-intellisense",
+    "yoavbls.pretty-ts-errors",
 
     // === React/Next.js ===
     "dsznajder.es7-react-js-snippets",
     "formulahendry.auto-rename-tag",
     "steoates.autoimport",
+    "burkeholland.simple-react-snippets",
+    "styled-components.vscode-styled-components",
 
-    // === Git ===
+    // === Git & 협업 ===
     "eamodio.gitlens",
     "mhutchie.git-graph",
+    "github.vscode-pull-request-github",
+    "ms-vsliveshare.vsliveshare",
 
     // === 테마 & 아이콘 ===
-    "zhuangtongfa.material-theme",
+    "github.github-vscode-theme",
     "pkief.material-icon-theme",
+    "zhuangtongfa.material-theme",
 
     // === 생산성 ===
     "streetsidesoftware.code-spell-checker",
     "wayou.vscode-todo-highlight",
     "gruntfuggly.todo-tree",
     "naumovs.color-highlight",
+    "vincaslt.highlight-matching-tag",
+    "oderwat.indent-rainbow",
+    "aaron-bond.better-comments",
+    "shardulm94.trailing-spaces",
+    "wix.vscode-import-cost",
 
-    // === 디버깅 ===
+    // === AI & 코드 어시스턴트 ===
+    "github.copilot",
+    "github.copilot-chat",
+
+    // === 디버깅 & 테스트 ===
     "ms-vscode.js-debug-nightly",
+    "orta.vscode-jest",
+    "hbenl.vscode-test-explorer",
+    "ms-playwright.playwright",
 
-    // === Supabase ===
-    "supabase.supabase-vscode",
-
-    // === API 테스트 ===
+    // === API & 데이터베이스 ===
     "humao.rest-client",
     "rangav.vscode-thunder-client",
+    "supabase.supabase-vscode",
+    "mtxr.sqltools",
 
-    // === Markdown ===
+    // === Docker & 클라우드 ===
+    "ms-azuretools.vscode-docker",
+    "ms-vscode-remote.remote-containers",
+
+    // === Markdown & 문서 ===
     "yzhang.markdown-all-in-one",
     "bierner.markdown-mermaid",
+    "bierner.markdown-preview-github-styles",
 
     // === 기타 유틸 ===
     "editorconfig.editorconfig",
-    "mikestead.dotenv"
+    "mikestead.dotenv",
+    "csstools.postcss",
+    "mrmlnc.vscode-json5",
+    "redhat.vscode-yaml"
   ],
-  "unwantedRecommendations": []
+  "unwantedRecommendations": [
+    "hookyqr.beautify",
+    "HookyQR.beautify"
+  ]
 }
