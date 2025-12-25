@@ -36,7 +36,7 @@ export default async function ProfilePage() {
     .single()
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] p-6">
+    <div className="min-h-screen bg-[#0D0D0F] p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">

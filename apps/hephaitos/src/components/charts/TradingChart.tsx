@@ -63,7 +63,7 @@ export interface TradingChartProps {
 // ============================================
 
 const chartTheme = {
-  background: '#0A0A0C',
+  background: '#0D0D0F',
   textColor: '#71717a',
   gridColor: 'rgba(255, 255, 255, 0.04)',
   borderColor: 'rgba(255, 255, 255, 0.06)',

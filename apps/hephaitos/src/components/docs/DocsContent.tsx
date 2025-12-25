@@ -97,7 +97,7 @@ const DOC_CATEGORIES = [
 
 export function DocsContent() {
   return (
-    <div className="min-h-screen bg-[#0A0A0B]">
+    <div className="min-h-screen bg-[#0D0D0F]">
       <div className="max-w-5xl mx-auto px-4 py-16">
         {/* Header */}
         <div className="text-center mb-12">

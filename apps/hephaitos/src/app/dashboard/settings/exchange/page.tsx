@@ -22,7 +22,7 @@ export default async function ExchangeSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] p-6">
+    <div className="min-h-screen bg-[#0D0D0F] p-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">

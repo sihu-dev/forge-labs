@@ -104,7 +104,7 @@ export function ProfileEditor({ user, profile }: ProfileEditorProps) {
         {/* Role */}
         <div>
           <label className="block text-xs text-zinc-400 mb-2">역할</label>
-          <div className="inline-flex px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-400">
+          <div className="inline-flex px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-[#7C8AEA]">
             {profile?.role === 'admin' && '관리자'}
             {profile?.role === 'mentor' && '멘토'}
             {profile?.role === 'user' && '일반 사용자'}
@@ -130,7 +130,7 @@ export function ProfileEditor({ user, profile }: ProfileEditorProps) {
           <button
             type="submit"
             disabled={loading}
-            className="h-10 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-10 px-4 bg-[#5E6AD2] hover:bg-[#6E7AE2] text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? '저장 중...' : '변경사항 저장'}
           </button>

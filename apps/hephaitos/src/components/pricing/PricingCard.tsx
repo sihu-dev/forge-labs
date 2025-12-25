@@ -49,14 +49,14 @@ export const PricingCard = memo(function PricingCard({
       transition={{ duration: 0.3 }}
       className={`relative rounded-2xl p-6 ${
         plan.highlighted
-          ? 'bg-gradient-to-b from-blue-500/20 to-blue-500/5 border-2 border-blue-500/50'
+          ? 'bg-gradient-to-b from-[#5E6AD2]/20 to-[#5E6AD2]/5 border-2 border-[#5E6AD2]/50'
           : 'bg-zinc-900/50 border border-zinc-800'
       }`}
     >
       {/* Recommended Badge */}
       {plan.highlighted && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <div className="flex items-center gap-1 px-3 py-1 bg-blue-500 rounded-full text-xs font-medium text-white">
+          <div className="flex items-center gap-1 px-3 py-1 bg-[#5E6AD2] rounded-full text-xs font-medium text-white">
             <SparklesIcon className="w-3 h-3" />
             {t('dashboard.pricingCard.recommended') as string}
           </div>
@@ -161,7 +161,7 @@ export const PricingCard = memo(function PricingCard({
           isCurrentPlan
             ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
             : plan.highlighted
-            ? 'bg-blue-500 hover:bg-blue-600 text-white'
+            ? 'bg-[#5E6AD2] hover:bg-[#6E7AE2] text-white'
             : isFree
             ? 'bg-zinc-800 hover:bg-zinc-700 text-white'
             : 'bg-zinc-800 hover:bg-zinc-700 text-white'

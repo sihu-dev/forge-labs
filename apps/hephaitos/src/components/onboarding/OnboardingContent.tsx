@@ -89,7 +89,7 @@ export function OnboardingContent() {
   // 로딩 중
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A0A0C]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0D0D0F]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-zinc-400">로딩 중...</p>
@@ -101,7 +101,7 @@ export function OnboardingContent() {
   // 이미 완료된 경우 (리다이렉트 대기)
   if (isOnboardingComplete) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A0A0C]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0D0D0F]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-zinc-400">대시보드로 이동 중...</p>

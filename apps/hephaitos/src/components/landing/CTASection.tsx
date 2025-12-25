@@ -79,7 +79,7 @@ export const CTASection = memo(function CTASection() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
             <Link
               href="/auth/signup"
-              className="w-full sm:w-auto px-8 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium transition-colors"
+              className="w-full sm:w-auto px-8 py-3 bg-[#5E6AD2] hover:bg-[#6E7AE2] text-white rounded-lg text-sm font-medium transition-all"
             >
               {t('cta.button')}
             </Link>

@@ -138,7 +138,7 @@ export function AgentContent() {
 
 function ChatSkeleton() {
   return (
-    <div className="h-[600px] bg-[#0A0A0C] border border-white/[0.06] rounded-lg animate-pulse">
+    <div className="h-[600px] bg-[#0D0D0F] border border-white/[0.06] rounded-lg animate-pulse">
       <div className="h-14 border-b border-white/[0.06] bg-white/[0.02]" />
       <div className="p-4 space-y-4">
         {[1, 2, 3].map((i) => (

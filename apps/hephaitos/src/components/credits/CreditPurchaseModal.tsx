@@ -104,12 +104,12 @@ export function CreditPurchaseModal({ isOpen, onClose }: CreditPurchaseModalProp
                 onClick={() => setSelectedPackage(pkg)}
                 className={'relative p-4 border rounded-lg transition-all ' +
                   (selectedPackage === pkg
-                    ? 'border-blue-500 bg-blue-500/10'
+                    ? 'border-[#5E6AD2] bg-[#5E6AD2]/10'
                     : 'border-white/[0.06] hover:border-white/[0.12] bg-white/[0.02]')
                 }
               >
                 {pkg.popular && (
-                  <div className="absolute -top-2 right-3 px-2 py-0.5 bg-blue-500 text-xs text-white rounded-full">
+                  <div className="absolute -top-2 right-3 px-2 py-0.5 bg-[#5E6AD2] text-xs text-white rounded-full">
                     인기
                   </div>
                 )}
@@ -157,7 +157,7 @@ export function CreditPurchaseModal({ isOpen, onClose }: CreditPurchaseModalProp
           </div>
 
           {/* Info */}
-          <div className="mb-6 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-300">
+          <div className="mb-6 p-3 bg-[#5E6AD2]/10 border border-[#5E6AD2]/20 rounded text-xs text-[#9AA5EF]">
             • 결제는 토스페이먼츠를 통해 안전하게 처리됩니다
             <br />
             • 구매한 크레딧은 즉시 계정에 충전됩니다
@@ -177,7 +177,7 @@ export function CreditPurchaseModal({ isOpen, onClose }: CreditPurchaseModalProp
             <button
               onClick={handlePurchase}
               disabled={loading}
-              className="flex-1 h-10 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 h-10 px-4 bg-[#5E6AD2] hover:bg-[#6E7AE2] text-white rounded text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? '결제 준비 중...' : '구매하기'}
             </button>

@@ -113,7 +113,7 @@ export const AgentChat = memo(function AgentChat({ className = '', onStrategyCre
   const isDisabled = state === 'sending' || state === 'streaming'
 
   return (
-    <div className={`flex flex-col h-full bg-[#0A0A0C] border border-white/[0.06] rounded-lg overflow-hidden ${className}`}>
+    <div className={`flex flex-col h-full bg-[#0D0D0F] border border-white/[0.06] rounded-lg overflow-hidden ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
@@ -217,7 +217,7 @@ const StatusIndicator = memo(function StatusIndicator({ state }: StatusIndicator
   const statusConfig: Record<AgentState, { color: string; text: string }> = {
     idle: { color: 'bg-emerald-500', text: '준비 완료' },
     sending: { color: 'bg-amber-500 animate-pulse', text: '처리 중...' },
-    streaming: { color: 'bg-blue-500 animate-pulse', text: '응답 중...' },
+    streaming: { color: 'bg-[#5E6AD2] animate-pulse', text: '응답 중...' },
     confirming: { color: 'bg-[#5E6AD2]', text: '확인 대기' },
     error: { color: 'bg-red-500', text: '오류 발생' },
   }

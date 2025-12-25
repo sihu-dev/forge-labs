@@ -145,7 +145,7 @@ function StatusBadge({ status }: { status: BacktestStatus }) {
   const statusClassNames: Record<BacktestStatus, string> = {
     idle: 'text-zinc-500',
     loading: 'text-amber-400',
-    running: 'text-blue-400',
+    running: 'text-[#7C8AEA]',
     completed: 'text-emerald-400',
     failed: 'text-red-400',
     cancelled: 'text-zinc-500',
