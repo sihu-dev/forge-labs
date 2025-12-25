@@ -10,14 +10,20 @@ import type { Database } from '@/types/database'
 let supabaseClient: ReturnType<typeof createBrowserClient<Database>> | null = null
 
 /**
- * Supabase 설정 여부 확인
+ * Mock 모드 여부 확인
+ * NEXT_PUBLIC_USE_SUPABASE=false 면 Mock 모드
  */
-export function isSupabaseConfigured(): boolean {
-  return !!(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
-}
+export const isMockMode = process.env.NEXT_PUBLIC_USE_SUPABASE === 'false'
+
+/**
+ * Supabase 설정 여부 확인
+ * Mock 모드이면 false 반환
+ */
+export const isSupabaseConfigured = !isMockMode && !!(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+  !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
+)
 
 /**
  * 브라우저용 Supabase 클라이언트 생성

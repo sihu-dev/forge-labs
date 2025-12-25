@@ -56,6 +56,94 @@ export interface FeaturePricing {
   descriptionKo?: string
 }
 
+// Mock data for development without Supabase
+const MOCK_PACKAGES: CreditPackage[] = [
+  {
+    packageId: 'starter',
+    name: 'Starter',
+    nameKo: '스타터',
+    credits: 100,
+    bonusCredits: 0,
+    priceKrw: 9900,
+    priceUsd: 9,
+    isPopular: false,
+    isHighlighted: false,
+    displayOrder: 1,
+    totalCredits: 100,
+    perCreditKrw: 99,
+    perCreditUsd: 0.09,
+  },
+  {
+    packageId: 'pro',
+    name: 'Pro',
+    nameKo: '프로',
+    credits: 500,
+    bonusCredits: 50,
+    priceKrw: 39900,
+    priceUsd: 39,
+    isPopular: true,
+    isHighlighted: true,
+    displayOrder: 2,
+    totalCredits: 550,
+    perCreditKrw: 72.5,
+    perCreditUsd: 0.07,
+  },
+  {
+    packageId: 'enterprise',
+    name: 'Enterprise',
+    nameKo: '엔터프라이즈',
+    credits: 2000,
+    bonusCredits: 500,
+    priceKrw: 149900,
+    priceUsd: 149,
+    isPopular: false,
+    isHighlighted: false,
+    displayOrder: 3,
+    totalCredits: 2500,
+    perCreditKrw: 60,
+    perCreditUsd: 0.06,
+  },
+]
+
+const MOCK_FEATURES: FeaturePricing[] = [
+  {
+    featureId: 'copy-trade',
+    featureName: 'Copy Trading',
+    featureNameKo: '카피 트레이딩',
+    creditCost: 10,
+    category: 'copy',
+    description: 'Follow top traders automatically',
+    descriptionKo: '셀럽 트레이더 자동 팔로우',
+  },
+  {
+    featureId: 'ai-mentor',
+    featureName: 'AI Mentor Session',
+    featureNameKo: 'AI 멘토 세션',
+    creditCost: 5,
+    category: 'learn',
+    description: 'Get personalized trading education',
+    descriptionKo: '맞춤형 트레이딩 교육',
+  },
+  {
+    featureId: 'strategy-builder',
+    featureName: 'Strategy Builder',
+    featureNameKo: '전략 빌더',
+    creditCost: 20,
+    category: 'build',
+    description: 'Build custom trading strategies',
+    descriptionKo: '커스텀 전략 구축',
+  },
+  {
+    featureId: 'backtest',
+    featureName: 'Backtest Run',
+    featureNameKo: '백테스트 실행',
+    creditCost: 3,
+    category: 'build',
+    description: 'Test strategies with historical data',
+    descriptionKo: '과거 데이터로 전략 테스트',
+  },
+]
+
 export function usePricing() {
   const [packages, setPackages] = useState<CreditPackage[]>([])
   const [features, setFeatures] = useState<FeaturePricing[]>([])
@@ -64,8 +152,11 @@ export function usePricing() {
 
   useEffect(() => {
     const fetchPricing = async () => {
-      // Skip fetching if Supabase is not configured
+      // Use mock data if Supabase is not configured
       if (!isSupabaseConfigured) {
+        console.log('[Pricing] Using mock data (Supabase not configured)')
+        setPackages(MOCK_PACKAGES)
+        setFeatures(MOCK_FEATURES)
         setIsLoading(false)
         return
       }
@@ -73,6 +164,9 @@ export function usePricing() {
       try {
         const supabase = getSupabaseBrowserClient()
         if (!supabase) {
+          console.log('[Pricing] Using mock data (Supabase client unavailable)')
+          setPackages(MOCK_PACKAGES)
+          setFeatures(MOCK_FEATURES)
           setIsLoading(false)
           return
         }
@@ -99,9 +193,9 @@ export function usePricing() {
         }
 
         // Map to camelCase with explicit typing
-        const packages = (packagesData as PricingDisplayRow[] | null) || []
+        const pkgList = (packagesData as PricingDisplayRow[] | null) || []
         setPackages(
-          packages.map((pkg) => ({
+          pkgList.map((pkg) => ({
             packageId: pkg.package_id,
             name: pkg.name,
             nameKo: pkg.name_ko,
@@ -118,9 +212,9 @@ export function usePricing() {
           }))
         )
 
-        const features = (featuresData as FeaturePricingRow[] | null) || []
+        const featureList = (featuresData as FeaturePricingRow[] | null) || []
         setFeatures(
-          features.map((feature) => ({
+          featureList.map((feature) => ({
             featureId: feature.feature_id,
             featureName: feature.feature_name,
             featureNameKo: feature.feature_name_ko,
@@ -134,6 +228,9 @@ export function usePricing() {
         setIsLoading(false)
       } catch (err) {
         console.error('[Pricing] Error fetching pricing:', err)
+        // Fallback to mock data on error
+        setPackages(MOCK_PACKAGES)
+        setFeatures(MOCK_FEATURES)
         setError(err instanceof Error ? err.message : 'Failed to load pricing')
         setIsLoading(false)
       }

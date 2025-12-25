@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { getSupabaseBrowserClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient, isSupabaseConfigured, isMockMode } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
 // ============================================
@@ -157,7 +157,8 @@ export function useRealtimePortfolio(userId?: string) {
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           setIsConnected(false)
-          console.error('[Realtime] Portfolio channel error')
+          // Graceful handling - warn instead of error, use demo mode
+          console.warn('[Realtime] Portfolio channel unavailable, using demo mode')
         }
       })
 
