@@ -42,3 +42,20 @@ export {
   type ExchangeCredentials,
   type EncryptedCredentials,
 } from './crypto'
+
+// 🆕 Leverage & Margin Trading (QRY-020)
+export {
+  LeverageService,
+  leverageService,
+  MAX_LEVERAGE,
+  MARGIN_THRESHOLDS,
+  MAINTENANCE_MARGIN_RATE,
+  type MarginType,
+  type PositionSide,
+  type LeverageConfig,
+  type MarginAccount,
+  type MarginPosition,
+  type MarginOrderRequest,
+  type LiquidationEvent,
+  type MarginCalculation,
+} from './leverage-service'
