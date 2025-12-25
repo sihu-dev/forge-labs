@@ -8,9 +8,10 @@
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import type { Bid } from '@/components/spreadsheet/SpreadsheetView';
+import { SAMPLE_BIDS, calculateBidStats } from '@/lib/data/sample-bids';
 
 // Handsontable 동적 로드
 const ClientSpreadsheet = dynamic(
@@ -28,267 +29,15 @@ const ClientSpreadsheet = dynamic(
   }
 );
 
-// 샘플 데이터
-const SAMPLE_BIDS = [
-  {
-    id: '1',
-    source: 'narajangto',
-    external_id: '20251219001',
-    title: '서울시 상수도사업본부 초음파유량계 구매',
-    organization: '서울특별시 상수도사업본부',
-    deadline: '2025-01-02T18:00:00',
-    estimated_amount: 450000000,
-    status: 'reviewing',
-    priority: 'high',
-    type: 'product',
-    keywords: ['초음파유량계', '상수도', '계측기'],
-    url: 'https://www.g2b.go.kr/',
-    match_score: 0.92,
-    matched_product: 'UR-1000PLUS',
-    ai_summary: '서울시 상수도사업본부 초음파유량계 구매. UR-1000PLUS 제품 95% 일치. DN100-400 규격.',
-    created_at: '2024-12-19T10:00:00',
-    updated_at: '2024-12-20T10:00:00',
-  },
-  {
-    id: '2',
-    source: 'narajangto',
-    external_id: '20251219002',
-    title: 'K-water 정수장 전자유량계 교체 공사',
-    organization: '한국수자원공사',
-    deadline: '2025-01-08T17:00:00',
-    estimated_amount: 280000000,
-    status: 'new',
-    priority: 'high',
-    type: 'product',
-    keywords: ['전자유량계', '정수장'],
-    url: 'https://www.g2b.go.kr/',
-    match_score: 0.78,
-    matched_product: 'MF-1000C',
-    ai_summary: null,
-    created_at: '2024-12-19T11:00:00',
-    updated_at: '2024-12-19T11:00:00',
-  },
-  {
-    id: '3',
-    source: 'ted',
-    external_id: 'TED-2025-12345',
-    title: 'Water Flow Meters for Municipal Water Supply - Berlin',
-    organization: 'Berliner Wasserbetriebe',
-    deadline: '2025-02-01T12:00:00',
-    estimated_amount: 850000000,
-    status: 'preparing',
-    priority: 'high',
-    type: 'product',
-    keywords: ['유량계', 'EU', '상수도'],
-    url: 'https://ted.europa.eu/',
-    match_score: 0.85,
-    matched_product: 'UR-1000PLUS',
-    ai_summary: '베를린 수도공사 유량계 입찰. EU TED 공고. CPV 38421110.',
-    created_at: '2024-12-18T09:00:00',
-    updated_at: '2024-12-19T08:00:00',
-  },
-  {
-    id: '4',
-    source: 'kepco',
-    external_id: 'KEPCO-2025-0101',
-    title: '한국전력 발전소 열량계 납품',
-    organization: '한국전력공사',
-    deadline: '2025-01-25T16:00:00',
-    estimated_amount: 120000000,
-    status: 'new',
-    priority: 'low',
-    type: 'product',
-    keywords: ['열량계', '발전소'],
-    url: null,
-    match_score: 0.45,
-    matched_product: 'EnerRay',
-    ai_summary: null,
-    created_at: '2024-12-19T14:00:00',
-    updated_at: '2024-12-19T14:00:00',
-  },
-  {
-    id: '5',
-    source: 'manual',
-    external_id: 'MANUAL-001',
-    title: '부산시 하수처리장 비만관 유량계 설치',
-    organization: '부산광역시 환경공단',
-    deadline: '2024-12-25T17:00:00',
-    estimated_amount: 95000000,
-    status: 'submitted',
-    priority: 'medium',
-    type: 'product',
-    keywords: ['비만관', '하수처리'],
-    url: null,
-    match_score: 0.88,
-    matched_product: 'UR-1010PLUS',
-    ai_summary: '부산 하수처리장 비만관 유량계 설치. UR-1010PLUS 적합.',
-    created_at: '2024-12-15T10:00:00',
-    updated_at: '2024-12-19T09:00:00',
-  },
-  {
-    id: '6',
-    source: 'narajangto',
-    external_id: '20251220001',
-    title: '인천시 상수도 유량 모니터링 시스템 구축',
-    organization: '인천광역시 상수도사업본부',
-    deadline: '2025-01-15T17:00:00',
-    estimated_amount: 320000000,
-    status: 'new',
-    priority: 'medium',
-    type: 'product',
-    keywords: ['유량모니터링', 'IoT'],
-    url: 'https://www.g2b.go.kr/',
-    match_score: 0.72,
-    matched_product: 'UR-1000PLUS',
-    ai_summary: null,
-    created_at: '2024-12-20T09:00:00',
-    updated_at: '2024-12-20T09:00:00',
-  },
-  {
-    id: '7',
-    source: 'narajangto',
-    external_id: '20251220002',
-    title: '대전시 하천 수위 및 유량 관측 장비',
-    organization: '대전광역시청',
-    deadline: '2025-01-20T17:00:00',
-    estimated_amount: 180000000,
-    status: 'reviewing',
-    priority: 'medium',
-    type: 'product',
-    keywords: ['하천', '개수로'],
-    url: 'https://www.g2b.go.kr/',
-    match_score: 0.81,
-    matched_product: 'SL-3000PLUS',
-    ai_summary: '대전시 하천 수위/유량 관측. SL-3000PLUS 개수로 유량계 적합.',
-    created_at: '2024-12-20T10:00:00',
-    updated_at: '2024-12-20T10:00:00',
-  },
-  {
-    id: '8',
-    source: 'ted',
-    external_id: 'TED-2025-67890',
-    title: 'Ultrasonic Flow Measurement Equipment - Amsterdam',
-    organization: 'Waternet Amsterdam',
-    deadline: '2025-02-15T12:00:00',
-    estimated_amount: 620000000,
-    status: 'new',
-    priority: 'medium',
-    type: 'product',
-    keywords: ['초음파', 'EU'],
-    url: 'https://ted.europa.eu/',
-    match_score: 0.79,
-    matched_product: 'UR-1000PLUS',
-    ai_summary: null,
-    created_at: '2024-12-20T08:00:00',
-    updated_at: '2024-12-20T08:00:00',
-  },
-  {
-    id: '9',
-    source: 'narajangto',
-    external_id: '20251218001',
-    title: '광주시 정수장 계장설비 교체',
-    organization: '광주광역시 상수도사업본부',
-    deadline: '2025-01-05T17:00:00',
-    estimated_amount: 210000000,
-    status: 'preparing',
-    priority: 'high',
-    type: 'product',
-    keywords: ['정수장', '계장설비'],
-    url: 'https://www.g2b.go.kr/',
-    match_score: 0.86,
-    matched_product: 'MF-1000C',
-    ai_summary: '광주시 정수장 계장설비 교체. MF-1000C 전자유량계 적합.',
-    created_at: '2024-12-18T14:00:00',
-    updated_at: '2024-12-19T16:00:00',
-  },
-  {
-    id: '10',
-    source: 'manual',
-    external_id: 'MANUAL-002',
-    title: '울산 석유화학단지 유량측정 시스템',
-    organization: 'SK에너지',
-    deadline: '2025-01-30T17:00:00',
-    estimated_amount: 540000000,
-    status: 'won',
-    priority: 'high',
-    type: 'product',
-    keywords: ['석유화학', '산업용'],
-    url: null,
-    match_score: 0.91,
-    matched_product: 'UR-1000PLUS',
-    ai_summary: '울산 석유화학단지 유량측정 시스템 낙찰. 5.4억원. UR-1000PLUS 20대.',
-    created_at: '2024-12-01T10:00:00',
-    updated_at: '2024-12-18T15:00:00',
-  },
-  {
-    id: '11',
-    source: 'narajangto',
-    external_id: '20251215001',
-    title: '세종시 스마트시티 용수 관리 시스템',
-    organization: '세종특별자치시청',
-    deadline: '2024-12-28T17:00:00',
-    estimated_amount: 380000000,
-    status: 'lost',
-    priority: 'medium',
-    type: 'product',
-    keywords: ['스마트시티', 'IoT'],
-    url: 'https://www.g2b.go.kr/',
-    match_score: 0.67,
-    matched_product: null,
-    ai_summary: '세종시 스마트시티 용수 관리 시스템 유찰.',
-    created_at: '2024-12-15T11:00:00',
-    updated_at: '2024-12-20T09:00:00',
-  },
-  {
-    id: '12',
-    source: 'kepco',
-    external_id: 'KEPCO-2025-0102',
-    title: '한전 영광원자력발전소 냉각수 유량계',
-    organization: '한국수력원자력',
-    deadline: '2025-02-10T16:00:00',
-    estimated_amount: 890000000,
-    status: 'new',
-    priority: 'high',
-    type: 'product',
-    keywords: ['원자력', '냉각수'],
-    url: null,
-    match_score: 0.58,
-    matched_product: null,
-    ai_summary: null,
-    created_at: '2024-12-20T11:00:00',
-    updated_at: '2024-12-20T11:00:00',
-  },
-];
-
-// 통계 계산
-function calculateStats(bids: typeof SAMPLE_BIDS) {
-  const now = new Date();
-  return {
-    total: bids.length,
-    new: bids.filter(b => b.status === 'new').length,
-    reviewing: bids.filter(b => b.status === 'reviewing').length,
-    preparing: bids.filter(b => b.status === 'preparing').length,
-    submitted: bids.filter(b => b.status === 'submitted').length,
-    won: bids.filter(b => b.status === 'won').length,
-    lost: bids.filter(b => b.status === 'lost').length,
-    urgent: bids.filter(b => {
-      const deadline = new Date(b.deadline);
-      const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      return daysLeft <= 7 && daysLeft > 0 && !['won', 'lost', 'cancelled'].includes(b.status);
-    }).length,
-    highMatch: bids.filter(b => (b.match_score ?? 0) >= 0.8).length,
-    totalAmount: bids.reduce((sum, b) => sum + (b.estimated_amount || 0), 0),
-  };
-}
-
 export default function DashboardPage() {
   const searchParams = useSearchParams();
   const isDemo = searchParams?.get('demo') === 'true';
   const [showBanner, setShowBanner] = useState(true);
-  const [bids, setBids] = useState<Bid[]>(SAMPLE_BIDS as unknown as Bid[]);
+  const [bids, setBids] = useState<Bid[]>(SAMPLE_BIDS);
   const [isLoading, setIsLoading] = useState(false);
 
-  const stats = calculateStats(bids as unknown as typeof SAMPLE_BIDS);
+  // Memoize stats calculation to avoid recalculating on every render
+  const stats = useMemo(() => calculateBidStats(bids), [bids]);
 
   // Bid 수정 API 호출
   const handleBidUpdate = useCallback(async (id: string, updates: Partial<Bid>) => {
@@ -329,7 +78,7 @@ export default function DashboardPage() {
       console.error('Refresh failed:', error);
       // 데모 모드에서는 샘플 데이터 유지
       if (isDemo) {
-        setBids(SAMPLE_BIDS as unknown as Bid[]);
+        setBids(SAMPLE_BIDS);
       }
     } finally {
       setIsLoading(false);
