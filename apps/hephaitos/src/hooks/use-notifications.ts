@@ -29,7 +29,7 @@ interface UseNotificationsReturn {
   deleteNotification: (id: string) => void
   clearAll: () => void
   updateSettings: (settings: Partial<NotificationSettings>) => void
-  // Local notifications
+  // Create notifications (async - goes through API)
   notify: (
     type: NotificationType,
     title: string,
@@ -40,7 +40,7 @@ interface UseNotificationsReturn {
       actionUrl?: string
       actionLabel?: string
     }
-  ) => Notification
+  ) => Promise<Notification | null>
   // Connection
   connect: (userId: string) => void
   disconnect: () => void
@@ -62,8 +62,9 @@ export function useNotifications(): UseNotificationsReturn {
 
   // Load settings on mount
   useEffect(() => {
-    notificationService.loadSettings()
-    setSettings(notificationService.getSettings())
+    notificationService.loadSettings().then(() => {
+      setSettings(notificationService.getSettings())
+    })
   }, [])
 
   // Subscribe to notifications
@@ -120,12 +121,13 @@ export function useNotifications(): UseNotificationsReturn {
   }, [])
 
   const updateSettings = useCallback((newSettings: Partial<NotificationSettings>) => {
-    notificationService.updateSettings(newSettings)
-    setSettings(notificationService.getSettings())
+    notificationService.updateSettings(newSettings).then(() => {
+      setSettings(notificationService.getSettings())
+    })
   }, [])
 
   const notify = useCallback(
-    (
+    async (
       type: NotificationType,
       title: string,
       message: string,
@@ -135,8 +137,8 @@ export function useNotifications(): UseNotificationsReturn {
         actionUrl?: string
         actionLabel?: string
       }
-    ): Notification => {
-      const notification = notificationService.createLocalNotification(
+    ): Promise<Notification | null> => {
+      const notification = await notificationService.createNotification(
         type,
         title,
         message,
@@ -201,7 +203,7 @@ export function usePriceAlerts() {
   }, [notifications])
 
   const createPriceAlert = useCallback(
-    (symbol: string, targetPrice: number, condition: 'above' | 'below') => {
+    async (symbol: string, targetPrice: number, condition: 'above' | 'below') => {
       return notify('price_alert', `${symbol} 가격 알림`, `${symbol}이(가) $${targetPrice} ${condition === 'above' ? '이상' : '이하'}입니다`, {
         priority: 'high',
         data: { symbol, targetPrice, condition },
@@ -230,7 +232,7 @@ export function useStrategySignals() {
   }, [notifications])
 
   const createSignalAlert = useCallback(
-    (strategyName: string, signal: 'buy' | 'sell' | 'hold', symbol: string, confidence: number) => {
+    async (strategyName: string, signal: 'buy' | 'sell' | 'hold', symbol: string, confidence: number) => {
       const signalText = signal === 'buy' ? '매수' : signal === 'sell' ? '매도' : '홀드'
       return notify('strategy_signal', `${strategyName} 시그널`, `${symbol} ${signalText} 신호 (신뢰도: ${Math.round(confidence * 100)}%)`, {
         priority: 'high',
@@ -260,7 +262,7 @@ export function useCelebrityTradeAlerts() {
   }, [notifications])
 
   const createCelebrityAlert = useCallback(
-    (celebrityName: string, action: 'buy' | 'sell', symbol: string, value: number) => {
+    async (celebrityName: string, action: 'buy' | 'sell', symbol: string, value: number) => {
       const actionText = action === 'buy' ? '매수' : '매도'
       return notify('celebrity_trade', `${celebrityName} 거래 감지`, `${symbol} $${value.toLocaleString()} ${actionText}`, {
         priority: 'normal',

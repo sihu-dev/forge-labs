@@ -1,14 +1,16 @@
 // ============================================
 // Notification Service
-// 실시간 알림 관리 서비스
+// Supabase Realtime 기반 실시간 알림 서비스
+// QRY-025: Real-time WebSocket Notifications
 // ============================================
 
+import { createClient } from '@/lib/supabase/client'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import type {
   Notification,
   NotificationType,
   NotificationPriority,
   NotificationSettings,
-  WSNotificationMessage,
 } from './types'
 
 // ============================================
@@ -37,6 +39,25 @@ const DEFAULT_SETTINGS: NotificationSettings = {
 }
 
 // ============================================
+// Database row type
+// ============================================
+
+interface NotificationRow {
+  id: string
+  user_id: string
+  type: NotificationType
+  priority: NotificationPriority
+  title: string
+  message: string
+  data: Record<string, unknown> | null
+  read: boolean
+  action_url: string | null
+  action_label: string | null
+  expires_at: string | null
+  created_at: string
+}
+
+// ============================================
 // Notification Service Class
 // ============================================
 
@@ -48,103 +69,117 @@ class NotificationService {
   private settings: NotificationSettings = DEFAULT_SETTINGS
   private listeners: Set<NotificationListener> = new Set()
   private connectionListeners: Set<ConnectionListener> = new Set()
-  private ws: WebSocket | null = null
+  private channel: RealtimeChannel | null = null
   private isConnected = false
-  private reconnectAttempts = 0
-  private maxReconnectAttempts = 5
-  private reconnectDelay = 1000
-  private reconnectTimer: NodeJS.Timeout | null = null
   private userId: string | null = null
 
   // ============================================
   // Connection Management
   // ============================================
 
-  connect(userId: string): void {
+  async connect(userId: string): Promise<void> {
     this.userId = userId
-
-    // Supabase Realtime 또는 커스텀 WebSocket 서버 사용
-    // 여기서는 Supabase Realtime 패턴 사용
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'wss://realtime.hephaitos.com'
+    const supabase = createClient()
 
     try {
-      this.ws = new WebSocket(`${wsUrl}/notifications?userId=${userId}`)
-      this.setupWebSocket()
+      // 초기 알림 로드
+      await this.loadInitialNotifications()
+
+      // Supabase Realtime 채널 구독
+      this.channel = supabase
+        .channel(`notifications:${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            const notification = this.mapRowToNotification(payload.new as NotificationRow)
+            this.addNotification(notification)
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            const notification = this.mapRowToNotification(payload.new as NotificationRow)
+            this.updateNotification(notification)
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            this.deleteInternal((payload.old as NotificationRow).id)
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('[NotificationService] Connected to Supabase Realtime')
+            this.setConnected(true)
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            console.log('[NotificationService] Disconnected:', status)
+            this.setConnected(false)
+          }
+        })
     } catch (error) {
       console.error('[NotificationService] Connection error:', error)
-      this.handleReconnect()
+      this.setConnected(false)
     }
   }
 
   disconnect(): void {
-    this.clearReconnectTimer()
-    this.reconnectAttempts = 0
-
-    if (this.ws) {
-      this.ws.close(1000, 'Client disconnect')
-      this.ws = null
+    if (this.channel) {
+      this.channel.unsubscribe()
+      this.channel = null
     }
-
     this.setConnected(false)
+    this.userId = null
   }
 
-  private setupWebSocket(): void {
-    if (!this.ws) return
+  private async loadInitialNotifications(): Promise<void> {
+    if (!this.userId) return
 
-    this.ws.onopen = () => {
-      console.log('[NotificationService] Connected')
-      this.reconnectAttempts = 0
-      this.setConnected(true)
+    try {
+      const response = await fetch(`/api/notifications?limit=50`)
+      const data = await response.json()
 
-      // 초기 알림 로드 요청
-      this.send({ action: 'load', limit: 50 })
-    }
-
-    this.ws.onclose = (event) => {
-      console.log('[NotificationService] Disconnected:', event.code)
-      this.setConnected(false)
-
-      if (event.code !== 1000) {
-        this.handleReconnect()
+      if (data.success && data.data?.notifications) {
+        this.notifications = data.data.notifications.map((row: NotificationRow) =>
+          this.mapRowToNotification(row)
+        )
       }
-    }
-
-    this.ws.onerror = (error) => {
-      console.error('[NotificationService] WebSocket error:', error)
-    }
-
-    this.ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data) as WSNotificationMessage
-        this.handleMessage(message)
-      } catch (error) {
-        console.error('[NotificationService] Message parse error:', error)
-      }
+    } catch (error) {
+      console.error('[NotificationService] Failed to load initial notifications:', error)
     }
   }
 
-  private handleReconnect(): void {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('[NotificationService] Max reconnection attempts reached')
-      return
-    }
-
-    this.reconnectAttempts++
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
-
-    console.log(`[NotificationService] Reconnecting in ${delay}ms... (attempt ${this.reconnectAttempts})`)
-
-    this.reconnectTimer = setTimeout(() => {
-      if (this.userId) {
-        this.connect(this.userId)
-      }
-    }, delay)
-  }
-
-  private clearReconnectTimer(): void {
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer)
-      this.reconnectTimer = null
+  private mapRowToNotification(row: NotificationRow): Notification {
+    return {
+      id: row.id,
+      type: row.type,
+      priority: row.priority,
+      title: row.title,
+      message: row.message,
+      data: row.data || undefined,
+      read: row.read,
+      createdAt: new Date(row.created_at),
+      expiresAt: row.expires_at ? new Date(row.expires_at) : undefined,
+      actionUrl: row.action_url || undefined,
+      actionLabel: row.action_label || undefined,
     }
   }
 
@@ -154,25 +189,8 @@ class NotificationService {
   }
 
   // ============================================
-  // Message Handling
+  // Notification Handling
   // ============================================
-
-  private handleMessage(message: WSNotificationMessage): void {
-    switch (message.action) {
-      case 'new':
-        this.addNotification(message.payload as Notification)
-        break
-      case 'read':
-        this.markAsReadInternal(message.payload as string)
-        break
-      case 'delete':
-        this.deleteInternal(message.payload as string)
-        break
-      case 'clear':
-        this.clearAllInternal()
-        break
-    }
-  }
 
   private addNotification(notification: Notification): void {
     // 설정 확인
@@ -185,11 +203,7 @@ class NotificationService {
     if (exists) return
 
     // 추가
-    this.notifications.unshift({
-      ...notification,
-      createdAt: new Date(notification.createdAt),
-      expiresAt: notification.expiresAt ? new Date(notification.expiresAt) : undefined,
-    })
+    this.notifications.unshift(notification)
 
     // 리스너 알림
     this.listeners.forEach((listener) => listener(notification))
@@ -200,10 +214,10 @@ class NotificationService {
     }
   }
 
-  private markAsReadInternal(id: string): void {
-    const notification = this.notifications.find((n) => n.id === id)
-    if (notification) {
-      notification.read = true
+  private updateNotification(notification: Notification): void {
+    const index = this.notifications.findIndex((n) => n.id === notification.id)
+    if (index !== -1) {
+      this.notifications[index] = notification
     }
   }
 
@@ -227,33 +241,64 @@ class NotificationService {
     return this.notifications.filter((n) => !n.read).length
   }
 
-  markAsRead(id: string): void {
-    this.markAsReadInternal(id)
-    this.send({ action: 'read', notificationId: id })
+  async markAsRead(id: string): Promise<void> {
+    // 낙관적 업데이트
+    const notification = this.notifications.find((n) => n.id === id)
+    if (notification) {
+      notification.read = true
+    }
+
+    // API 호출
+    try {
+      await fetch(`/api/notifications/${id}`, { method: 'PATCH' })
+    } catch (error) {
+      console.error('[NotificationService] Failed to mark as read:', error)
+    }
   }
 
-  markAllAsRead(): void {
+  async markAllAsRead(): Promise<void> {
+    // 낙관적 업데이트
     this.notifications.forEach((n) => {
       n.read = true
     })
-    this.send({ action: 'readAll' })
+
+    // API 호출
+    try {
+      await fetch('/api/notifications/read-all', { method: 'POST' })
+    } catch (error) {
+      console.error('[NotificationService] Failed to mark all as read:', error)
+    }
   }
 
-  delete(id: string): void {
+  async delete(id: string): Promise<void> {
+    // 낙관적 업데이트
     this.deleteInternal(id)
-    this.send({ action: 'delete', notificationId: id })
+
+    // API 호출
+    try {
+      await fetch(`/api/notifications/${id}`, { method: 'DELETE' })
+    } catch (error) {
+      console.error('[NotificationService] Failed to delete notification:', error)
+    }
   }
 
-  clearAll(): void {
+  async clearAll(): Promise<void> {
+    // 낙관적 업데이트
     this.clearAllInternal()
-    this.send({ action: 'clear' })
+
+    // API 호출
+    try {
+      await fetch('/api/notifications', { method: 'DELETE' })
+    } catch (error) {
+      console.error('[NotificationService] Failed to clear all notifications:', error)
+    }
   }
 
   // ============================================
   // Local Notification Creation (for testing)
   // ============================================
 
-  createLocalNotification(
+  async createNotification(
     type: NotificationType,
     title: string,
     message: string,
@@ -263,22 +308,31 @@ class NotificationService {
       actionUrl?: string
       actionLabel?: string
     }
-  ): Notification {
-    const notification: Notification = {
-      id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type,
-      priority: options?.priority ?? 'normal',
-      title,
-      message,
-      data: options?.data,
-      read: false,
-      createdAt: new Date(),
-      actionUrl: options?.actionUrl,
-      actionLabel: options?.actionLabel,
-    }
+  ): Promise<Notification | null> {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          title,
+          message,
+          priority: options?.priority ?? 'normal',
+          data: options?.data,
+          actionUrl: options?.actionUrl,
+          actionLabel: options?.actionLabel,
+        }),
+      })
 
-    this.addNotification(notification)
-    return notification
+      const data = await response.json()
+      if (data.success && data.data) {
+        return this.mapRowToNotification(data.data)
+      }
+      return null
+    } catch (error) {
+      console.error('[NotificationService] Failed to create notification:', error)
+      return null
+    }
   }
 
   // ============================================
@@ -289,28 +343,70 @@ class NotificationService {
     return { ...this.settings }
   }
 
-  updateSettings(settings: Partial<NotificationSettings>): void {
+  async updateSettings(settings: Partial<NotificationSettings>): Promise<void> {
     this.settings = { ...this.settings, ...settings }
 
     // 서버에 설정 저장
-    this.send({ action: 'updateSettings', settings: this.settings })
+    try {
+      await fetch('/api/notifications/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email_enabled: this.settings.email,
+          push_enabled: this.settings.push,
+          in_app_enabled: this.settings.inApp,
+          categories: this.settings.categories,
+          quiet_hours_enabled: this.settings.quietHours.enabled,
+          quiet_hours_start: this.settings.quietHours.start,
+          quiet_hours_end: this.settings.quietHours.end,
+        }),
+      })
+    } catch (error) {
+      console.error('[NotificationService] Failed to save settings:', error)
+    }
 
     // 로컬 스토리지에도 저장
     try {
       localStorage.setItem('notification_settings', JSON.stringify(this.settings))
     } catch (error) {
-      console.warn('[NotificationService] Failed to save settings:', error)
+      console.warn('[NotificationService] Failed to save settings to localStorage:', error)
     }
   }
 
-  loadSettings(): void {
+  async loadSettings(): Promise<void> {
+    // 먼저 로컬 스토리지에서 로드
     try {
       const saved = localStorage.getItem('notification_settings')
       if (saved) {
         this.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }
       }
     } catch (error) {
-      console.warn('[NotificationService] Failed to load settings:', error)
+      console.warn('[NotificationService] Failed to load settings from localStorage:', error)
+    }
+
+    // 서버에서 설정 로드
+    try {
+      const response = await fetch('/api/notifications/settings')
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        this.settings = {
+          email: data.data.email_enabled,
+          push: data.data.push_enabled,
+          inApp: data.data.in_app_enabled,
+          categories: data.data.categories,
+          quietHours: {
+            enabled: data.data.quiet_hours_enabled,
+            start: data.data.quiet_hours_start,
+            end: data.data.quiet_hours_end,
+          },
+        }
+
+        // 로컬 스토리지 업데이트
+        localStorage.setItem('notification_settings', JSON.stringify(this.settings))
+      }
+    } catch (error) {
+      console.warn('[NotificationService] Failed to load settings from server:', error)
     }
   }
 
@@ -331,12 +427,6 @@ class NotificationService {
   // ============================================
   // Utilities
   // ============================================
-
-  private send(data: unknown): void {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(data))
-    }
-  }
 
   private shouldShowNotification(notification: Notification): boolean {
     // 카테고리 설정 확인
