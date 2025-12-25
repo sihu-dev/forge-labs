@@ -19,8 +19,9 @@ interface SearchParams {
 export default async function BidAnalyticsPage({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
+  const params = await searchParams;
   const supabase = await createClient();
 
   // 인증 확인
@@ -33,7 +34,7 @@ export default async function BidAnalyticsPage({
     redirect('/auth/signin');
   }
 
-  const period = searchParams.period || '30d';
+  const period = params.period || '30d';
 
   // 기간 필터
   let dateFilter: Date | null = null;
@@ -57,14 +58,14 @@ export default async function BidAnalyticsPage({
   // 통계 계산
   const stats = {
     totalBids: bids?.length || 0,
-    matchedBids: bids?.filter((b) => b.matched).length || 0,
+    matchedBids: bids?.filter((b: any) => (b.match_score ?? 0) >= 0.8).length || 0,
     avgMatchScore:
       bids && bids.length > 0
         ? Math.round(
-            bids.reduce((sum, b) => sum + (b.match_score || 0), 0) / bids.length
+            bids.reduce((sum: number, b: any) => sum + (b.match_score || 0), 0) / bids.length
           )
         : 0,
-    totalLeads: bids?.reduce((sum, b) => sum + (b.leads_generated || 0), 0) || 0,
+    totalLeads: bids?.reduce((sum: number, b: any) => sum + (b.leads_generated || 0), 0) || 0,
     bySource: {} as Record<string, number>,
     byStatus: {} as Record<string, number>,
     timeline: [] as Array<{ date: string; count: number }>,
@@ -78,7 +79,7 @@ export default async function BidAnalyticsPage({
   };
 
   // 출처별 집계
-  bids?.forEach((bid) => {
+  bids?.forEach((bid: any) => {
     stats.bySource[bid.source] = (stats.bySource[bid.source] || 0) + 1;
     stats.byStatus[bid.status] = (stats.byStatus[bid.status] || 0) + 1;
 
@@ -95,7 +96,7 @@ export default async function BidAnalyticsPage({
 
   // 일별 타임라인
   const timelineMap = new Map<string, number>();
-  bids?.forEach((bid) => {
+  bids?.forEach((bid: any) => {
     const date = new Date(bid.created_at).toISOString().split('T')[0];
     timelineMap.set(date, (timelineMap.get(date) || 0) + 1);
   });

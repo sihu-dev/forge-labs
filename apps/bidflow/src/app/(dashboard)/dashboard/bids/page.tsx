@@ -22,8 +22,9 @@ interface SearchParams {
 export default async function BidsPage({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
+  const params = await searchParams;
   const supabase = await createClient();
 
   // 인증 확인
@@ -44,26 +45,26 @@ export default async function BidsPage({
     .order('created_at', { ascending: false });
 
   // 필터 적용
-  if (searchParams.status && searchParams.status !== 'all') {
-    query = query.eq('status', searchParams.status);
+  if (params.status && params.status !== 'all') {
+    query = query.eq('status', params.status);
   }
 
-  if (searchParams.matched === 'true') {
+  if (params.matched === 'true') {
     query = query.eq('matched', true);
   }
 
-  if (searchParams.source && searchParams.source !== 'all') {
-    query = query.eq('source', searchParams.source);
+  if (params.source && params.source !== 'all') {
+    query = query.eq('source', params.source);
   }
 
-  if (searchParams.search) {
+  if (params.search) {
     query = query.or(
-      `title.ilike.%${searchParams.search}%,organization.ilike.%${searchParams.search}%,description.ilike.%${searchParams.search}%`
+      `title.ilike.%${params.search}%,organization.ilike.%${params.search}%,description.ilike.%${params.search}%`
     );
   }
 
-  if (searchParams.minScore) {
-    query = query.gte('match_score', parseInt(searchParams.minScore));
+  if (params.minScore) {
+    query = query.gte('match_score', parseInt(params.minScore));
   }
 
   // 데이터 조회
@@ -137,11 +138,11 @@ export default async function BidsPage({
       {/* 필터 */}
       <div className="mb-6">
         <BidFilters
-          currentStatus={searchParams.status}
-          currentMatched={searchParams.matched}
-          currentSource={searchParams.source}
-          currentSearch={searchParams.search}
-          currentMinScore={searchParams.minScore}
+          currentStatus={params.status}
+          currentMatched={params.matched}
+          currentSource={params.source}
+          currentSearch={params.search}
+          currentMinScore={params.minScore}
         />
       </div>
 

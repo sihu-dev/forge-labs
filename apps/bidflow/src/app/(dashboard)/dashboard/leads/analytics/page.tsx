@@ -20,8 +20,9 @@ interface SearchParams {
 export default async function LeadAnalyticsPage({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
+  const params = await searchParams;
   const supabase = await createClient();
 
   // 인증 확인
@@ -35,7 +36,7 @@ export default async function LeadAnalyticsPage({
   }
 
   // 통계 데이터 가져오기
-  const period = searchParams.period || '7d';
+  const period = params.period || '7d';
   const statsResponse = await fetch(
     `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010'}/api/v1/leads/stats?period=${period}`,
     {

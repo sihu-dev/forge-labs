@@ -15,8 +15,9 @@ export const dynamic = 'force-dynamic';
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams: { status?: string; minScore?: string; search?: string };
+  searchParams: Promise<{ status?: string; minScore?: string; search?: string }>;
 }) {
+  const params = await searchParams;
   const supabase = await createClient();
 
   // 인증 확인
@@ -42,17 +43,17 @@ export default async function LeadsPage({
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
-  if (searchParams.status) {
-    query = query.eq('status', searchParams.status);
+  if (params.status) {
+    query = query.eq('status', params.status);
   }
 
-  if (searchParams.minScore) {
-    query = query.gte('score', parseInt(searchParams.minScore));
+  if (params.minScore) {
+    query = query.gte('score', parseInt(params.minScore));
   }
 
-  if (searchParams.search) {
+  if (params.search) {
     query = query.or(
-      `name.ilike.%${searchParams.search}%,email.ilike.%${searchParams.search}%,organization.ilike.%${searchParams.search}%`
+      `name.ilike.%${params.search}%,email.ilike.%${params.search}%,organization.ilike.%${params.search}%`
     );
   }
 
