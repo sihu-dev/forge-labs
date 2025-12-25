@@ -48,6 +48,7 @@
     "g:apply": "powershell -ExecutionPolicy Bypass -File .vscode/scripts/verify_workspace.ps1 -AutoFix"
   },
   "devDependencies": {
+    "@anthropic-ai/claude-code": "^2.0.76",
     "@types/node": "^22.0.0",
     "prettier": "^3.4.2",
     "turbo": "^2.3.3",
@@ -62,8 +63,8 @@
   "pnpm": {
     "overrides": {
       "esbuild": ">=0.25.0",
-            "glob": ">=10.5.0",
-            "dompurify": ">=3.2.3"
+      "glob": ">=10.5.0",
+      "dompurify": ">=3.2.3"
     }
   }
 }
