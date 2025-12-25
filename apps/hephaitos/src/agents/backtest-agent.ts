@@ -28,19 +28,19 @@ import type {
   IOHLCV,
   ITrade,
   IPerformanceMetrics,
-} from '@hephaitos/types';
+} from '@forge/types';
 import type {
   IPriceDataService,
   IStrategyRepository,
   IBacktestResultRepository,
-} from '@hephaitos/core';
+} from '@forge/core';
 import {
   calculatePerformanceMetrics,
   extractDrawdownRecords,
   calculateMonthlyReturns,
   detectEntrySignal,
   detectExitSignal,
-} from '@hephaitos/utils';
+} from '@forge/utils';
 
 /**
  * 에이전트 설정

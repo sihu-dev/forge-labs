@@ -65,3 +65,11 @@ secrets.json
 환경변수.md
 환경변수.txt
 nul
+
+# IDE and Editor files
+*.groovy
+Untitled-*
+.idea/
+*.swp
+*.swo
+*~

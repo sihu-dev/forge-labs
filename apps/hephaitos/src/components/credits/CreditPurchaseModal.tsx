@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { useAuth } from '@/lib/auth/context'
-import { calculatePrice } from '@/lib/credits/service'
+import { calculatePrice } from '@/lib/credits/utils'
 
 interface CreditPurchaseModalProps {
   isOpen: boolean

@@ -34,9 +34,10 @@ const UpdateLeadSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
 
     const {
@@ -51,7 +52,7 @@ export async function GET(
     const { data: lead, error } = await supabase
       .from('leads')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single();
 
@@ -82,9 +83,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
 
     const {
@@ -113,7 +115,7 @@ export async function PATCH(
     const { data: existingLead, error: fetchError } = await supabase
       .from('leads')
       .select('id, status')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single();
 
@@ -128,7 +130,7 @@ export async function PATCH(
         ...updates,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .select()
       .single();
@@ -140,7 +142,7 @@ export async function PATCH(
     // 상태 변경 시 활동 내역 추가
     if (updates.status && updates.status !== existingLead.status) {
       await supabase.from('lead_activities').insert({
-        lead_id: params.id,
+        lead_id: id,
         type: 'status_changed',
         description: `상태 변경: ${existingLead.status} → ${updates.status}`,
         metadata: {
@@ -173,9 +175,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
 
     const {
@@ -191,7 +194,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('leads')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id);
 
     if (error) {

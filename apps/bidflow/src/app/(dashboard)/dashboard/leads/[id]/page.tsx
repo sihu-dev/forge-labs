@@ -8,12 +8,13 @@ import { redirect, notFound } from 'next/navigation';
 import { LeadDetailView } from '@/components/leads/LeadDetailView';
 
 interface LeadDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
+  const { id } = await params;
   const supabase = await createClient();
 
   // 인증 확인
@@ -30,7 +31,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   const { data: lead, error } = await supabase
     .from('leads')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .single();
 
@@ -42,7 +43,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   const { data: activities } = await supabase
     .from('lead_activities')
     .select('*')
-    .eq('lead_id', params.id)
+    .eq('lead_id', id)
     .order('created_at', { ascending: false })
     .limit(50);
 

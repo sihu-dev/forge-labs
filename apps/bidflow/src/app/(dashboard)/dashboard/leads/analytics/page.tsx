@@ -17,11 +17,10 @@ interface SearchParams {
   period?: string;
 }
 
-export default async function LeadAnalyticsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
+export default async function LeadAnalyticsPage(props: {
+  searchParams: Promise<SearchParams>;
 }) {
+  const searchParams = await props.searchParams;
   const supabase = await createClient();
 
   // 인증 확인

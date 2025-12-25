@@ -12,11 +12,10 @@ import { LeadFilters } from '@/components/leads/LeadFilters';
 
 export const dynamic = 'force-dynamic';
 
-export default async function LeadsPage({
-  searchParams,
-}: {
-  searchParams: { status?: string; minScore?: string; search?: string };
+export default async function LeadsPage(props: {
+  searchParams: Promise<{ status?: string; minScore?: string; search?: string }>;
 }) {
+  const searchParams = await props.searchParams;
   const supabase = await createClient();
 
   // 인증 확인

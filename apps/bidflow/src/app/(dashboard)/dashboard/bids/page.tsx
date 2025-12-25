@@ -19,11 +19,10 @@ interface SearchParams {
   minScore?: string;
 }
 
-export default async function BidsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
+export default async function BidsPage(props: {
+  searchParams: Promise<SearchParams>;
 }) {
+  const searchParams = await props.searchParams;
   const supabase = await createClient();
 
   // 인증 확인

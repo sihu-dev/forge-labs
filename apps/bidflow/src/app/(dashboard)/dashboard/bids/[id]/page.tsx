@@ -8,12 +8,13 @@ import { redirect, notFound } from 'next/navigation';
 import { BidDetailView } from '@/components/bids/BidDetailView';
 
 interface BidDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function BidDetailPage({ params }: BidDetailPageProps) {
+  const { id } = await params;
   const supabase = await createClient();
 
   // 인증 확인
@@ -30,7 +31,7 @@ export default async function BidDetailPage({ params }: BidDetailPageProps) {
   const { data: bid, error } = await supabase
     .from('bids')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .single();
 
@@ -42,7 +43,7 @@ export default async function BidDetailPage({ params }: BidDetailPageProps) {
   const { data: activities } = await supabase
     .from('bid_activities')
     .select('*')
-    .eq('bid_id', params.id)
+    .eq('bid_id', id)
     .order('created_at', { ascending: false })
     .limit(50);
 
@@ -50,7 +51,7 @@ export default async function BidDetailPage({ params }: BidDetailPageProps) {
   const { data: leads } = await supabase
     .from('leads')
     .select('id, name, email, score, status, created_at')
-    .eq('bid_id', params.id)
+    .eq('bid_id', id)
     .order('created_at', { ascending: false })
     .limit(20);
 
