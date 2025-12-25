@@ -103,3 +103,18 @@ export {
   DEFAULT_RISK_CONFIG,
   DEFAULT_SIMULATION_CONFIG,
 } from './order.js';
+
+// Risk Management Types
+export {
+  type RiskLevel,
+  type VaRMethod,
+  type IVaRResult,
+  type ICVaRResult,
+  type IDrawdownAnalysis,
+  type IRiskLimit,
+  type IRiskAlert,
+  type IPositionSizeRecommendation,
+  type IRiskMetrics,
+  DEFAULT_RISK_LIMITS,
+  RISK_LEVEL_THRESHOLDS,
+} from './risk.js';

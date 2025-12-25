@@ -126,3 +126,29 @@ export {
   type IPositionSizeResult,
   type IOrderValidation,
 } from './order-calc.js';
+
+// Risk Calculation Utilities (HEPHAITOS)
+export {
+  calculateHistoricalVaR,
+  calculateParametricVaR,
+  calculateMonteCarloVaR,
+  calculateVaR,
+  calculateCVaR,
+  analyzeDrawdown,
+  calculateMaxDrawdown as calculateRiskMaxDrawdown,
+  calculateCurrentDrawdown,
+  calculateSharpeRatio as calculateRiskSharpe,
+  calculateSortinoRatio as calculateRiskSortino,
+  calculateCalmarRatio as calculateRiskCalmar,
+  calculateInformationRatio,
+  calculateDailyVolatility,
+  calculateAnnualizedVolatility,
+  calculateDownsideVolatility,
+  calculateBeta,
+  calculateHHI,
+  calculateCorrelationRisk,
+  recommendPositionSize,
+  assessRiskLevel,
+  calculateRiskScore,
+  getRiskLevelFromScore,
+} from './risk-calc.js';

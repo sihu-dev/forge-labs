@@ -52,3 +52,10 @@ export {
   createOrderRepository,
   createPositionRepository,
 } from './repositories/order-repository.js';
+
+// L2 Repositories - Risk
+export {
+  type IRiskRepository,
+  InMemoryRiskRepository,
+  createRiskRepository,
+} from './repositories/risk-repository.js';

@@ -1,0 +1,64 @@
+# QRY-010: HEPHAITOS Risk Manager
+# 리스크 관리, VaR 계산, 드로다운 분석
+
+id: QRY-010
+name: Risk Manager
+app: hephaitos
+status: implementing
+
+description: |
+  포트폴리오 리스크 관리 시스템
+  - VaR (Value at Risk) 계산
+  - CVaR (Conditional VaR) 계산
+  - 드로다운 분석 및 모니터링
+  - 포지션 사이징 권고
+  - 리스크 한도 관리
+
+layers:
+  L0_types:
+    file: packages/types/src/hephaitos/risk.ts
+    exports:
+      - IRiskMetrics
+      - IVaRResult
+      - ICVaRResult
+      - IDrawdownAnalysis
+      - IRiskLimit
+      - IRiskAlert
+      - IPositionSizeRecommendation
+      - RiskLevel
+
+  L1_utils:
+    file: packages/utils/src/risk-calc.ts
+    exports:
+      - calculateVaR
+      - calculateCVaR
+      - calculateDrawdown
+      - calculateMaxDrawdown
+      - calculateSharpeRatio
+      - calculateSortinoRatio
+      - recommendPositionSize
+      - assessRiskLevel
+
+  L2_repository:
+    file: packages/core/src/repositories/risk-repository.ts
+    exports:
+      - RiskRepository
+      - createRiskRepository
+
+  L3_agent:
+    file: apps/hephaitos/src/agents/risk-agent.ts
+    exports:
+      - RiskAgent
+      - createRiskAgent
+
+dependencies:
+  - "@forge/types"
+  - "@forge/utils"
+  - "@forge/core"
+
+test_coverage:
+  - VaR calculation accuracy
+  - CVaR calculation accuracy
+  - Drawdown detection
+  - Risk level classification
+  - Position sizing recommendations
