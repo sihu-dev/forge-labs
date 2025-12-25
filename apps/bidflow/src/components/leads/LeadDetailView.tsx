@@ -26,22 +26,25 @@ interface Lead {
   email: string;
   title?: string;
   phone?: string;
-  organization: string;
+  organization?: string;
+  organization_domain?: string;
   department?: string;
   score: number;
   status: string;
   verified: boolean;
   source?: string;
+  sequence_id?: string;
+  notes?: string;
+  metadata?: any;
+  enriched_at?: string;
+  created_at: string;
+  updated_at: string;
+  // UI-specific fields (derived from metadata or CRM sync)
   crm_id?: string;
   crm_synced_at?: string;
   deal_id?: string;
   deal_created?: boolean;
-  sequence_id?: string;
-  last_contact_at?: string;
-  enrichment_data?: any;
-  signals?: any;
-  created_at: string;
-  updated_at: string;
+  signals?: any[];
 }
 
 interface Activity {

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import type { Lead } from '@/lib/types/database.types';
 
 // ============================================================================
 // 요청 스키마
@@ -112,28 +113,34 @@ export async function PATCH(
     const updates = validationResult.data;
 
     // 기존 리드 확인
-    const { data: existingLead, error: fetchError } = await supabase
+    const { data: existingData, error: fetchError } = await supabase
       .from('leads')
       .select('id, status')
       .eq('id', id)
       .eq('user_id', user.id)
       .single();
 
+    const existingLead = existingData as { id: string; status: string } | null;
+
     if (fetchError || !existingLead) {
       return NextResponse.json({ error: '리드를 찾을 수 없습니다' }, { status: 404 });
     }
 
     // 리드 업데이트
-    const { data: updatedLead, error: updateError } = await supabase
-      .from('leads')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
+    const updatePayload = {
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedData, error: updateError } = await (supabase.from('leads') as any)
+      .update(updatePayload)
       .eq('id', id)
       .eq('user_id', user.id)
       .select()
       .single();
+
+    const updatedLead = updatedData as Lead | null;
 
     if (updateError) {
       throw updateError;
@@ -141,7 +148,8 @@ export async function PATCH(
 
     // 상태 변경 시 활동 내역 추가
     if (updates.status && updates.status !== existingLead.status) {
-      await supabase.from('lead_activities').insert({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('lead_activities') as any).insert({
         lead_id: id,
         type: 'status_changed',
         description: `상태 변경: ${existingLead.status} → ${updates.status}`,

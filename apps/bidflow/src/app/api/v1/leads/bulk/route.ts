@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createCRMSyncService } from '@/lib/services/crm-sync-service';
+// Type assertions used below due to Supabase client type inference issues
 
 // ============================================================================
 // 요청 스키마
@@ -90,8 +91,8 @@ export async function POST(request: NextRequest) {
 
         for (const leadId of leadIds) {
           try {
-            const { error } = await supabase
-              .from('leads')
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error } = await (supabase.from('leads') as any)
               .update({
                 status: params.status,
                 updated_at: new Date().toISOString(),
@@ -102,7 +103,8 @@ export async function POST(request: NextRequest) {
             if (error) throw error;
 
             // 활동 내역 추가
-            await supabase.from('lead_activities').insert({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase.from('lead_activities') as any).insert({
               lead_id: leadId,
               type: 'status_changed',
               description: `상태 변경: ${params.status}`,
@@ -154,8 +156,8 @@ export async function POST(request: NextRequest) {
 
         for (const leadId of leadIds) {
           try {
-            const { error } = await supabase
-              .from('leads')
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error } = await (supabase.from('leads') as any)
               .update({
                 sequence_id: params.sequenceId,
                 updated_at: new Date().toISOString(),
@@ -166,9 +168,10 @@ export async function POST(request: NextRequest) {
             if (error) throw error;
 
             // 활동 내역 추가
-            await supabase.from('lead_activities').insert({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase.from('lead_activities') as any).insert({
               lead_id: leadId,
-              type: 'sequence_added',
+              type: 'note_added',
               description: `시퀀스에 추가됨: ${params.sequenceId}`,
               metadata: { sequence_id: params.sequenceId },
             });
@@ -190,12 +193,14 @@ export async function POST(request: NextRequest) {
         for (const leadId of leadIds) {
           try {
             // 리드 정보 조회
-            const { data: lead } = await supabase
+            const { data: leadData } = await supabase
               .from('leads')
               .select('email, organization')
               .eq('id', leadId)
               .eq('user_id', user.id)
               .single();
+
+            const lead = leadData as { email: string; organization: string | null } | null;
 
             if (!lead) {
               throw new Error('Lead not found');

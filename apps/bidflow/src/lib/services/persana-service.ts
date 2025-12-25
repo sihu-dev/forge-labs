@@ -1,6 +1,8 @@
 /**
  * Persana AI Service
  * Lead enrichment with company intelligence and tech stack analysis
+ *
+ * NOTE: This service wraps the @forge/integrations Persana client.
  */
 
 import {
@@ -55,20 +57,18 @@ export class PersanaService {
     company?: string;
   }): Promise<PersonEnrichment | null> {
     const request: EnrichmentRequest = {
-      type: 'person',
       email: params.email,
-      linkedin_url: params.linkedinUrl,
-      name: params.name,
-      company: params.company,
+      linkedinUrl: params.linkedinUrl,
+      companyName: params.company,
     };
 
-    const response = await this.client.enrich(request);
+    const response = await this.client.enrichPerson(request);
 
     if (!response.success || !response.data) {
       return null;
     }
 
-    return response.data.person || null;
+    return response.data;
   }
 
   /**
@@ -81,18 +81,17 @@ export class PersanaService {
     website?: string;
   }): Promise<CompanyEnrichment | null> {
     const request: EnrichmentRequest = {
-      type: 'company',
       domain: params.domain,
-      company: params.name,
+      companyName: params.name,
     };
 
-    const response = await this.client.enrich(request);
+    const response = await this.client.enrichCompany(request);
 
     if (!response.success || !response.data) {
       return null;
     }
 
-    return response.data.company || null;
+    return response.data;
   }
 
   /**
@@ -107,7 +106,7 @@ export class PersanaService {
     }>;
     totalCount: number;
   }> {
-    const response = await this.client.getTechStack({ domain });
+    const response = await this.client.analyzeTechStack(domain);
 
     if (!response.success || !response.data) {
       return { technologies: [], totalCount: 0 };
@@ -119,7 +118,7 @@ export class PersanaService {
       technologies: techStack.technologies.map((tech) => ({
         name: tech.name,
         category: tech.category,
-        confidence: 0.85, // Persana의 기술 스택 정확도
+        confidence: tech.confidence || 0.85, // Persana의 기술 스택 정확도
       })),
       totalCount: techStack.technologies.length,
     };
@@ -193,7 +192,7 @@ export class PersanaService {
       }
 
       // LinkedIn이 있으면 +10 (연락 가능성 높음)
-      if (data.person.linkedin_url) {
+      if (data.person.linkedinUrl) {
         score += 10;
       }
     }
@@ -201,14 +200,14 @@ export class PersanaService {
     // 회사 정보 기반 점수
     if (data.company) {
       // 직원 수가 많으면 잠재 거래액 큼
-      if (data.company.employee_count) {
-        if (data.company.employee_count > 1000) score += 20;
-        else if (data.company.employee_count > 100) score += 15;
-        else if (data.company.employee_count > 10) score += 10;
+      if (data.company.employees) {
+        if (data.company.employees > 1000) score += 20;
+        else if (data.company.employees > 100) score += 15;
+        else if (data.company.employees > 10) score += 10;
       }
 
       // 펀딩을 받았으면 +20 (구매력 있음)
-      if (data.company.funding && data.company.funding.length > 0) {
+      if (data.company.funding && data.company.funding.totalRaised) {
         score += 20;
       }
 
@@ -237,27 +236,29 @@ export class PersanaService {
     const now = new Date();
 
     // 펀딩 시그널
-    if (data.company?.funding && data.company.funding.length > 0) {
-      const latestFunding = data.company.funding[0];
-      const fundingDate = new Date(latestFunding.announced_date);
+    if (data.company?.funding?.latestRoundDate) {
+      const fundingDate = new Date(data.company.funding.latestRoundDate);
       const monthsAgo = (now.getTime() - fundingDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
 
       if (monthsAgo < 6) {
+        const amount = data.company.funding.latestRoundAmount
+          ? `$${(data.company.funding.latestRoundAmount / 1000000).toFixed(1)}M`
+          : 'undisclosed';
         signals.push({
           type: 'funding',
           strength: 'strong',
-          description: `최근 ${latestFunding.funding_type} 펀딩 ${latestFunding.amount_raised} 유치`,
-          detectedAt: latestFunding.announced_date,
+          description: `최근 ${data.company.funding.latestRound} 펀딩 ${amount} 유치`,
+          detectedAt: data.company.funding.latestRoundDate,
         });
       }
     }
 
     // 채용 시그널 (성장 중)
-    if (data.company?.employee_count && data.company.employee_count > 50) {
+    if (data.company?.employees && data.company.employees > 50) {
       signals.push({
         type: 'hiring',
         strength: 'medium',
-        description: `직원 ${data.company.employee_count}명 규모 - 성장 중`,
+        description: `직원 ${data.company.employees}명 규모 - 성장 중`,
         detectedAt: now.toISOString(),
       });
     }

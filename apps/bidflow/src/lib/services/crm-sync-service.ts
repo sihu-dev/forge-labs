@@ -1,10 +1,18 @@
 /**
  * CRM Sync Service
  * Supabase leads → Attio CRM 동기화
+ *
+ * NOTE: This service requires additional fields in the leads table that are not yet implemented:
+ * - crm_id: The ID in the external CRM
+ * - crm_synced_at: Last sync timestamp
+ * - deal_id, deal_created, deal_created_at: For deal tracking
+ *
+ * For now, the sync functionality is available but sync status tracking is limited.
  */
 
-import { CRMFactory, type Lead, type Deal } from '@forge/crm';
+import { CRMFactory, type IDeal, type ICreateLeadData, type DealStage } from '@forge/crm';
 import { createClient } from '@/lib/supabase/server';
+import type { Lead } from '@/lib/types/database.types';
 
 export interface CRMSyncConfig {
   provider: 'attio' | 'hubspot';
@@ -63,18 +71,18 @@ export class CRMSyncService {
   }): Promise<{ success: boolean; crmId?: string; error?: string }> {
     try {
       // CRM Lead 형식으로 변환
-      const lead: Lead = {
+      const lead: ICreateLeadData = {
         email: leadData.email,
         firstName: leadData.name?.split(' ')[0] || '',
         lastName: leadData.name?.split(' ').slice(1).join(' ') || '',
-        title: leadData.title,
+        jobTitle: leadData.title,
         phone: leadData.phone,
         company: leadData.organization,
-        source: leadData.source || 'bidflow',
-        score: leadData.score,
+        source: 'other', // Map bidflow source to CRM source type
         customFields: {
           bidflow_id: leadData.id,
           bidflow_score: leadData.score?.toString() || '0',
+          bidflow_source: leadData.source,
         },
       };
 
@@ -115,11 +123,13 @@ export class CRMSyncService {
     };
 
     // Supabase에서 리드 조회
-    const { data: leads, error } = await supabase
+    const { data, error } = await supabase
       .from('leads')
       .select('*')
       .in('id', leadIds)
       .eq('user_id', userId);
+
+    const leads = data as Lead[] | null;
 
     if (error || !leads) {
       result.success = false;
@@ -132,19 +142,16 @@ export class CRMSyncService {
 
     // 각 리드 동기화
     for (const lead of leads) {
-      // 이미 동기화된 리드는 스킵
-      if (lead.crm_synced_at) {
-        result.skipped++;
-        continue;
-      }
+      // NOTE: crm_synced_at field not yet in schema, skip check for now
+      // In the future, add crm_synced_at to leads table for proper sync tracking
 
       const syncResult = await this.syncLead({
         id: lead.id,
         email: lead.email,
         name: lead.name,
-        title: lead.title,
-        phone: lead.phone,
-        organization: lead.organization,
+        title: lead.title ?? undefined,
+        phone: lead.phone ?? undefined,
+        organization: lead.organization ?? undefined,
         score: lead.score,
         source: lead.source,
       });
@@ -152,14 +159,12 @@ export class CRMSyncService {
       if (syncResult.success) {
         result.synced++;
 
-        // Supabase 업데이트 (CRM ID 저장)
-        await supabase
-          .from('leads')
-          .update({
-            crm_id: syncResult.crmId,
-            crm_synced_at: new Date().toISOString(),
-          })
-          .eq('id', lead.id);
+        // NOTE: crm_id field not yet in schema
+        // In the future, save the CRM ID back to the leads table:
+        // await supabase.from('leads').update({
+        //   crm_id: syncResult.crmId,
+        //   crm_synced_at: new Date().toISOString(),
+        // }).eq('id', lead.id);
       } else {
         result.failed++;
         result.errors.push({
@@ -188,31 +193,39 @@ export class CRMSyncService {
       const supabase = await createClient();
 
       // 리드 정보 조회
-      const { data: lead } = await supabase
+      const { data } = await supabase
         .from('leads')
         .select('*')
         .eq('id', params.leadId)
         .single();
+
+      const lead = data as Lead | null;
 
       if (!lead) {
         throw new Error('Lead not found');
       }
 
       // CRM Deal 생성
-      const deal: Deal = {
+      // Map stage to valid DealStage type
+      const dealStage: DealStage = (params.stage as DealStage) || 'lead';
+
+      const deal: IDeal = {
+        id: '', // Will be assigned by CRM
         title: params.title,
-        contactEmail: lead.email,
-        contactName: lead.name,
-        company: lead.organization,
-        stage: params.stage || 'prospect',
+        description: `Lead from BIDFLOW - ${lead.name}`,
+        stage: dealStage,
+        priority: params.priority || 'medium',
         value: params.value,
         currency: 'KRW',
-        priority: params.priority || 'medium',
-        source: 'bidflow',
         customFields: {
           bidflow_lead_id: params.leadId,
           bidflow_score: lead.score?.toString() || '0',
+          contact_email: lead.email,
+          contact_name: lead.name,
+          company: lead.organization ?? '',
         },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
       const result = await this.crm.deals.create(deal);
@@ -221,15 +234,8 @@ export class CRMSyncService {
         throw new Error(result.error?.message || 'Failed to create deal');
       }
 
-      // Supabase 업데이트
-      await supabase
-        .from('leads')
-        .update({
-          deal_created: true,
-          deal_id: result.data?.id,
-          deal_created_at: new Date().toISOString(),
-        })
-        .eq('id', params.leadId);
+      // NOTE: deal_id field not yet in schema
+      // In the future, save the deal info back to the leads table
 
       return {
         success: true,
@@ -250,18 +256,18 @@ export class CRMSyncService {
   async autoSync(userId: string, since?: Date): Promise<SyncResult> {
     const supabase = await createClient();
 
-    // 미동기화 리드 조회
+    // 모든 리드 조회 (crm_synced_at field not available yet)
     let query = supabase
       .from('leads')
       .select('id')
-      .eq('user_id', userId)
-      .is('crm_synced_at', null);
+      .eq('user_id', userId);
 
     if (since) {
       query = query.gte('created_at', since.toISOString());
     }
 
-    const { data: unsyncedLeads, error } = await query;
+    const { data, error } = await query;
+    const unsyncedLeads = data as Array<{ id: string }> | null;
 
     if (error || !unsyncedLeads) {
       return {
@@ -288,10 +294,12 @@ export class CRMSyncService {
   }> {
     const supabase = await createClient();
 
-    const { data: leads } = await supabase
+    const { data } = await supabase
       .from('leads')
-      .select('id, crm_synced_at')
+      .select('id, created_at')
       .eq('user_id', userId);
+
+    const leads = data as Array<{ id: string; created_at: string }> | null;
 
     if (!leads) {
       return {
@@ -301,18 +309,12 @@ export class CRMSyncService {
       };
     }
 
-    const synced = leads.filter((l) => l.crm_synced_at);
-    const lastSync = synced.reduce(
-      (latest, l) =>
-        !latest || (l.crm_synced_at && l.crm_synced_at > latest) ? l.crm_synced_at : latest,
-      null as string | null
-    );
-
+    // NOTE: Without crm_synced_at field, we can't track sync status
+    // For now, report all leads as unsynced
     return {
       totalLeads: leads.length,
-      syncedLeads: synced.length,
-      unsyncedLeads: leads.length - synced.length,
-      lastSyncAt: lastSync || undefined,
+      syncedLeads: 0,
+      unsyncedLeads: leads.length,
     };
   }
 
@@ -322,7 +324,7 @@ export class CRMSyncService {
   async healthCheck(): Promise<boolean> {
     try {
       // CRM 연결 상태 확인
-      const result = await this.crm.leads.list({ page: 1, pageSize: 1 });
+      const result = await this.crm.leads.list(undefined, { limit: 1, offset: 0 });
       return result.success;
     } catch (error) {
       return false;

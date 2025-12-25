@@ -117,4 +117,83 @@ DELETE /api/v1/bids/:id    # 삭제 (Admin)
 
 ---
 
-*BIDFLOW v0.1.0*
+## Chrome Claude 연동
+
+> Chrome Claude와 Claude Code의 상호작용을 통한 개발 최적화
+
+### 연동 명령어
+
+| 명령어 | 설명 | 사용 시점 |
+|--------|------|-----------|
+| `/chrome-sync` | 프로젝트 컨텍스트 동기화 | Chrome Claude 작업 시작 시 |
+| `/browser-test` | 브라우저 테스트 실행 | UI 변경 후 검증 |
+| `/pr-review` | PR 자동 리뷰 | GitHub PR 페이지에서 |
+
+### Chrome Claude 가능 작업
+
+```yaml
+UI/UX 검토:
+  - 실제 화면 캡처 후 분석
+  - Lighthouse 성능/접근성 점수
+  - 반응형 레이아웃 검증
+  - 콘솔 오류 수집
+
+외부 서비스:
+  - Supabase Dashboard 확인
+  - Vercel 배포 상태
+  - GitHub PR/이슈 관리
+
+API 테스트:
+  - REST 엔드포인트 테스트
+  - 응답 시간 측정
+```
+
+### 워크플로우
+
+```
+Chrome Claude          Claude Code
+    │                      │
+    ├── UI 버그 발견 ──────►├── 코드 수정
+    │                      │
+    ├── 성능 이슈 ─────────►├── 최적화
+    │                      │
+    ├── PR 리뷰 ───────────►├── 피드백 반영
+    │                      │
+    └── 테스트 실행 ───────►└── 결과 확인
+```
+
+### Chrome → Code 이슈 전달 형식
+
+```markdown
+## 🔴 Chrome에서 발견한 이슈
+
+### 이슈 유형: [UI/성능/오류/보안]
+### 발견 위치: [URL 또는 컴포넌트]
+### 상세 내용:
+[분석 내용]
+
+### 수정 제안:
+[권장 수정 방법]
+```
+
+### 설정 파일
+
+| 파일 | 설명 |
+|------|------|
+| `.claude/settings.local.json` | Chrome 연동 로컬 설정 |
+| `.claude/commands/chrome-sync.md` | 컨텍스트 동기화 명령 |
+| `.claude/commands/browser-test.md` | 브라우저 테스트 자동화 |
+| `.claude/commands/pr-review.md` | PR 리뷰 자동화 |
+
+### 빠른 링크 (Chrome Claude용)
+
+| 서비스 | URL |
+|--------|-----|
+| 개발 서버 | http://localhost:3010 |
+| 대시보드 | http://localhost:3010/dashboard |
+| Supabase | https://supabase.com/dashboard |
+| GitHub | https://github.com/sihu2/forge-labs |
+
+---
+
+*BIDFLOW v0.2.0 - Chrome Claude Integration*

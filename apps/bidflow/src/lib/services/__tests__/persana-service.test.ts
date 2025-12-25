@@ -26,17 +26,18 @@ describe('PersanaService', () => {
         json: () =>
           Promise.resolve({
             person: {
-              name: '이철수',
+              fullName: '이철수',
               email: 'lee@example.com',
               title: '시설담당',
-              linkedin_url: 'https://linkedin.com/in/lee',
+              linkedinUrl: 'https://linkedin.com/in/lee',
               experience: [
                 {
                   company: '한국전력',
                   title: '시설담당',
-                  start_date: '2020-01-01',
+                  current: true,
                 },
               ],
+              confidence: 0.9,
             },
           }),
       });
@@ -44,7 +45,7 @@ describe('PersanaService', () => {
       const result = await service.enrichPerson({ email: 'lee@example.com' });
 
       expect(result).not.toBeNull();
-      expect(result?.name).toBe('이철수');
+      expect(result?.fullName).toBe('이철수');
       expect(result?.title).toBe('시설담당');
     });
   });
@@ -59,14 +60,13 @@ describe('PersanaService', () => {
               name: 'CMNTech',
               domain: 'cmntech.co.kr',
               industry: 'Manufacturing',
-              employee_count: 50,
-              funding: [
-                {
-                  funding_type: 'Series A',
-                  amount_raised: 1000000000,
-                  announced_date: '2023-01-01',
-                },
-              ],
+              employees: 50,
+              funding: {
+                totalRaised: 1000000000,
+                lastRound: 'Series A',
+                lastRoundDate: '2023-01-01',
+              },
+              confidence: 0.85,
             },
           }),
       });
@@ -75,7 +75,7 @@ describe('PersanaService', () => {
 
       expect(result).not.toBeNull();
       expect(result?.name).toBe('CMNTech');
-      expect(result?.employee_count).toBe(50);
+      expect(result?.employees).toBe(50);
     });
   });
 

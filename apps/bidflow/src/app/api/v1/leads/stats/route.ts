@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import type { Lead, LeadStats } from '@/lib/types/database.types';
 
 // ============================================================================
 // GET Handler - 통계 조회
@@ -37,11 +38,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 1. 기본 통계
-    const { data: stats } = await supabase
+    const { data: statsData } = await supabase
       .from('lead_stats')
       .select('*')
       .eq('user_id', user.id)
       .single();
+
+    const stats = statsData as LeadStats | null;
 
     // 2. 기간별 추이 (일별 생성된 리드 수)
     let trendsQuery = supabase
@@ -53,7 +56,8 @@ export async function GET(request: NextRequest) {
       trendsQuery = trendsQuery.gte('created_at', startDate.toISOString());
     }
 
-    const { data: leadsForTrends } = await trendsQuery;
+    const { data: trendsData } = await trendsQuery;
+    const leadsForTrends = trendsData as Array<{ created_at: string; score: number; status: string }> | null;
 
     // 일별 그룹핑
     const dailyTrends: Record<string, number> = {};
@@ -88,12 +92,14 @@ export async function GET(request: NextRequest) {
     });
 
     // 5. 상위 조직 (리드가 많은 순)
-    const { data: topOrganizations } = await supabase
+    const { data: topOrgsData } = await supabase
       .from('leads')
       .select('organization')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(100);
+
+    const topOrganizations = topOrgsData as Array<{ organization: string | null }> | null;
 
     const orgCounts: Record<string, number> = {};
     topOrganizations?.forEach((lead) => {

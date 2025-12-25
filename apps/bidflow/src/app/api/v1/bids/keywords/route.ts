@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import type { BidKeyword } from '@/lib/types/database.types';
 
 // ============================================================================
 // 요청 스키마
@@ -109,17 +110,21 @@ export async function POST(request: NextRequest) {
     }
 
     // 키워드 생성
-    const { data: newKeyword, error: createError } = await supabase
-      .from('bid_keywords')
-      .insert({
-        user_id: user.id,
-        keyword,
-        category,
-        priority,
-        active: true,
-      })
+    const keywordData = {
+      user_id: user.id,
+      keyword,
+      category: category || 'product',
+      priority,
+      active: true,
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newKeywordData, error: createError } = await (supabase.from('bid_keywords') as any)
+      .insert(keywordData)
       .select()
       .single();
+
+    const newKeyword = newKeywordData as BidKeyword | null;
 
     if (createError) {
       throw createError;

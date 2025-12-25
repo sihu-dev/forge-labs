@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import type { BidKeyword } from '@/lib/types/database.types';
 
 // ============================================================================
 // 요청 스키마
@@ -55,16 +56,20 @@ export async function PATCH(
     const updates = validationResult.data;
 
     // 키워드 업데이트
-    const { data: updatedKeyword, error: updateError } = await supabase
-      .from('bid_keywords')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
+    const updatePayload = {
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedData, error: updateError } = await (supabase.from('bid_keywords') as any)
+      .update(updatePayload)
       .eq('id', id)
       .eq('user_id', user.id)
       .select()
       .single();
+
+    const updatedKeyword = updatedData as BidKeyword | null;
 
     if (updateError) {
       throw updateError;

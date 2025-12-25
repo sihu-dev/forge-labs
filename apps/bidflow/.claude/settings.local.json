@@ -1,0 +1,101 @@
+{
+  "$schema": "https://claude.ai/schemas/claude-code-settings.json",
+  "// 설명": "Chrome Claude 연동 최적화 로컬 설정",
+
+  "chromeIntegration": {
+    "// 설명": "Chrome Claude와의 연동 설정",
+    "enabled": true,
+    "syncInterval": "on-demand",
+    "features": {
+      "contextSync": true,
+      "browserTest": true,
+      "prReview": true,
+      "visualDiff": true,
+      "lighthouseAudit": true
+    }
+  },
+
+  "browserTestConfig": {
+    "// 설명": "브라우저 테스트 설정",
+    "baseUrl": "http://localhost:3010",
+    "viewports": {
+      "mobile": { "width": 375, "height": 667 },
+      "tablet": { "width": 768, "height": 1024 },
+      "desktop": { "width": 1440, "height": 900 }
+    },
+    "timeout": 30000,
+    "screenshotOnFailure": true,
+    "videosOnFailure": true
+  },
+
+  "prReviewConfig": {
+    "// 설명": "PR 리뷰 자동화 설정",
+    "autoReview": true,
+    "minScore": 70,
+    "categories": {
+      "codeQuality": { "weight": 30, "enabled": true },
+      "security": { "weight": 25, "enabled": true },
+      "performance": { "weight": 20, "enabled": true },
+      "testing": { "weight": 15, "enabled": true },
+      "documentation": { "weight": 10, "enabled": true }
+    },
+    "checks": {
+      "typescript": true,
+      "eslint": true,
+      "prettier": true,
+      "tests": true,
+      "buildSuccess": true
+    }
+  },
+
+  "contextSync": {
+    "// 설명": "Chrome Claude 컨텍스트 동기화 설정",
+    "autoSync": true,
+    "includeGitStatus": true,
+    "includeRecentFiles": true,
+    "includeErrors": true,
+    "recentFilesLimit": 20,
+    "syncTriggers": ["session-start", "file-save", "git-commit"]
+  },
+
+  "shortcuts": {
+    "// 설명": "Chrome Claude 전용 단축 명령어",
+    "chrome-sync": "/chrome-sync",
+    "browser-test": "/browser-test",
+    "pr-review": "/pr-review",
+    "visual-diff": "/visual-diff",
+    "lighthouse": "/lighthouse",
+    "a11y-check": "/a11y-check"
+  },
+
+  "notifications": {
+    "// 설명": "Chrome Claude 알림 설정",
+    "onBuildFailure": true,
+    "onTestFailure": true,
+    "onPRComment": true,
+    "onDeployComplete": true,
+    "channels": ["browser", "slack"]
+  },
+
+  "debugging": {
+    "// 설명": "디버깅 설정",
+    "enableConsoleCapture": true,
+    "enableNetworkCapture": true,
+    "enablePerformanceMetrics": true,
+    "logLevel": "info"
+  },
+
+  "collaboration": {
+    "// 설명": "Chrome Claude ↔ Claude Code 협업 설정",
+    "handoffFormat": "markdown",
+    "autoCreateIssue": false,
+    "issueLabelPrefix": "chrome-claude-",
+    "linkPRsToIssues": true
+  },
+
+  "design": {
+    "// 설명": "디자인 시스템 설정 (settings.json에서 상속)",
+    "checkColorCompliance": true,
+    "monochromeOnly": true
+  }
+}

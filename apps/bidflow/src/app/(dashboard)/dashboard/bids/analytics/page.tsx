@@ -11,6 +11,7 @@ import { BidSourceChart } from '@/components/bids/analytics/BidSourceChart';
 import { BidTimelineChart } from '@/components/bids/analytics/BidTimelineChart';
 import { BudgetDistributionChart } from '@/components/bids/analytics/BudgetDistributionChart';
 import { MatchingPerformance } from '@/components/bids/analytics/MatchingPerformance';
+import type { Bid } from '@/lib/types/database.types';
 
 interface SearchParams {
   period?: string;
@@ -51,7 +52,8 @@ export default async function BidAnalyticsPage(props: {
     query = query.gte('created_at', dateFilter.toISOString());
   }
 
-  const { data: bids } = await query;
+  const { data } = await query;
+  const bids = data as Bid[] | null;
 
   // 통계 계산
   const stats = {

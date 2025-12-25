@@ -125,11 +125,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<Enrichmen
     let domain = params.domain;
 
     if (params.bidId) {
-      const { data: bid, error: bidError } = await supabase
+      const { data: bidData, error: bidError } = await supabase
         .from('bids')
-        .select('organization, organization_domain')
+        .select('organization')
         .eq('id', params.bidId)
         .single();
+
+      const bid = bidData as { organization: string } | null;
 
       if (bidError || !bid) {
         return NextResponse.json(
@@ -142,7 +144,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Enrichmen
       }
 
       organizationName = bid.organization;
-      domain = bid.organization_domain;
+      // domain can be derived from organization or left undefined
     }
 
     if (!organizationName) {
@@ -201,7 +203,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Enrichmen
         email: contact.email || '',
         title: contact.title || personEnrichment?.title,
         phone: contact.phone_numbers?.[0]?.raw_number,
-        linkedin: contact.linkedin_url || personEnrichment?.linkedin_url,
+        linkedin: contact.linkedin_url || personEnrichment?.linkedinUrl,
         organization: organizationName,
         department: contact.departments?.[0],
         score: leadEnrichment.score,
@@ -224,22 +226,26 @@ export async function POST(request: NextRequest): Promise<NextResponse<Enrichmen
         bid_id: params.bidId || null,
         name: contact.name,
         email: contact.email,
-        title: contact.title,
-        phone: contact.phone,
-        linkedin_url: contact.linkedin,
-        organization: contact.organization,
-        department: contact.department,
+        title: contact.title || null,
+        phone: contact.phone || null,
+        linkedin_url: contact.linkedin || null,
+        organization: contact.organization || null,
+        department: contact.department || null,
         score: contact.score,
-        source: contact.source,
+        source: 'enrichment' as const, // Map to valid LeadSource type
         verified: contact.verified,
-        signals: contact.signals,
+        metadata: { signals: contact.signals }, // Store signals in metadata
         enriched_at: new Date().toISOString(),
       }));
 
-      const { error: insertError } = await supabase.from('leads').upsert(leadsToInsert, {
-        onConflict: 'email',
-        ignoreDuplicates: false,
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: insertError } = await (supabase.from('leads') as any).upsert(
+        leadsToInsert,
+        {
+          onConflict: 'email',
+          ignoreDuplicates: false,
+        }
+      );
 
       if (!insertError) {
         savedToDb = true;
@@ -255,11 +261,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<Enrichmen
         companyInfo: companyEnrichment
           ? {
               industry: companyEnrichment.industry,
-              employeeCount: companyEnrichment.employee_count,
-              funding:
-                companyEnrichment.funding?.reduce((sum, f) => sum + (f.amount_raised || 0), 0) ||
-                0,
-              technologies: [], // Tech stack은 별도 호출 필요
+              employeeCount: companyEnrichment.employees,
+              funding: companyEnrichment.funding?.totalRaised || 0,
+              technologies: companyEnrichment.technologies || [],
             }
           : undefined,
         totalFound: apolloResult.totalFound,
