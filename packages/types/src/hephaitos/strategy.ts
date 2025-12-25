@@ -157,6 +157,11 @@ export interface IStrategy {
     updatedAt: string;
     createdBy?: string;
     tags?: string[];
+    /** No-Code 빌더 노드 그래프 (역직렬화용) */
+    nodeGraph?: {
+      nodes: unknown[];
+      edges: unknown[];
+    };
   };
 }
 

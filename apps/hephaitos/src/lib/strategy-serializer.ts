@@ -13,7 +13,7 @@ import type {
   IIndicatorConfig,
   ComparisonOperator,
   IndicatorType,
-} from '@hephaitos/types'
+} from '@forge/types'
 
 /**
  * 노드 그래프 직렬화 결과
@@ -141,7 +141,7 @@ export function serializeStrategy(
           nodes,
           edges,
         },
-      } as any,
+      },
     }
 
     return {
@@ -381,22 +381,29 @@ function extractPositionSizing(actionNodes: Node[]) {
 /**
  * 리스크 관리 추출
  */
-function extractRiskManagement(riskNode: Node | undefined) {
+function extractRiskManagement(riskNode: Node | undefined): {
+  stopLossPercent?: number
+  takeProfitPercent?: number
+  trailingStopPercent?: number
+  maxPositions?: number
+  maxCapitalUsage?: number
+  dailyMaxLoss?: number
+} {
   if (!riskNode) {
     return {
-      maxDrawdownPercent: 20,
-      maxLossPerTrade: 2,
+      maxCapitalUsage: 100,
+      dailyMaxLoss: 20,
     }
   }
 
   const config = riskNode.data?.config
 
   return {
-    stopLoss: config?.stopLoss ? Number(config.stopLoss) : undefined,
-    takeProfit: config?.takeProfit ? Number(config.takeProfit) : undefined,
-    trailingStop: config?.trailingStop ? Number(config.trailingStop) : undefined,
-    maxDrawdownPercent: config?.maxDrawdown ? Number(config.maxDrawdown) : 20,
-    maxLossPerTrade: 2,
+    stopLossPercent: config?.stopLoss ? Number(config.stopLoss) : undefined,
+    takeProfitPercent: config?.takeProfit ? Number(config.takeProfit) : undefined,
+    trailingStopPercent: config?.trailingStop ? Number(config.trailingStop) : undefined,
+    maxCapitalUsage: 100,
+    dailyMaxLoss: config?.maxDrawdown ? Number(config.maxDrawdown) : 20,
   }
 }
 

@@ -92,8 +92,8 @@ import type {
   ExecutionMode,
   OrderSide,
   ITrade,
-} from '@hephaitos/types';
-import { DEFAULT_RISK_CONFIG } from '@hephaitos/types';
+} from '@forge/types';
+import { DEFAULT_RISK_CONFIG } from '@forge/types';
 import {
   calculateUnrealizedPnL,
   calculateAvgEntryPrice,
@@ -102,7 +102,7 @@ import {
   simulateSlippage,
   calculateSlippage,
   type IOrderValidation,
-} from '@hephaitos/utils';
+} from '@forge/utils';
 
 // ═══════════════════════════════════════════════════════════════════
 // Temporary Repository Interfaces (until core package is fully extended)

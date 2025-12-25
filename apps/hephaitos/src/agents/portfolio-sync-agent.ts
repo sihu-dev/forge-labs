@@ -19,14 +19,14 @@ import type {
   IAsset,
   IExchangeCredentials,
   ISyncResult,
-} from '@hephaitos/types';
+} from '@forge/types';
 // TODO: 아래 core 서비스들은 추후 구현 필요
 // import {
 //   ExchangeServiceFactory,
 //   type IPortfolioRepository,
 //   type IExchangeService,
 // } from '@hephaitos/core';
-import { calculateTotalValue, filterDust, sortByValue } from '@hephaitos/utils';
+import { calculateTotalValue, filterDust, sortByValue } from '@forge/utils';
 
 // ═══════════════════════════════════════════════════════════════════
 // Temporary interfaces until core package is fully implemented
@@ -323,7 +323,6 @@ export class PortfolioSyncAgent {
           metadata: {
             timestamp: new Date().toISOString(),
             duration_ms: this.config.syncTimeoutMs,
-            timed_out: true,
           },
         });
       }, this.config.syncTimeoutMs);

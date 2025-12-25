@@ -231,6 +231,9 @@ export type CurrencyCode = 'USD' | 'KRW' | 'EUR' | 'JPY' | 'CNY' | 'BTC' | 'ETH'
  */
 export * as HephaitosTypes from './hephaitos/index.js';
 
+// HEPHAITOS 타입 직접 export (에이전트 호환성)
+export * from './hephaitos/index.js';
+
 /**
  * BIDFLOW 상세 타입 (L0 구현체)
  * 입찰 자동화 시스템

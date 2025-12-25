@@ -1,5 +1,8 @@
 /**
  * 백테스트 설정 모달
+ *
+ * 사용자로부터 백테스트 실행에 필요한 설정을 입력받습니다.
+ * 전략(strategy)과 심볼(symbol)은 외부에서 제공됩니다.
  */
 
 'use client'
@@ -7,13 +10,43 @@
 import { useState } from 'react'
 import { XMarkIcon, PlayIcon } from '@heroicons/react/24/outline'
 import { useI18n } from '@/i18n/client'
-import type { BacktestConfig } from '@/hooks/use-backtest'
+
+/**
+ * 백테스트 실행 설정 (모달용)
+ * BacktestConfig의 부분 설정 - strategy와 symbol은 외부에서 주입
+ */
+export interface BacktestRunConfig {
+  initialCapital: number
+  startDate: number  // Unix timestamp (ms)
+  endDate: number    // Unix timestamp (ms)
+  commission: number // Percentage (e.g., 0.001 = 0.1%)
+  slippage: number   // Percentage
+}
 
 interface BacktestConfigModalProps {
   isOpen: boolean
   onClose: () => void
-  onRun: (config: BacktestConfig) => void
+  onRun: (config: BacktestRunConfig) => void
   isRunning?: boolean
+}
+
+// 유틸리티 함수
+function getDefaultStartTimestamp(): number {
+  const date = new Date()
+  date.setMonth(date.getMonth() - 3) // 3개월 전
+  return date.getTime()
+}
+
+function getDefaultEndTimestamp(): number {
+  return Date.now()
+}
+
+function timestampToDateString(timestamp: number): string {
+  return new Date(timestamp).toISOString().split('T')[0]
+}
+
+function dateStringToTimestamp(dateStr: string): number {
+  return new Date(dateStr).getTime()
 }
 
 export function BacktestConfigModal({
@@ -25,12 +58,12 @@ export function BacktestConfigModal({
   const { t } = useI18n()
 
   // 기본값 설정
-  const [config, setConfig] = useState<BacktestConfig>({
+  const [config, setConfig] = useState<BacktestRunConfig>({
     initialCapital: 10000,
-    startDate: getDefaultStartDate(),
-    endDate: getDefaultEndDate(),
-    feeRate: 0.1,
-    slippage: 0.05,
+    startDate: getDefaultStartTimestamp(),
+    endDate: getDefaultEndTimestamp(),
+    commission: 0.001, // 0.1%
+    slippage: 0.0005,  // 0.05%
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -77,9 +110,9 @@ export function BacktestConfigModal({
               step="100"
               value={config.initialCapital}
               onChange={(e) =>
-                setConfig((prev) => ({
+                setConfig((prev: BacktestRunConfig) => ({
                   ...prev,
-                  initialCapital: parseFloat(e.target.value),
+                  initialCapital: parseFloat(e.target.value) || 0,
                 }))
               }
               className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-white/[0.12] transition-colors"
@@ -99,11 +132,11 @@ export function BacktestConfigModal({
               <input
                 id="startDate"
                 type="date"
-                value={config.startDate}
+                value={timestampToDateString(config.startDate)}
                 onChange={(e) =>
-                  setConfig((prev) => ({
+                  setConfig((prev: BacktestRunConfig) => ({
                     ...prev,
-                    startDate: e.target.value,
+                    startDate: dateStringToTimestamp(e.target.value),
                   }))
                 }
                 className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-white/[0.12] transition-colors"
@@ -120,11 +153,11 @@ export function BacktestConfigModal({
               <input
                 id="endDate"
                 type="date"
-                value={config.endDate}
+                value={timestampToDateString(config.endDate)}
                 onChange={(e) =>
-                  setConfig((prev) => ({
+                  setConfig((prev: BacktestRunConfig) => ({
                     ...prev,
-                    endDate: e.target.value,
+                    endDate: dateStringToTimestamp(e.target.value),
                   }))
                 }
                 className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-white/[0.12] transition-colors"
@@ -137,22 +170,22 @@ export function BacktestConfigModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label
-                htmlFor="feeRate"
+                htmlFor="commission"
                 className="block text-xs text-zinc-400 mb-1.5"
               >
                 수수료율 (%)
               </label>
               <input
-                id="feeRate"
+                id="commission"
                 type="number"
                 min="0"
                 max="5"
                 step="0.01"
-                value={config.feeRate}
+                value={(config.commission * 100).toFixed(2)}
                 onChange={(e) =>
-                  setConfig((prev) => ({
+                  setConfig((prev: BacktestRunConfig) => ({
                     ...prev,
-                    feeRate: parseFloat(e.target.value),
+                    commission: (parseFloat(e.target.value) || 0) / 100,
                   }))
                 }
                 className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-white/[0.12] transition-colors"
@@ -171,11 +204,11 @@ export function BacktestConfigModal({
                 min="0"
                 max="5"
                 step="0.01"
-                value={config.slippage}
+                value={(config.slippage * 100).toFixed(2)}
                 onChange={(e) =>
-                  setConfig((prev) => ({
+                  setConfig((prev: BacktestRunConfig) => ({
                     ...prev,
-                    slippage: parseFloat(e.target.value),
+                    slippage: (parseFloat(e.target.value) || 0) / 100,
                   }))
                 }
                 className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-white/[0.12] transition-colors"
@@ -241,16 +274,4 @@ export function BacktestConfigModal({
       </div>
     </div>
   )
-}
-
-// 유틸리티 함수
-function getDefaultStartDate(): string {
-  const date = new Date()
-  date.setMonth(date.getMonth() - 3) // 3개월 전
-  return date.toISOString().split('T')[0]
-}
-
-function getDefaultEndDate(): string {
-  const date = new Date()
-  return date.toISOString().split('T')[0]
 }
