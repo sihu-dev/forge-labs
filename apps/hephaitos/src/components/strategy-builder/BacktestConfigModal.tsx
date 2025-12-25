@@ -1,26 +1,34 @@
 /**
  * 백테스트 설정 모달
+ * QRY-024: 백테스트 연동 강화
  *
  * 사용자로부터 백테스트 실행에 필요한 설정을 입력받습니다.
- * 전략(strategy)과 심볼(symbol)은 외부에서 제공됩니다.
+ * 심볼, 타임프레임, 기간 등을 선택할 수 있습니다.
  */
 
 'use client'
 
 import { useState } from 'react'
-import { XMarkIcon, PlayIcon } from '@heroicons/react/24/outline'
+import {
+  XMarkIcon,
+  PlayIcon,
+  ChartBarIcon,
+  CurrencyDollarIcon,
+  ClockIcon,
+} from '@heroicons/react/24/outline'
 import { useI18n } from '@/i18n/client'
 
 /**
- * 백테스트 실행 설정 (모달용)
- * BacktestConfig의 부분 설정 - strategy와 symbol은 외부에서 주입
+ * 백테스트 실행 설정 (API 호환 형식)
  */
 export interface BacktestRunConfig {
+  symbol: string
+  timeframe: string
   initialCapital: number
-  startDate: number  // Unix timestamp (ms)
-  endDate: number    // Unix timestamp (ms)
-  commission: number // Percentage (e.g., 0.001 = 0.1%)
-  slippage: number   // Percentage
+  startDate: string  // ISO date string (YYYY-MM-DD)
+  endDate: string    // ISO date string (YYYY-MM-DD)
+  feeRate: number    // Percentage (e.g., 0.1 = 0.1%)
+  slippage: number   // Percentage (e.g., 0.05 = 0.05%)
 }
 
 interface BacktestConfigModalProps {
@@ -28,25 +36,41 @@ interface BacktestConfigModalProps {
   onClose: () => void
   onRun: (config: BacktestRunConfig) => void
   isRunning?: boolean
+  defaultSymbol?: string
 }
+
+// 인기 거래쌍
+const POPULAR_SYMBOLS = [
+  { value: 'BTC/USDT', label: 'BTC/USDT', icon: '₿' },
+  { value: 'ETH/USDT', label: 'ETH/USDT', icon: 'Ξ' },
+  { value: 'SOL/USDT', label: 'SOL/USDT', icon: '◎' },
+  { value: 'AAPL', label: 'Apple (AAPL)', icon: '' },
+  { value: 'GOOGL', label: 'Google (GOOGL)', icon: '' },
+  { value: 'TSLA', label: 'Tesla (TSLA)', icon: '' },
+  { value: 'SPY', label: 'S&P 500 ETF', icon: '' },
+  { value: 'QQQ', label: 'Nasdaq 100 ETF', icon: '' },
+]
+
+// 타임프레임
+const TIMEFRAMES = [
+  { value: '1m', label: '1분' },
+  { value: '5m', label: '5분' },
+  { value: '15m', label: '15분' },
+  { value: '1h', label: '1시간' },
+  { value: '4h', label: '4시간' },
+  { value: '1d', label: '1일' },
+  { value: '1w', label: '1주' },
+]
 
 // 유틸리티 함수
-function getDefaultStartTimestamp(): number {
+function getDefaultStartDate(): string {
   const date = new Date()
   date.setMonth(date.getMonth() - 3) // 3개월 전
-  return date.getTime()
+  return date.toISOString().split('T')[0]
 }
 
-function getDefaultEndTimestamp(): number {
-  return Date.now()
-}
-
-function timestampToDateString(timestamp: number): string {
-  return new Date(timestamp).toISOString().split('T')[0]
-}
-
-function dateStringToTimestamp(dateStr: string): number {
-  return new Date(dateStr).getTime()
+function getDefaultEndDate(): string {
+  return new Date().toISOString().split('T')[0]
 }
 
 export function BacktestConfigModal({
@@ -54,16 +78,19 @@ export function BacktestConfigModal({
   onClose,
   onRun,
   isRunning = false,
+  defaultSymbol = 'BTC/USDT',
 }: BacktestConfigModalProps) {
   const { t } = useI18n()
 
   // 기본값 설정
   const [config, setConfig] = useState<BacktestRunConfig>({
+    symbol: defaultSymbol,
+    timeframe: '1h',
     initialCapital: 10000,
-    startDate: getDefaultStartTimestamp(),
-    endDate: getDefaultEndTimestamp(),
-    commission: 0.001, // 0.1%
-    slippage: 0.0005,  // 0.05%
+    startDate: getDefaultStartDate(),
+    endDate: getDefaultEndDate(),
+    feeRate: 0.1,     // 0.1%
+    slippage: 0.05,   // 0.05%
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -74,14 +101,17 @@ export function BacktestConfigModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-md bg-[#111113] border border-white/[0.06] rounded-lg overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-lg bg-[#111113] border border-white/[0.06] rounded-lg overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-white/[0.06]">
+        <div className="px-5 py-4 border-b border-white/[0.06] bg-gradient-to-r from-emerald-500/5 to-transparent">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-medium text-white">
-              백테스트 설정
-            </h3>
+            <div className="flex items-center gap-2">
+              <ChartBarIcon className="w-5 h-5 text-emerald-400" />
+              <h3 className="text-base font-medium text-white">
+                백테스트 설정
+              </h3>
+            </div>
             <button
               type="button"
               onClick={onClose}
@@ -94,30 +124,100 @@ export function BacktestConfigModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-5">
+          {/* 심볼 & 타임프레임 */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label
+                htmlFor="symbol"
+                className="block text-xs text-zinc-400 mb-1.5 flex items-center gap-1"
+              >
+                <CurrencyDollarIcon className="w-3.5 h-3.5" />
+                거래쌍
+              </label>
+              <select
+                id="symbol"
+                value={config.symbol}
+                onChange={(e) =>
+                  setConfig((prev) => ({ ...prev, symbol: e.target.value }))
+                }
+                className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none cursor-pointer"
+              >
+                {POPULAR_SYMBOLS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.icon} {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="timeframe"
+                className="block text-xs text-zinc-400 mb-1.5 flex items-center gap-1"
+              >
+                <ClockIcon className="w-3.5 h-3.5" />
+                타임프레임
+              </label>
+              <select
+                id="timeframe"
+                value={config.timeframe}
+                onChange={(e) =>
+                  setConfig((prev) => ({ ...prev, timeframe: e.target.value }))
+                }
+                className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none cursor-pointer"
+              >
+                {TIMEFRAMES.map((tf) => (
+                  <option key={tf.value} value={tf.value}>
+                    {tf.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {/* 초기 자본 */}
           <div>
             <label
               htmlFor="initialCapital"
               className="block text-xs text-zinc-400 mb-1.5"
             >
-              초기 자본 (USDT)
+              초기 자본 (USD)
             </label>
-            <input
-              id="initialCapital"
-              type="number"
-              min="100"
-              step="100"
-              value={config.initialCapital}
-              onChange={(e) =>
-                setConfig((prev: BacktestRunConfig) => ({
-                  ...prev,
-                  initialCapital: parseFloat(e.target.value) || 0,
-                }))
-              }
-              className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-white/[0.12] transition-colors"
-              required
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">$</span>
+              <input
+                id="initialCapital"
+                type="number"
+                min="100"
+                step="100"
+                value={config.initialCapital}
+                onChange={(e) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    initialCapital: parseFloat(e.target.value) || 0,
+                  }))
+                }
+                className="w-full h-9 pl-7 pr-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
+                required
+              />
+            </div>
+            {/* 퀵 선택 버튼 */}
+            <div className="flex gap-1.5 mt-2">
+              {[1000, 5000, 10000, 50000, 100000].map((amount) => (
+                <button
+                  key={amount}
+                  type="button"
+                  onClick={() => setConfig((prev) => ({ ...prev, initialCapital: amount }))}
+                  className={`flex-1 py-1 text-xs rounded transition-colors ${
+                    config.initialCapital === amount
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-white/[0.02] text-zinc-500 hover:text-zinc-300 border border-white/[0.04]'
+                  }`}
+                >
+                  ${amount >= 1000 ? `${amount / 1000}K` : amount}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* 기간 설정 */}
@@ -132,14 +232,11 @@ export function BacktestConfigModal({
               <input
                 id="startDate"
                 type="date"
-                value={timestampToDateString(config.startDate)}
+                value={config.startDate}
                 onChange={(e) =>
-                  setConfig((prev: BacktestRunConfig) => ({
-                    ...prev,
-                    startDate: dateStringToTimestamp(e.target.value),
-                  }))
+                  setConfig((prev) => ({ ...prev, startDate: e.target.value }))
                 }
-                className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-white/[0.12] transition-colors"
+                className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
                 required
               />
             </div>
@@ -153,42 +250,68 @@ export function BacktestConfigModal({
               <input
                 id="endDate"
                 type="date"
-                value={timestampToDateString(config.endDate)}
+                value={config.endDate}
                 onChange={(e) =>
-                  setConfig((prev: BacktestRunConfig) => ({
-                    ...prev,
-                    endDate: dateStringToTimestamp(e.target.value),
-                  }))
+                  setConfig((prev) => ({ ...prev, endDate: e.target.value }))
                 }
-                className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-white/[0.12] transition-colors"
+                className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
                 required
               />
             </div>
+          </div>
+
+          {/* 퀵 기간 선택 */}
+          <div className="flex gap-1.5">
+            {[
+              { label: '1개월', months: 1 },
+              { label: '3개월', months: 3 },
+              { label: '6개월', months: 6 },
+              { label: '1년', months: 12 },
+              { label: '2년', months: 24 },
+            ].map(({ label, months }) => (
+              <button
+                key={months}
+                type="button"
+                onClick={() => {
+                  const end = new Date()
+                  const start = new Date()
+                  start.setMonth(start.getMonth() - months)
+                  setConfig((prev) => ({
+                    ...prev,
+                    startDate: start.toISOString().split('T')[0],
+                    endDate: end.toISOString().split('T')[0],
+                  }))
+                }}
+                className="flex-1 py-1 text-xs bg-white/[0.02] text-zinc-500 hover:text-zinc-300 border border-white/[0.04] rounded transition-colors"
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           {/* 수수료 & 슬리피지 */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label
-                htmlFor="commission"
+                htmlFor="feeRate"
                 className="block text-xs text-zinc-400 mb-1.5"
               >
                 수수료율 (%)
               </label>
               <input
-                id="commission"
+                id="feeRate"
                 type="number"
                 min="0"
                 max="5"
                 step="0.01"
-                value={(config.commission * 100).toFixed(2)}
+                value={config.feeRate}
                 onChange={(e) =>
-                  setConfig((prev: BacktestRunConfig) => ({
+                  setConfig((prev) => ({
                     ...prev,
-                    commission: (parseFloat(e.target.value) || 0) / 100,
+                    feeRate: parseFloat(e.target.value) || 0,
                   }))
                 }
-                className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-white/[0.12] transition-colors"
+                className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
               />
             </div>
             <div>
@@ -204,14 +327,14 @@ export function BacktestConfigModal({
                 min="0"
                 max="5"
                 step="0.01"
-                value={(config.slippage * 100).toFixed(2)}
+                value={config.slippage}
                 onChange={(e) =>
-                  setConfig((prev: BacktestRunConfig) => ({
+                  setConfig((prev) => ({
                     ...prev,
-                    slippage: (parseFloat(e.target.value) || 0) / 100,
+                    slippage: parseFloat(e.target.value) || 0,
                   }))
                 }
-                className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-white/[0.12] transition-colors"
+                className="w-full h-9 px-3 bg-white/[0.04] border border-white/[0.06] rounded text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
               />
             </div>
           </div>
@@ -220,7 +343,7 @@ export function BacktestConfigModal({
           <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded">
             <p className="text-xs text-blue-400/80">
               백테스트는 과거 데이터를 기반으로 전략의 성과를 시뮬레이션합니다.
-              실제 거래 결과와 다를 수 있습니다.
+              과거 성과는 미래 수익을 보장하지 않습니다.
             </p>
           </div>
 
@@ -230,14 +353,14 @@ export function BacktestConfigModal({
               type="button"
               onClick={onClose}
               disabled={isRunning}
-              className="flex-1 h-9 px-3 bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 h-10 px-3 bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={isRunning}
-              className="flex-1 h-9 px-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 h-10 px-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isRunning ? (
                 <>

@@ -178,7 +178,7 @@ function generateNodeGraph(parsed: ParsedPattern, symbol: string, timeframe: str
   let yPosition = 50;
   const xStart = 100;
 
-  const getId = () => \`node_\${++nodeId}\`;
+  const getId = () => `node_${++nodeId}`;
 
   // 1. Start/Trigger Node
   const triggerId = getId();
@@ -213,7 +213,7 @@ function generateNodeGraph(parsed: ParsedPattern, symbol: string, timeframe: str
       });
 
       edges.push({
-        id: \`e_\${lastNodeId}_\${indId}\`,
+        id: `e_${lastNodeId}_${indId}`,
         source: lastNodeId,
         target: indId,
         animated: true,
@@ -242,7 +242,7 @@ function generateNodeGraph(parsed: ParsedPattern, symbol: string, timeframe: str
       type: 'condition',
       position: { x: xStart + (i * 220), y: yPosition },
       data: {
-        label: \`\${condition.indicator.toUpperCase()} \${operatorLabel} \${condition.value}\`,
+        label: `${condition.indicator.toUpperCase()} ${operatorLabel} ${condition.value}`,
         indicator: condition.indicator,
         operator: condition.operator,
         value: condition.value,
@@ -250,7 +250,7 @@ function generateNodeGraph(parsed: ParsedPattern, symbol: string, timeframe: str
     });
 
     const sourceId = indicatorNodeIds[condition.indicator.split('_')[0]] || lastNodeId;
-    edges.push({ id: \`e_\${sourceId}_\${condId}\`, source: sourceId, target: condId });
+    edges.push({ id: `e_${sourceId}_${condId}`, source: sourceId, target: condId });
     if (i === 0) lastNodeId = condId;
   }
 
@@ -271,7 +271,7 @@ function generateNodeGraph(parsed: ParsedPattern, symbol: string, timeframe: str
       });
 
       edges.push({
-        id: \`e_\${lastNodeId}_\${actionId}\`,
+        id: `e_${lastNodeId}_${actionId}`,
         source: lastNodeId,
         target: actionId,
         style: { stroke: action.type === 'buy' ? '#22C55E' : '#EF4444' },
@@ -298,7 +298,7 @@ function generateNodeGraph(parsed: ParsedPattern, symbol: string, timeframe: str
     });
 
     edges.push({
-      id: \`e_\${lastNodeId}_\${riskId}\`,
+      id: `e_${lastNodeId}_${riskId}`,
       source: lastNodeId,
       target: riskId,
       style: { stroke: '#F59E0B' },
@@ -347,7 +347,7 @@ function generateStrategyName(parsed: ParsedPattern): string {
 function generateDescription(parsed: ParsedPattern, symbol: string, timeframe: string): string {
   const indicatorNames = parsed.indicators.map(i => i.type.toUpperCase()).join(', ');
   const actionTypes = [...new Set(parsed.actions.map(a => a.type === 'buy' ? '매수' : '매도'))].join('/');
-  return \`\${symbol} \${timeframe} 차트에서 \${indicatorNames || '기술적 지표'}를 활용한 \${actionTypes || '자동매매'} 전략\`;
+  return `${symbol} ${timeframe} 차트에서 ${indicatorNames || '기술적 지표'}를 활용한 ${actionTypes || '자동매매'} 전략`;
 }
 
 // ============================================

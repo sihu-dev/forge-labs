@@ -16,6 +16,7 @@ import { InMemoryStrategyRepository, InMemoryBacktestResultRepository } from '@f
 
 /**
  * 백테스트 실행 요청
+ * QRY-024: 백테스트 연동 강화
  */
 interface BacktestRunRequest {
   /** 전략 이름 */
@@ -27,6 +28,10 @@ interface BacktestRunRequest {
   edges: Edge[]
   /** 백테스트 설정 */
   config: {
+    /** 거래쌍 */
+    symbol: string
+    /** 타임프레임 */
+    timeframe: string
     /** 초기 자본 */
     initialCapital: number
     /** 시작일 */
@@ -77,7 +82,11 @@ export async function POST(request: NextRequest) {
 
     const strategy = serializationResult.strategy
 
-    // 3. 백테스트 비용 계산
+    // 3. 설정에서 심볼과 타임프레임 가져오기
+    const symbol = body.config.symbol || strategy.symbols[0] || 'BTC/USDT'
+    const timeframe = body.config.timeframe || strategy.timeframe || '1h'
+
+    // 4. 백테스트 비용 계산
     const startDate = new Date(body.config.startDate)
     const endDate = new Date(body.config.endDate)
     const days = Math.ceil(
@@ -85,17 +94,18 @@ export async function POST(request: NextRequest) {
     )
 
     const creditCost = getBacktestCost({
-      timeframe: strategy.timeframe,
+      timeframe,
       days,
-      symbols: strategy.symbols.length,
+      symbols: 1, // 단일 심볼 백테스트
     })
 
-    // 4. 크레딧 차감
+    // 5. 크레딧 차감
     try {
       await useCredits(user.id, creditCost, '백테스트 실행: ' + strategy.name, {
         strategy_id: strategy.id,
         strategy_name: strategy.name,
-        timeframe: strategy.timeframe,
+        symbol,
+        timeframe,
         days,
       })
     } catch (error: any) {
@@ -109,7 +119,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 5. 백테스트 설정 생성
+    // 6. 백테스트 설정 생성
     const backtestConfig = {
       id: crypto.randomUUID(),
       strategyId: strategy.id,
@@ -118,17 +128,14 @@ export async function POST(request: NextRequest) {
       endDate: body.config.endDate,
       feeRate: body.config.feeRate || 0.1,
       slippage: body.config.slippage || 0.05,
-      timeframe: strategy.timeframe,
-      symbols: strategy.symbols,
+      timeframe,
+      symbols: [symbol],
     }
 
-    // 6. 백테스트 실행 (실제 엔진)
+    // 7. 백테스트 실행 (실제 엔진)
     const priceDataService = new RealPriceDataService()
     const strategyRepo = new InMemoryStrategyRepository()
     const resultRepo = new InMemoryBacktestResultRepository()
-
-    // 실제 거래소 API에서 가격 데이터 가져오기
-    const symbol = strategy.symbols[0] || 'BTC/USDT'
 
     // 전략 저장
     await strategyRepo.create(strategy)
@@ -160,14 +167,14 @@ export async function POST(request: NextRequest) {
 
     const result = backtestResult.data
 
-    // 7. 결과를 데이터베이스에 저장
+    // 8. 결과를 데이터베이스에 저장
     const { error: saveError } = await supabase.from('backtest_results').insert({
       user_id: user.id,
       strategy_id: strategy.id,
       result_data: {
         strategyName: strategy.name,
         symbol,
-        timeframe: strategy.timeframe,
+        timeframe,
         period: {
           start: body.config.startDate,
           end: body.config.endDate,
@@ -182,7 +189,7 @@ export async function POST(request: NextRequest) {
       console.error('Failed to save backtest result:', saveError)
     }
 
-    // 8. 응답 반환
+    // 9. 응답 반환
     return NextResponse.json({
       success: true,
       message: '백테스트가 완료되었습니다',
@@ -200,7 +207,7 @@ export async function POST(request: NextRequest) {
         resultData: {
           strategyName: strategy.name,
           symbol,
-          timeframe: strategy.timeframe,
+          timeframe,
           period: {
             start: body.config.startDate,
             end: body.config.endDate,

@@ -1,11 +1,14 @@
 /**
  * 백테스트 API 훅
+ * QRY-024: 백테스트 연동 강화
  */
 
 import { useState, useCallback } from 'react'
 import type { Node, Edge } from 'reactflow'
 
 export interface BacktestConfigAPI {
+  symbol: string
+  timeframe: string
   initialCapital: number
   startDate: string
   endDate: string
