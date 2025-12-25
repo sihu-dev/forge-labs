@@ -118,3 +118,22 @@ export {
   DEFAULT_RISK_LIMITS,
   RISK_LEVEL_THRESHOLDS,
 } from './risk.js';
+
+// Promotion Types
+export {
+  type PromotionType,
+  type PromotionStatus,
+  type DiscountType,
+  type PromotionTarget,
+  type ICoupon,
+  type ICouponUsage,
+  type ICouponApplyResult,
+  type IReferralCode,
+  type IReferral,
+  type IMarketingCampaign,
+  type IPricingRule,
+  type IPromotionAnalytics,
+  DEFAULT_REFERRAL_REWARDS,
+  PROMOTION_TYPE_DEFAULTS,
+  CREDIT_VOLUME_TIERS,
+} from './promotion.js';

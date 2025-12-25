@@ -152,3 +152,18 @@ export {
   calculateRiskScore,
   getRiskLevelFromScore,
 } from './risk-calc.js';
+
+// Promotion Calculation Utilities (HEPHAITOS)
+export {
+  calculateDiscount,
+  calculateFinalPrice,
+  validateCoupon,
+  calculateCreditVolumePrice,
+  calculateReferralReward,
+  calculateCampaignROI,
+  calculateConversionRate,
+  evaluatePricingRule,
+  findBestPricingRule,
+  calculateTimeRemaining,
+  formatPromotionPeriod,
+} from './promotion-calc.js';
