@@ -3,9 +3,11 @@
 > **💎 크레딧 기반 "Replit for Trading"** - 쓴 만큼만 내는 투자 교육 플랫폼
 
 ![Version](https://img.shields.io/badge/version-2.0.0-blue)
-![Next.js](https://img.shields.io/badge/Next.js-16-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
+![Next.js](https://img.shields.io/badge/Next.js-15-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+
+**⚠️ 모노레포 앱**: FORGE LABS 모노레포의 일부입니다. [Root README](../../README.md) 참조
 
 ---
 
@@ -26,26 +28,45 @@
 
 ### Prerequisites
 
-- Node.js 20+
-- npm or pnpm
+- Node.js 22+
+- pnpm 9+
 - Supabase 계정
 - Claude API 키 (Anthropic)
 
-### 빠른 시작 (3단계)
+### 빠른 시작 (모노레포)
 
 ```bash
-# 1. 종속성 설치
-npm install
+# 1. Root에서 종속성 설치
+cd ../../  # forge-labs root로 이동
+pnpm install
 
-# 2. API 키 자동 설정 (Windows)
-.\scripts\setup-api-keys.ps1
+# 2. 공유 패키지 빌드
+pnpm build:packages
 
-# 3. 개발 서버 실행
-npm run dev
+# 3. 환경 변수 설정
+cp apps/hephaitos/.env.example apps/hephaitos/.env.local
+
+# 4. HEPHAITOS 개발 서버 실행
+pnpm dev:hephaitos
 # → http://localhost:3000
 ```
 
-**자세한 가이드**: `QUICK_START.md` 참조
+**자세한 가이드**: [Root README](../../README.md) 및 [QUICKSTART.md](../../QUICKSTART.md) 참조
+
+### Workspace 패키지 사용
+
+HEPHAITOS는 다음 공유 패키지를 사용합니다:
+
+```json
+{
+  "dependencies": {
+    "@forge/core": "workspace:*",
+    "@forge/types": "workspace:*",
+    "@forge/ui": "workspace:*",
+    "@forge/utils": "workspace:*"
+  }
+}
+```
 
 ---
 
@@ -204,30 +225,41 @@ NEXT_PUBLIC_CREDIT_ENABLED=true
 NEXT_PUBLIC_WELCOME_BONUS=50
 ```
 
-### 스크립트
+### 스크립트 (모노레포)
+
+Root에서 실행:
 
 ```bash
 # 개발
-npm run dev                # 개발 서버 시작
+pnpm dev:hephaitos          # HEPHAITOS 개발 서버 시작
 
 # 빌드
-npm run build              # 프로덕션 빌드
-npm run start              # 프로덕션 서버 시작
+pnpm build:hephaitos        # HEPHAITOS 빌드
+pnpm build:packages         # 공유 패키지 빌드
 
 # 테스트
-npm run test               # 단위 테스트 (Vitest)
-npm run test:e2e           # E2E 테스트 (Playwright)
-npm run test:coverage      # 커버리지 리포트
+pnpm test --filter=hephaitos           # 단위 테스트
+pnpm typecheck:hephaitos               # 타입 체크
+
+# 린트
+pnpm lint --filter=hephaitos           # ESLint 실행
+
+# 배포
+./deploy.sh hephaitos                   # Vercel 배포
+./scripts/test-health-checks.sh local   # Health Check 테스트
+```
+
+앱 디렉토리에서 직접 실행:
+
+```bash
+cd apps/hephaitos
+
+# 로컬 스크립트
 npm run test:api           # API 연결 테스트
 npm run test:anthropic     # Claude AI 개별 테스트
 npm run test:moa           # 🚀 MoA PoC 테스트
 npm run test:moa:compare   # 🚀 MoA vs Baseline 비교
-
-# 린트
-npm run lint               # ESLint 실행
-
-# CI
-npm run ci                 # 린트 + 테스트 + 빌드
+npm run worker             # BullMQ Worker 실행
 ```
 
 ---
