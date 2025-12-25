@@ -1,0 +1,185 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    // === 개발 서버 ===
+    {
+      "label": "HEPHAITOS: Dev",
+      "type": "shell",
+      "command": "pnpm --filter hephaitos dev",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": "$tsc",
+      "isBackground": true
+    },
+    {
+      "label": "BIDFLOW: Dev",
+      "type": "shell",
+      "command": "pnpm --filter bidflow dev",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": "$tsc",
+      "isBackground": true
+    },
+    {
+      "label": "All Apps: Dev",
+      "type": "shell",
+      "command": "pnpm dev",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "isBackground": true
+    },
+
+    // === 빌드 ===
+    {
+      "label": "Build: All",
+      "type": "shell",
+      "command": "pnpm build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Build: HEPHAITOS",
+      "type": "shell",
+      "command": "pnpm --filter hephaitos build",
+      "group": "build",
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Build: BIDFLOW",
+      "type": "shell",
+      "command": "pnpm --filter bidflow build",
+      "group": "build",
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Build: Packages",
+      "type": "shell",
+      "command": "pnpm --filter '@forge/*' build",
+      "group": "build",
+      "problemMatcher": "$tsc"
+    },
+
+    // === 타입 체크 ===
+    {
+      "label": "TypeCheck: All",
+      "type": "shell",
+      "command": "pnpm typecheck",
+      "group": "build",
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "TypeCheck: HEPHAITOS",
+      "type": "shell",
+      "command": "pnpm --filter hephaitos typecheck",
+      "group": "build",
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "TypeCheck: BIDFLOW",
+      "type": "shell",
+      "command": "pnpm --filter bidflow typecheck",
+      "group": "build",
+      "problemMatcher": "$tsc"
+    },
+
+    // === 린트 ===
+    {
+      "label": "Lint: All",
+      "type": "shell",
+      "command": "pnpm lint",
+      "group": "build",
+      "problemMatcher": ["$eslint-stylish"]
+    },
+    {
+      "label": "Lint: Fix",
+      "type": "shell",
+      "command": "pnpm lint:fix",
+      "group": "build",
+      "problemMatcher": ["$eslint-stylish"]
+    },
+
+    // === 테스트 ===
+    {
+      "label": "Test: All",
+      "type": "shell",
+      "command": "pnpm test",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Test: Watch",
+      "type": "shell",
+      "command": "pnpm test:watch",
+      "group": "test",
+      "isBackground": true
+    },
+    {
+      "label": "Test: Coverage",
+      "type": "shell",
+      "command": "pnpm test:coverage",
+      "group": "test"
+    },
+
+    // === 설치 & 정리 ===
+    {
+      "label": "Install: Dependencies",
+      "type": "shell",
+      "command": "pnpm install",
+      "group": "none"
+    },
+    {
+      "label": "Clean: All",
+      "type": "shell",
+      "command": "pnpm clean",
+      "group": "none"
+    },
+    {
+      "label": "Clean: node_modules",
+      "type": "shell",
+      "command": "rm -rf node_modules apps/*/node_modules packages/*/node_modules",
+      "group": "none"
+    },
+
+    // === Supabase ===
+    {
+      "label": "Supabase: Generate Types",
+      "type": "shell",
+      "command": "pnpm supabase:types",
+      "group": "none"
+    },
+    {
+      "label": "Supabase: Push Migrations",
+      "type": "shell",
+      "command": "pnpm supabase db push",
+      "group": "none"
+    },
+
+    // === Git ===
+    {
+      "label": "Git: Status",
+      "type": "shell",
+      "command": "git status",
+      "group": "none"
+    },
+    {
+      "label": "Git: Pull",
+      "type": "shell",
+      "command": "git pull --rebase",
+      "group": "none"
+    }
+  ]
+}

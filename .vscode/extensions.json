@@ -1,0 +1,53 @@
+{
+  "recommendations": [
+    // === 필수 ===
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "prisma.prisma",
+
+    // === TypeScript/JavaScript ===
+    "ms-vscode.vscode-typescript-next",
+    "usernamehw.errorlens",
+    "christian-kohler.path-intellisense",
+    "christian-kohler.npm-intellisense",
+
+    // === React/Next.js ===
+    "dsznajder.es7-react-js-snippets",
+    "formulahendry.auto-rename-tag",
+    "steoates.autoimport",
+
+    // === Git ===
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+
+    // === 테마 & 아이콘 ===
+    "zhuangtongfa.material-theme",
+    "pkief.material-icon-theme",
+
+    // === 생산성 ===
+    "streetsidesoftware.code-spell-checker",
+    "wayou.vscode-todo-highlight",
+    "gruntfuggly.todo-tree",
+    "naumovs.color-highlight",
+
+    // === 디버깅 ===
+    "ms-vscode.js-debug-nightly",
+
+    // === Supabase ===
+    "supabase.supabase-vscode",
+
+    // === API 테스트 ===
+    "humao.rest-client",
+    "rangav.vscode-thunder-client",
+
+    // === Markdown ===
+    "yzhang.markdown-all-in-one",
+    "bierner.markdown-mermaid",
+
+    // === 기타 유틸 ===
+    "editorconfig.editorconfig",
+    "mikestead.dotenv"
+  ],
+  "unwantedRecommendations": []
+}
