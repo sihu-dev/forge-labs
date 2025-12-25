@@ -1,0 +1,74 @@
+# HEPHAITOS 관련
+hephaitos:
+  - changed-files:
+      - any-glob-to-any-file: 'apps/hephaitos/**/*'
+
+# BIDFLOW 관련
+bidflow:
+  - changed-files:
+      - any-glob-to-any-file: 'apps/bidflow/**/*'
+
+# 패키지 관련
+packages:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/**/*'
+
+types:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/types/**/*'
+
+utils:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/utils/**/*'
+
+core:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/core/**/*'
+
+ui:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/ui/**/*'
+
+# 문서
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: '**/*.md'
+
+# CI/CD
+ci:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**/*'
+
+# 설정
+config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '*.json'
+          - '*.yaml'
+          - '*.yml'
+          - '.vscode/**/*'
+          - '.claude/**/*'
+
+# 테스트
+test:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.test.ts'
+          - '**/*.test.tsx'
+          - '**/*.spec.ts'
+          - '**/*.spec.tsx'
+
+# 스타일
+styles:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.css'
+          - '**/*.scss'
+          - 'tailwind.config.*'
+
+# 데이터베이스
+database:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'supabase/**/*'
+          - '**/prisma/**/*'

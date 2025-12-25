@@ -104,8 +104,64 @@
     "autoFormat": true,
     "autoLint": true,
     "autoReview": true,
-    "autoTest": false,
-    "autoPush": false
+    "autoTest": true,
+    "autoPush": false,
+    "autoTypecheck": true,
+    "autoBuild": false
+  },
+  "extendedThinking": {
+    "enabled": true,
+    "triggers": {
+      "thinkHard": ["think hard", "심층 분석", "깊이 생각"],
+      "ultrathink": ["ultrathink", "최대 분석", "울트라씽크"]
+    },
+    "modes": {
+      "standard": {
+        "depth": 3,
+        "approaches": 2
+      },
+      "thinkHard": {
+        "depth": 5,
+        "approaches": 3,
+        "includeTradeoffs": true
+      },
+      "ultrathink": {
+        "depth": 10,
+        "approaches": 5,
+        "includeTradeoffs": true,
+        "includeRisks": true,
+        "includeAlternatives": true
+      }
+    },
+    "outputFormat": {
+      "problemDefinition": true,
+      "analysis": true,
+      "approachComparison": true,
+      "recommendation": true,
+      "implementationPlan": true,
+      "risks": true
+    }
+  },
+  "tdd": {
+    "enabled": true,
+    "framework": "vitest",
+    "coverage": {
+      "enabled": true,
+      "threshold": 80,
+      "reportFormat": ["text", "html"]
+    },
+    "watchMode": true,
+    "testPatterns": [
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx"
+    ],
+    "autoRun": {
+      "onFileChange": true,
+      "onCommit": true,
+      "beforePush": true
+    }
   },
   "performance": {
     "parallelTools": true,
@@ -213,5 +269,66 @@
     "autoCreate": true,
     "persistAcrossSessions": false,
     "maxItems": 20
+  },
+  "mcp": {
+    "enabled": true,
+    "configFile": ".vscode/mcp.json",
+    "servers": {
+      "github": {
+        "priority": 1,
+        "autoConnect": true
+      },
+      "supabase": {
+        "priority": 2,
+        "autoConnect": false
+      },
+      "playwright": {
+        "priority": 3,
+        "autoConnect": false
+      },
+      "puppeteer": {
+        "priority": 3,
+        "autoConnect": false
+      },
+      "fetch": {
+        "priority": 4,
+        "autoConnect": true
+      },
+      "memory": {
+        "priority": 5,
+        "autoConnect": true
+      },
+      "sequential-thinking": {
+        "priority": 6,
+        "autoConnect": true
+      }
+    }
+  },
+  "workflows": {
+    "enabled": true,
+    "directory": ".github/workflows",
+    "presets": {
+      "fullBuild": ["typecheck", "lint", "test", "build"],
+      "quickCheck": ["typecheck", "lint"],
+      "deploy": ["test", "build", "deploy"]
+    },
+    "hooks": {
+      "preCommit": ["lint", "typecheck"],
+      "prePush": ["test"],
+      "postMerge": ["install", "build"]
+    }
+  },
+  "chromeIntegration": {
+    "enabled": true,
+    "commands": {
+      "debug": "/chrome-debug",
+      "perfAudit": "/perf-audit",
+      "inspect": "/inspect"
+    },
+    "autoCapture": {
+      "console": true,
+      "network": false,
+      "performance": true
+    }
   }
 }
