@@ -1,0 +1,35 @@
+#!/bin/bash
+# ============================================
+# FORGE LABS Pre-Push Hook
+# Push 전 자동 검증
+# ============================================
+
+# GPG 서명 비활성화 확인
+if [ "$(git config commit.gpgsign)" = "true" ]; then
+    echo "⚠️  GPG signing enabled. Disabling for compatibility..."
+    git config --local commit.gpgsign false
+fi
+
+# 브랜치 확인
+BRANCH=$(git branch --show-current)
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+    echo "📌 Pushing to $BRANCH branch"
+fi
+
+# 대용량 파일 체크 (100MB 이상)
+LARGE_FILES=$(git diff --cached --name-only | while read file; do
+    if [ -f "$file" ]; then
+        SIZE=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null)
+        if [ "$SIZE" -gt 104857600 ]; then
+            echo "$file"
+        fi
+    fi
+done)
+
+if [ -n "$LARGE_FILES" ]; then
+    echo "⚠️  Warning: Large files detected (>100MB):"
+    echo "$LARGE_FILES"
+    echo "Consider using Git LFS for these files."
+fi
+
+exit 0
