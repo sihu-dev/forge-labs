@@ -37,6 +37,10 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.56",
     "@anthropic-ai/sdk": "^0.71.2",
+    "@forge/core": "workspace:*",
+    "@forge/types": "workspace:*",
+    "@forge/ui": "workspace:*",
+    "@forge/utils": "workspace:*",
     "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.2.2",
