@@ -10,6 +10,18 @@ export { AlpacaBroker, createAlpacaBroker } from './adapters/alpaca'
 export { BinanceBroker, createBinanceBroker } from './adapters/binance'
 export { UpbitBroker, createUpbitBroker } from './adapters/upbit'
 
+// WebSocket Services
+export {
+  AlpacaWebSocketService,
+  createAlpacaWebSocket,
+  type AlpacaWSConfig,
+  type AlpacaWSMessage,
+  type AlpacaTradeTick,
+  type AlpacaQuoteTick,
+  type AlpacaBarTick,
+  type AlpacaOrderUpdate,
+} from './alpaca-websocket'
+
 import type { BrokerId, BrokerInfo, UnifiedBroker, BrokerCredentials } from './types'
 import { KISBroker } from './adapters/kis'
 import { KiwoomBroker } from './adapters/kiwoom'
