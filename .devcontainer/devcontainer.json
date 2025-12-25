@@ -66,8 +66,8 @@
     }
   },
 
-  "postCreateCommand": "pnpm install && npm install -g @anthropic-ai/claude-code @anthropic-ai/mcp-server-filesystem @anthropic-ai/mcp-server-memory @anthropic-ai/mcp-server-playwright && git config --global commit.gpgsign false",
-  "postStartCommand": "git config --global commit.gpgsign false && echo '🔥 FORGE LABS + MCP Ready! Run: claude'",
+  "postCreateCommand": "pnpm install && npm install -g @anthropic-ai/claude-code @anthropic-ai/mcp-server-filesystem @anthropic-ai/mcp-server-memory @anthropic-ai/mcp-server-playwright && bash .github/git-setup.sh",
+  "postStartCommand": "bash .github/git-setup.sh 2>/dev/null || (git config --global commit.gpgsign false && git config --global push.default current && git config --global push.autoSetupRemote true) && echo '🔥 FORGE LABS Ready!'",
 
   "remoteEnv": {
     "NODE_ENV": "development",
