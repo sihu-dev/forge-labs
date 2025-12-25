@@ -29,6 +29,7 @@ export interface IResultMetadata {
   timestamp: Timestamp;
   duration_ms: number;
   request_id?: UUID;
+  cached?: boolean;
 }
 
 /**

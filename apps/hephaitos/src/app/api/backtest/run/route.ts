@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/server'
 import { serializeStrategy } from '@/lib/strategy-serializer'
 import { getBacktestCost, useCredits } from '@/lib/credits/service'
 import { BacktestAgent } from '@/agents/backtest-agent'
-import { InMemoryPriceDataService } from '@forge/core'
+import { RealPriceDataService } from '@forge/core'
 import { InMemoryStrategyRepository, InMemoryBacktestResultRepository } from '@forge/core'
 
 /**
@@ -123,19 +123,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. 백테스트 실행 (실제 엔진)
-    const priceDataService = new InMemoryPriceDataService()
+    const priceDataService = new RealPriceDataService()
     const strategyRepo = new InMemoryStrategyRepository()
     const resultRepo = new InMemoryBacktestResultRepository()
 
-    // 가격 데이터 생성 (실제로는 거래소 API에서 가져옴)
+    // 실제 거래소 API에서 가격 데이터 가져오기
     const symbol = strategy.symbols[0] || 'BTC/USDT'
-    priceDataService.generateSimulatedData(
-      symbol,
-      startDate,
-      endDate,
-      40000, // 초기 가격
-      strategy.timeframe
-    )
 
     // 전략 저장
     await strategyRepo.create(strategy)

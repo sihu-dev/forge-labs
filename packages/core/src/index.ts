@@ -25,6 +25,7 @@ export {
 export {
   type IPriceDataService,
   InMemoryPriceDataService,
+  RealPriceDataService,
   createPriceDataService,
 } from './services/price-data-service.js';
 
