@@ -109,33 +109,41 @@ export function AIStrategyGenerator({
     setResult(null)
 
     try {
-      const response = await fetch('/api/ai/strategy', {
+      // Use the new node graph generation API
+      const response = await fetch('/api/ai/generate-strategy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: `생성된 전략 - ${new Date().toLocaleDateString('ko-KR')}`,
           prompt,
-          riskLevel: 'moderate',
-          investmentGoal: 'growth',
-          timeHorizon: 'medium',
-          preferredSectors: [],
-          excludedSectors: [],
-          maxPositionSize: 10,
-          stopLossPercent: 5,
-          takeProfitPercent: 15,
+          symbol: 'BTC/USDT',
+          timeframe: '1h',
         }),
       })
 
       if (!response.ok) {
-        throw new Error('전략 생성에 실패했습니다')
+        const errorData = await response.json().catch(() => ({}))
+        if (response.status === 401) {
+          throw new Error('로그인이 필요합니다')
+        }
+        if (response.status === 402) {
+          throw new Error('크레딧이 부족합니다. 크레딧을 충전해주세요.')
+        }
+        throw new Error(errorData.error || '전략 생성에 실패했습니다')
       }
 
       const data = await response.json()
 
       if (data.success && data.data) {
-        // Convert API response to ReactFlow nodes/edges
-        const generatedResult = convertToReactFlow(data.data, prompt)
-        setResult(generatedResult)
+        // API returns ReactFlow-compatible nodes/edges directly
+        const nodeGraph = data.data
+        setResult({
+          name: nodeGraph.name,
+          description: nodeGraph.description,
+          nodes: nodeGraph.nodes,
+          edges: nodeGraph.edges,
+          confidence: nodeGraph.confidence,
+          suggestions: nodeGraph.suggestions,
+        })
       } else {
         throw new Error(data.error || '알 수 없는 오류가 발생했습니다')
       }
@@ -390,156 +398,6 @@ export function AIStrategyGenerator({
       </motion.div>
     </AnimatePresence>
   )
-}
-
-// ============================================
-// Helper: Convert API Response to ReactFlow
-// ============================================
-
-function convertToReactFlow(
-  apiData: {
-    id: string
-    name: string
-    signals?: { type: string; value: number }[]
-    backtestResult?: {
-      totalReturn: number
-      winRate: number
-      maxDrawdown: number
-      sharpeRatio: number
-    }
-  },
-  prompt: string
-): GeneratedStrategy {
-  // Parse prompt to generate appropriate nodes
-  const nodes: Node[] = []
-  const edges: Edge[] = []
-  const baseX = 100
-  const baseY = 200
-  const nodeWidth = 250
-
-  // Create trigger node
-  nodes.push({
-    id: 'ai-trigger-1',
-    type: 'trigger',
-    position: { x: baseX, y: baseY },
-    data: {
-      label: '시장 트리거',
-      config: {
-        type: 'price_cross',
-        symbol: 'BTC/USDT',
-        condition: 'cross_above',
-        value: 0,
-      },
-    },
-  })
-
-  // Create indicator node based on prompt analysis
-  const hasRSI = prompt.toLowerCase().includes('rsi')
-  const hasMA = prompt.toLowerCase().includes('이평') || prompt.toLowerCase().includes('ma') || prompt.toLowerCase().includes('이동평균')
-  const hasVolume = prompt.toLowerCase().includes('거래량') || prompt.toLowerCase().includes('volume')
-
-  if (hasRSI) {
-    nodes.push({
-      id: 'ai-indicator-rsi',
-      type: 'indicator',
-      position: { x: baseX + nodeWidth, y: baseY - 100 },
-      data: {
-        label: 'RSI',
-        config: {
-          type: 'rsi',
-          period: 14,
-          source: 'close',
-        },
-      },
-    })
-    edges.push({ id: 'e-rsi', source: 'ai-indicator-rsi', target: 'ai-condition-1' })
-  }
-
-  if (hasMA) {
-    nodes.push({
-      id: 'ai-indicator-ma',
-      type: 'indicator',
-      position: { x: baseX + nodeWidth, y: baseY + 100 },
-      data: {
-        label: 'SMA',
-        config: {
-          type: 'sma',
-          period: 20,
-          source: 'close',
-        },
-      },
-    })
-    edges.push({ id: 'e-ma', source: 'ai-indicator-ma', target: 'ai-condition-1' })
-  }
-
-  // Create condition node
-  nodes.push({
-    id: 'ai-condition-1',
-    type: 'condition',
-    position: { x: baseX + nodeWidth * 2, y: baseY },
-    data: {
-      label: '조건 체크',
-      config: {
-        operator: 'and',
-        conditions: hasRSI ? [{ left: 'RSI', operator: '<', right: 30 }] : [],
-      },
-    },
-  })
-
-  // Create action node
-  const isBuy = prompt.includes('매수') || prompt.includes('buy')
-  const isSell = prompt.includes('매도') || prompt.includes('sell')
-
-  nodes.push({
-    id: 'ai-action-1',
-    type: 'action',
-    position: { x: baseX + nodeWidth * 3, y: baseY },
-    data: {
-      label: isBuy ? '매수 주문' : isSell ? '매도 주문' : '주문 실행',
-      config: {
-        type: isBuy ? 'buy' : isSell ? 'sell' : 'buy',
-        orderType: 'market',
-        amount: 100,
-        amountType: 'percent',
-      },
-    },
-  })
-
-  // Create risk node if mentioned
-  const hasStopLoss = prompt.includes('손절') || prompt.includes('stop')
-  if (hasStopLoss) {
-    nodes.push({
-      id: 'ai-risk-1',
-      type: 'risk',
-      position: { x: baseX + nodeWidth * 3, y: baseY + 150 },
-      data: {
-        label: '리스크 관리',
-        config: {
-          stopLoss: 5,
-          takeProfit: 10,
-          maxDrawdown: 20,
-        },
-      },
-    })
-    edges.push({ id: 'e-risk', source: 'ai-action-1', target: 'ai-risk-1' })
-  }
-
-  // Connect nodes
-  edges.push({ id: 'e-trigger', source: 'ai-trigger-1', target: 'ai-condition-1' })
-  edges.push({ id: 'e-action', source: 'ai-condition-1', target: 'ai-action-1' })
-
-  return {
-    name: apiData.name || `전략 - ${new Date().toLocaleDateString('ko-KR')}`,
-    description: prompt.slice(0, 100),
-    nodes,
-    edges,
-    confidence: apiData.backtestResult?.winRate || Math.floor(Math.random() * 20 + 60),
-    suggestions: [
-      hasRSI ? 'RSI 지표가 추가되었습니다' : 'RSI 지표를 추가해보세요',
-      hasStopLoss ? '손절 설정이 포함되었습니다' : '리스크 관리를 위해 손절을 추가하세요',
-      '실행 전 백테스팅을 권장합니다',
-    ],
-  }
 }
 
 export default AIStrategyGenerator

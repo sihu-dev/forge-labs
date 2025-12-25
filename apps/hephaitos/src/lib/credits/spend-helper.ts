@@ -40,6 +40,7 @@ export type CreditFeature =
   | 'celebrity_mirror'
   | 'ai_tutor'
   | 'ai_strategy'
+  | 'ai_node_graph'
   | 'backtest_1y'
   | 'backtest_5y'
   | 'live_coaching_30m'
@@ -199,6 +200,7 @@ export const CREDIT_COSTS: Record<CreditFeature, number> = {
   celebrity_mirror: 0,
   ai_tutor: 1,
   ai_strategy: 10,
+  ai_node_graph: 5,
   backtest_1y: 3,
   backtest_5y: 10,
   live_coaching_30m: 20,
