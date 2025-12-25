@@ -19,6 +19,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import {
   BookmarkIcon,
+  BookOpenIcon,
   PlayIcon,
   PauseIcon,
   TrashIcon,
@@ -64,8 +65,9 @@ import {
   type ValidationResult,
 } from '@/lib/strategy-validation'
 
-// Strategy Generator
+// Strategy Generator & Presets
 import { AIStrategyGenerator } from './AIStrategyGenerator'
+import { StrategyPresets } from './StrategyPresets'
 import { BacktestConfigModal } from './BacktestConfigModal'
 import { BacktestResultModal } from '../backtest/BacktestResultModal'
 
@@ -173,6 +175,7 @@ function StrategyBuilderInner() {
   const [showValidation, setShowValidation] = useState(false)
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [showAIGenerator, setShowAIGenerator] = useState(false)
+  const [showPresets, setShowPresets] = useState(false)
   const [showBacktestModal, setShowBacktestModal] = useState(false)
   const [showResultModal, setShowResultModal] = useState(false)
 
@@ -493,6 +496,16 @@ function StrategyBuilderInner() {
               <SparklesIcon className="w-4 h-4" />
               <span className="text-xs font-medium hidden sm:inline">{t('dashboard.strategyBuilder.aiGenerate') as string}</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setShowPresets(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 rounded-lg text-amber-400 hover:text-amber-300 transition-colors"
+              aria-label="프리셋"
+              title="전략 프리셋 템플릿"
+            >
+              <BookOpenIcon className="w-4 h-4" />
+              <span className="text-xs font-medium hidden sm:inline">프리셋</span>
+            </button>
             <div className="px-3 py-1.5 bg-[#0D0D0F] border border-white/[0.06] rounded">
               <label htmlFor="strategy-name" className="sr-only">{t('dashboard.strategyBuilder.strategyName') as string}</label>
               <input
@@ -804,6 +817,13 @@ function StrategyBuilderInner() {
       <AIStrategyGenerator
         isOpen={showAIGenerator}
         onClose={() => setShowAIGenerator(false)}
+        onApply={handleAIStrategyApply}
+      />
+
+      {/* Strategy Presets Modal */}
+      <StrategyPresets
+        isOpen={showPresets}
+        onClose={() => setShowPresets(false)}
         onApply={handleAIStrategyApply}
       />
 

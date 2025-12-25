@@ -1,4 +1,5 @@
 export { StrategyBuilder } from './StrategyBuilder'
 export { NodeSidebar } from './NodeSidebar'
 export { NodeConfigPanel } from './NodeConfigPanel'
+export { StrategyPresets, STRATEGY_PRESETS, type StrategyPreset } from './StrategyPresets'
 export * from './nodes'
