@@ -17,6 +17,14 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
 
+  // Temporarily ignore type errors for bundle analysis
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
   // Optimize bundles
   experimental: {
     optimizePackageImports: [
