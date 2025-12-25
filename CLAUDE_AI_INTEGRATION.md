@@ -284,6 +284,79 @@ HTML에서 입찰 정보 추출
 
 ---
 
+## Chrome Extension v2.0
+
+### 개요
+
+Chrome 확장 프로그램을 통해 입찰 웹사이트에서 직접 정보를 추출할 수 있습니다.
+
+### 지원 플랫폼
+
+- ✅ 나라장터 (g2b.go.kr)
+- ✅ UNGM (ungm.org)
+- ✅ DgMarket (dgmarket.com)
+- ✅ TED Europa (ted.europa.eu)
+- ✅ SAM.gov (sam.gov)
+
+### 설치 방법
+
+#### 개발 모드 (로컬)
+
+```bash
+# 1. Chrome 열기
+# 2. chrome://extensions/ 접속
+# 3. "개발자 모드" 활성화 (우측 상단)
+# 4. "압축해제된 확장 프로그램을 로드합니다" 클릭
+# 5. apps/bidflow/chrome-extension 폴더 선택
+```
+
+#### 프로덕션 (예정)
+
+Chrome Web Store 출시 예정
+
+### 사용법
+
+1. **로그인**: 확장 프로그램 아이콘 클릭 → "Sign In to BIDFLOW"
+2. **입찰 페이지 방문**: 지원되는 입찰 웹사이트의 상세 페이지로 이동
+3. **추출**: 우측 하단 "Extract Bid" 버튼 클릭
+4. **확인**: 추출된 정보 확인 후 "View in BIDFLOW"로 저장
+
+### 기능
+
+- **원클릭 추출**: 버튼 한 번으로 전체 입찰 정보 추출
+- **AI 파싱**: Claude AI로 HTML에서 구조화된 데이터 생성
+- **실시간 통계**: 추출 횟수, AI 사용량, 성공률 추적
+- **자동 저장**: 추출된 입찰을 자동으로 BIDFLOW 계정에 저장
+- **개발 모드**: 로컬 개발 서버와 프로덕션 간 전환
+
+### 보안
+
+- ✅ 서버 사이드 API 키 관리
+- ✅ HTTPS 전용
+- ✅ 도메인 화이트리스트
+- ✅ 50KB HTML 크기 제한
+- ✅ 인증 필수
+
+### 파일 구조
+
+```
+chrome-extension/
+├── manifest.json           # 확장 프로그램 설정
+├── popup.html              # 팝업 UI
+├── scripts/
+│   ├── background.js       # 서비스 워커 (API 호출)
+│   ├── content.js          # 콘텐츠 스크립트 (페이지 주입)
+│   └── popup.js            # 팝업 로직
+├── styles/
+│   └── content.css         # 페이지 스타일
+└── icons/                  # 아이콘 (추가 필요)
+    ├── icon16.png
+    ├── icon48.png
+    └── icon128.png
+```
+
+---
+
 ## 비용 관리
 
 ### 모델별 비용
@@ -412,10 +485,12 @@ UPSTASH_REDIS_REST_TOKEN=...
 - 보안 레이어
 - 비용 제어
 - 캐싱 시스템
+- Chrome Extension v2.0
+- 테스트 코드 (단위 + 통합)
 
 ### 권장 추가 작업
-- [ ] Chrome Extension 배포
-- [ ] 테스트 코드 작성
+- [ ] Chrome Extension 배포 (Chrome Web Store)
+- [ ] 확장 프로그램 아이콘 디자인
 - [ ] 모니터링 대시보드
 - [ ] Sentry 통합
 - [ ] OpenAI Fallback 구현

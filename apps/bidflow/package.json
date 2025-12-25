@@ -17,6 +17,7 @@
     "db:reset": "supabase db reset"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.1",
     "@forge/crm": "workspace:*",
     "@forge/integrations": "workspace:*",
     "@forge/types": "workspace:*",

@@ -1,0 +1,189 @@
+/**
+ * BIDFLOW Chrome Extension - Content Styles
+ * Injected into bid website pages
+ */
+
+/* Extraction Button */
+#bidflow-extract-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999999;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  color: white;
+  border-radius: 12px;
+  padding: 12px 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  transition: all 0.2s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+#bidflow-extract-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.5);
+}
+
+.bidflow-btn-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.bidflow-btn-inner svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Loading state */
+.bidflow-loading {
+  opacity: 0.8;
+}
+
+.bidflow-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: bidflow-spin 0.6s linear infinite;
+}
+
+@keyframes bidflow-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Success state */
+.bidflow-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+/* Error state */
+.bidflow-error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+/* Notification Overlay */
+.bidflow-notification {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 999998;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  width: 400px;
+  max-width: calc(100vw - 48px);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  animation: bidflow-slide-in 0.3s ease;
+}
+
+@keyframes bidflow-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.bidflow-notification-hide {
+  animation: bidflow-slide-out 0.3s ease;
+}
+
+@keyframes bidflow-slide-out {
+  to {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+}
+
+.bidflow-notification-content {
+  padding: 20px;
+}
+
+.bidflow-notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.bidflow-notification-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.bidflow-notification-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.bidflow-notification-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.bidflow-notification-body {
+  margin-bottom: 16px;
+}
+
+.bidflow-notification-body p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.bidflow-notification-body strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+.bidflow-notification-success {
+  border-left: 4px solid #10b981;
+}
+
+.bidflow-notification-error {
+  border-left: 4px solid #ef4444;
+}
+
+.bidflow-notification-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.bidflow-btn-primary {
+  flex: 1;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.bidflow-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
