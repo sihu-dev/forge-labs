@@ -1,8 +1,8 @@
 /**
- * AI Formula Generation API Endpoint
- * POST /api/v1/ai/formula
+ * AI Analysis API Endpoint
+ * POST /api/v1/ai/analyze
  *
- * Generates Excel formulas from natural language requests
+ * Analyzes bid data and returns insights, recommendations, and trends
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -11,47 +11,34 @@ import { withRateLimit } from '@/lib/security/rate-limiter';
 import { AIGateway } from '@/lib/ai/gateway';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 15;
+export const maxDuration = 30; // 30 seconds timeout
 
 async function handlePost(request: AuthenticatedRequest) {
   try {
     const body = await request.json();
-    const { request: userRequest, columns, sampleData } = body;
+    const { data, complexity = 'medium' } = body;
 
     // Validate input
-    if (!userRequest || typeof userRequest !== 'string') {
+    if (!data || !Array.isArray(data)) {
       return NextResponse.json(
         {
           success: false,
           error: {
             code: 'INVALID_INPUT',
-            message: '수식 요청이 필요합니다',
+            message: '입찰 데이터 배열이 필요합니다',
           },
         },
         { status: 400 }
       );
     }
 
-    if (userRequest.length > 500) {
+    if (data.length === 0) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: 'REQUEST_TOO_LONG',
-            message: '요청이 너무 깁니다 (최대 500자)',
-          },
-        },
-        { status: 400 }
-      );
-    }
-
-    if (!Array.isArray(columns) || columns.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'INVALID_COLUMNS',
-            message: '컬럼 정보가 필요합니다',
+            code: 'EMPTY_DATA',
+            message: '분석할 데이터가 없습니다',
           },
         },
         { status: 400 }
@@ -61,16 +48,15 @@ async function handlePost(request: AuthenticatedRequest) {
     // Initialize AI Gateway
     const gateway = new AIGateway();
 
-    // Process request (simple complexity for formula generation)
+    // Process request
     const response = await gateway.process({
-      task: 'formula',
-      data: {
-        request: userRequest,
-        columns,
-        sampleData: sampleData || [],
-      },
-      complexity: 'simple', // Use Haiku for cost efficiency
+      task: 'analyze',
+      data,
+      complexity: complexity as any,
       userId: request.user.id,
+      metadata: {
+        sessionId: request.headers.get('x-session-id') || undefined,
+      },
     });
 
     // Return success response
@@ -81,12 +67,14 @@ async function handlePost(request: AuthenticatedRequest) {
         provider: response.provider,
         cached: response.cached,
         cost: response.cost,
+        tokens: response.tokens,
         duration: response.duration,
       },
     });
   } catch (error: any) {
-    console.error('AI Formula error:', error);
+    console.error('AI Analysis error:', error);
 
+    // Handle quota exceeded
     if (error.message?.includes('한도')) {
       return NextResponse.json(
         {
@@ -100,12 +88,13 @@ async function handlePost(request: AuthenticatedRequest) {
       );
     }
 
-    if (error.message?.includes('보안상') || error.message?.includes('허용되지 않는')) {
+    // Handle validation errors
+    if (error.message?.includes('보안상') || error.message?.includes('너무 큽니다')) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: 'SECURITY_ERROR',
+            code: 'VALIDATION_ERROR',
             message: error.message,
           },
         },
@@ -113,12 +102,13 @@ async function handlePost(request: AuthenticatedRequest) {
       );
     }
 
+    // Generic error
     return NextResponse.json(
       {
         success: false,
         error: {
           code: 'AI_ERROR',
-          message: 'AI 수식 생성 중 오류가 발생했습니다',
+          message: 'AI 분석 중 오류가 발생했습니다',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         },
       },
@@ -127,6 +117,7 @@ async function handlePost(request: AuthenticatedRequest) {
   }
 }
 
+// Export with middleware
 export const POST = withRateLimit(
   withAuth(handlePost, {
     requireAuth: true,
@@ -134,6 +125,6 @@ export const POST = withRateLimit(
   }),
   {
     type: 'ai',
-    requests: 20, // More requests allowed for formula generation
+    requests: 10, // 10 requests per minute
   }
 );
