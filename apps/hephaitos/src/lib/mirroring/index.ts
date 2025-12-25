@@ -29,3 +29,11 @@ export {
   type SEC13FFiling,
   type CongressTrade,
 } from './api-sources'
+
+export {
+  AutoMirrorService,
+  autoMirrorService,
+  type MirrorOrder,
+  type MirrorSubscription,
+  type MirrorStats,
+} from './auto-mirror-service'

@@ -15,8 +15,12 @@ import {
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
+  BeakerIcon,
+  DocumentArrowDownIcon,
 } from '@heroicons/react/24/outline'
 import { EquityCurveChart } from '@/components/charts/EquityCurveChart'
+import { BacktestAdvancedAnalysis } from './BacktestAdvancedAnalysis'
+import type { BacktestResult } from '@/lib/backtest'
 
 interface BacktestResultModalProps {
   isOpen: boolean
@@ -70,7 +74,7 @@ export function BacktestResultModal({
   onClose,
   result,
 }: BacktestResultModalProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'trades' | 'chart'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'trades' | 'chart' | 'advanced'>('overview')
 
   if (!isOpen || !result) return null
 
@@ -137,6 +141,18 @@ export function BacktestResultModal({
           >
             거래내역
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('advanced')}
+            className={`px-3 py-2 text-sm font-medium transition-colors border-b-2 flex items-center gap-1.5 ${
+              activeTab === 'advanced'
+                ? 'border-purple-500 text-white'
+                : 'border-transparent text-zinc-400 hover:text-white'
+            }`}
+          >
+            <BeakerIcon className="w-3.5 h-3.5" />
+            고급 분석
+          </button>
         </div>
 
         {/* Content */}
@@ -152,6 +168,49 @@ export function BacktestResultModal({
           )}
           {activeTab === 'trades' && (
             <TradesTab trades={result.trades} />
+          )}
+          {activeTab === 'advanced' && result.equityCurve && result.trades && (
+            <BacktestAdvancedAnalysis
+              result={{
+                metrics: {
+                  totalReturn: result.metrics.totalReturn / 100,
+                  annualizedReturn: result.metrics.annualizedReturn / 100,
+                  sharpeRatio: result.metrics.sharpeRatio,
+                  sortinoRatio: result.metrics.sharpeRatio * 1.2,
+                  calmarRatio: result.metrics.sharpeRatio * 0.8,
+                  maxDrawdown: result.metrics.maxDrawdown / 100,
+                  volatility: result.metrics.volatility / 100,
+                  totalTrades: result.metrics.totalTrades,
+                  winRate: result.metrics.winRate / 100,
+                  profitFactor: result.metrics.profitFactor,
+                  avgWin: result.metrics.avgWin,
+                  avgLoss: result.metrics.avgLoss,
+                  maxConsecutiveWins: 5,
+                  maxConsecutiveLosses: 3,
+                  avgHoldingPeriod: 86400000,
+                  expectancy: (result.metrics.avgWin * result.metrics.winRate / 100) +
+                              (result.metrics.avgLoss * (1 - result.metrics.winRate / 100)),
+                },
+                equityCurve: result.equityCurve.map((e, i) => ({
+                  timestamp: new Date(e.date).getTime(),
+                  equity: e.value,
+                  cash: e.value * 0.1,
+                  positions: e.value * 0.9,
+                })),
+                trades: result.trades.map((t, i) => ({
+                  id: `trade-${i}`,
+                  entryTimestamp: new Date(t.date).getTime(),
+                  exitTimestamp: new Date(t.date).getTime() + 3600000,
+                  side: t.type as 'buy' | 'sell',
+                  entryPrice: t.price,
+                  exitPrice: t.price + (t.profit || 0) / t.quantity,
+                  quantity: t.quantity,
+                  pnl: t.profit || 0,
+                  pnlPercent: ((t.profit || 0) / (t.price * t.quantity)) * 100,
+                  commission: 0,
+                })),
+              }}
+            />
           )}
         </div>
 

@@ -1,629 +1,397 @@
-// ============================================
-// Node Graph Strategy Generation API
-// POST: 자연어 → ReactFlow 노드/엣지 변환
-// Claude AI로 No-Code 빌더용 전략 그래프 생성
-// ============================================
+/**
+ * AI Strategy Node Graph Generation API
+ * 자연어 → ReactFlow 노드 그래프 변환
+ */
 
-import { NextRequest } from 'next/server'
-import { z } from 'zod'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { withApiMiddleware, createApiResponse, validateRequestBody } from '@/lib/api/middleware'
-import { safeLogger } from '@/lib/utils/safe-logger'
-import { createClaudeClient } from '@/lib/ai/claude-client'
-import { spendCredits, InsufficientCreditsError } from '@/lib/credits/spend-helper'
-import { checkUserConsent, createConsentRequiredResponse } from '@/lib/compliance/consent-gate'
-import { aiCircuit, withCircuitBreaker, createCircuitOpenResponse } from '@/lib/redis/circuit-breaker'
-import { aiTieredLimiter, createTieredRateLimitResponse, type UserTier } from '@/lib/redis/rate-limiter'
-import { ensureDisclaimer } from '@/lib/safety/safety-net-v2'
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import type { Node, Edge } from 'reactflow';
+
+export const dynamic = 'force-dynamic';
 
 // ============================================
 // Types
 // ============================================
 
-interface ReactFlowNode {
-  id: string
-  type: 'trigger' | 'indicator' | 'condition' | 'action' | 'risk'
-  position: { x: number; y: number }
-  data: {
-    label: string
-    config: Record<string, unknown>
-  }
-}
-
-interface ReactFlowEdge {
-  id: string
-  source: string
-  target: string
-  type?: string
+interface GenerateRequest {
+  prompt: string;
+  symbol?: string;
+  timeframe?: string;
 }
 
 interface GeneratedNodeGraph {
-  name: string
-  description: string
-  nodes: ReactFlowNode[]
-  edges: ReactFlowEdge[]
-  confidence: number
-  suggestions: string[]
+  name: string;
+  description: string;
+  nodes: Node[];
+  edges: Edge[];
+  confidence: number;
+  suggestions: string[];
 }
 
 // ============================================
-// Request Schema
+// Node Templates
 // ============================================
 
-const generateNodeGraphSchema = z.object({
-  prompt: z.string().min(5, '최소 5자 이상 입력해주세요').max(1000, '최대 1000자까지 입력 가능합니다'),
-  symbol: z.string().default('BTC/USDT'),
-  timeframe: z.enum(['1m', '5m', '15m', '30m', '1h', '4h', '1d']).default('1h'),
-})
+const NODE_TEMPLATES = {
+  indicator: {
+    rsi: { type: 'indicator', label: 'RSI', params: { period: 14 } },
+    sma: { type: 'indicator', label: 'SMA', params: { period: 20 } },
+    ema: { type: 'indicator', label: 'EMA', params: { period: 12 } },
+    macd: { type: 'indicator', label: 'MACD', params: { fast: 12, slow: 26, signal: 9 } },
+    bollinger: { type: 'indicator', label: 'Bollinger', params: { period: 20, stdDev: 2 } },
+    stochastic: { type: 'indicator', label: 'Stochastic', params: { k: 14, d: 3 } },
+    atr: { type: 'indicator', label: 'ATR', params: { period: 14 } },
+  },
+  condition: {
+    lessThan: { label: '<', operator: 'lt' },
+    greaterThan: { label: '>', operator: 'gt' },
+    crossAbove: { label: '상향돌파', operator: 'crosses_above' },
+    crossBelow: { label: '하향돌파', operator: 'crosses_below' },
+  },
+  action: {
+    buy: { label: '매수', type: 'buy' },
+    sell: { label: '매도', type: 'sell' },
+    hold: { label: '홀드', type: 'hold' },
+  },
+};
 
 // ============================================
-// Claude Prompt for Node Graph Generation
+// Pattern Matching
 // ============================================
 
-const NODE_GRAPH_PROMPT = `당신은 No-Code 트레이딩 전략 빌더 전문가입니다.
-사용자의 자연어 전략 설명을 ReactFlow 노드 그래프로 변환합니다.
-
-## 노드 타입
-1. **trigger**: 전략 시작 조건 (가격, 거래량, 시간 등)
-2. **indicator**: 기술적 지표 (RSI, SMA, EMA, MACD, Bollinger, ATR, Volume, VWAP)
-3. **condition**: 조건 판단 (비교 연산, AND/OR 논리)
-4. **action**: 주문 실행 (매수/매도, 수량, 주문 타입)
-5. **risk**: 리스크 관리 (손절/익절, 트레일링 스탑)
-
-## 노드 구성 규칙
-- 모든 전략은 trigger 노드로 시작
-- 지표(indicator)는 조건(condition)에 연결
-- 조건(condition)은 액션(action)에 연결
-- 리스크(risk) 노드는 액션에 연결 가능
-- 노드 ID는 고유해야 함 (예: trigger-1, indicator-rsi-1, condition-1, action-buy-1, risk-1)
-
-## 위치 규칙 (x, y 좌표)
-- 왼쪽에서 오른쪽으로 흐름
-- x: 100 (trigger) → 350 (indicator) → 600 (condition) → 850 (action) → 1100 (risk)
-- y: 200 기준, 여러 노드는 150px 간격으로 배치
-
-## 응답 형식 (JSON만 응답)
-{
-  "name": "전략 이름",
-  "description": "전략 설명 (1-2문장)",
-  "nodes": [
-    {
-      "id": "trigger-1",
-      "type": "trigger",
-      "position": { "x": 100, "y": 200 },
-      "data": {
-        "label": "시장 트리거",
-        "config": {
-          "type": "price_cross",
-          "symbol": "BTC/USDT",
-          "condition": "cross_above",
-          "value": 0
-        }
-      }
-    }
-  ],
-  "edges": [
-    { "id": "e-1", "source": "trigger-1", "target": "condition-1" }
-  ],
-  "confidence": 85,
-  "suggestions": ["추가 개선 제안 1", "추가 개선 제안 2"]
+interface ParsedPattern {
+  indicators: Array<{ type: string; params?: Record<string, number> }>;
+  conditions: Array<{ indicator: string; operator: string; value: number | string }>;
+  actions: Array<{ type: string; trigger: string }>;
+  riskParams?: { stopLoss?: number; takeProfit?: number };
 }
 
-## 지표별 config 예시
-- RSI: { "type": "rsi", "period": 14, "source": "close" }
-- SMA: { "type": "sma", "period": 20, "source": "close" }
-- EMA: { "type": "ema", "period": 12, "source": "close" }
-- MACD: { "type": "macd", "fast": 12, "slow": 26, "signal": 9 }
-- Bollinger: { "type": "bollinger", "period": 20, "stdDev": 2 }
-- Volume: { "type": "volume" }
+function parsePrompt(prompt: string): ParsedPattern {
+  const lower = prompt.toLowerCase();
+  const result: ParsedPattern = {
+    indicators: [],
+    conditions: [],
+    actions: [],
+  };
 
-## condition config 예시
-- { "operator": "and", "conditions": [{ "left": "RSI", "operator": "<", "right": 30 }] }
-
-## action config 예시
-- 매수: { "type": "buy", "orderType": "market", "amount": 100, "amountType": "percent" }
-- 매도: { "type": "sell", "orderType": "limit", "amount": 50, "amountType": "percent" }
-
-## risk config 예시
-- { "stopLoss": 5, "takeProfit": 10, "trailingStop": 2, "maxDrawdown": 20 }
-
-반드시 유효한 JSON만 응답하세요. 설명 텍스트 없이 JSON 객체만 반환합니다.`
-
-// ============================================
-// Claude Node Graph Generation
-// ============================================
-
-async function generateNodeGraphWithClaude(
-  prompt: string,
-  symbol: string,
-  timeframe: string
-): Promise<GeneratedNodeGraph> {
-  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY
-  if (!apiKey) throw new Error('Claude API key not configured')
-
-  const client = createClaudeClient({ apiKey, temperature: 0.3 })
-
-  const userPrompt = `
-사용자 전략 설명: "${prompt}"
-대상 심볼: ${symbol}
-타임프레임: ${timeframe}
-
-위 전략을 ReactFlow 노드 그래프로 변환해주세요.`
-
-  const response = await client.chat(
-    [{ role: 'user', content: userPrompt }],
-    {
-      systemPrompt: NODE_GRAPH_PROMPT,
-      temperature: 0.3,
-      maxTokens: 2048,
-    }
-  )
-
-  try {
-    // Extract JSON from response
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0])
-
-      // Validate and sanitize nodes
-      const nodes = validateNodes(parsed.nodes || [])
-      const edges = validateEdges(parsed.edges || [], nodes)
-
-      return {
-        name: parsed.name || `AI 생성 전략`,
-        description: ensureDisclaimer(parsed.description || prompt.slice(0, 100), { short: true }),
-        nodes,
-        edges,
-        confidence: Math.min(95, Math.max(50, parsed.confidence || 75)),
-        suggestions: parsed.suggestions || ['백테스트를 통해 전략을 검증해보세요'],
-      }
-    }
-  } catch (parseError) {
-    safeLogger.error('[Generate Strategy] JSON parse error', { error: parseError })
+  // Indicator Detection
+  if (/rsi/i.test(lower)) {
+    const periodMatch = lower.match(/rsi\s*\(?(\d+)\)?/i);
+    result.indicators.push({
+      type: 'rsi',
+      params: { period: periodMatch ? parseInt(periodMatch[1]) : 14 },
+    });
   }
 
-  // Fallback to rule-based generation
-  return generateNodeGraphFallback(prompt, symbol, timeframe)
-}
-
-// ============================================
-// Validation Helpers
-// ============================================
-
-function validateNodes(nodes: unknown[]): ReactFlowNode[] {
-  const validTypes = ['trigger', 'indicator', 'condition', 'action', 'risk']
-  const validatedNodes: ReactFlowNode[] = []
-
-  for (const node of nodes) {
-    if (typeof node !== 'object' || node === null) continue
-
-    const n = node as Record<string, unknown>
-    const type = n.type as string
-
-    if (!validTypes.includes(type)) continue
-    if (!n.id || typeof n.id !== 'string') continue
-
-    const position = n.position as { x?: number; y?: number } | undefined
-    const data = n.data as { label?: string; config?: Record<string, unknown> } | undefined
-
-    validatedNodes.push({
-      id: n.id,
-      type: type as ReactFlowNode['type'],
-      position: {
-        x: typeof position?.x === 'number' ? position.x : 100,
-        y: typeof position?.y === 'number' ? position.y : 200,
-      },
-      data: {
-        label: typeof data?.label === 'string' ? data.label : type,
-        config: typeof data?.config === 'object' && data.config !== null ? data.config : {},
-      },
-    })
+  if (/sma|단순이평/i.test(lower)) {
+    const periodMatch = lower.match(/sma\s*\(?(\d+)\)?/i) || lower.match(/(\d+)\s*일?\s*(?:이평|이동평균)/i);
+    result.indicators.push({
+      type: 'sma',
+      params: { period: periodMatch ? parseInt(periodMatch[1]) : 20 },
+    });
   }
 
-  return validatedNodes
-}
-
-function validateEdges(edges: unknown[], nodes: ReactFlowNode[]): ReactFlowEdge[] {
-  const nodeIds = new Set(nodes.map(n => n.id))
-  const validatedEdges: ReactFlowEdge[] = []
-
-  for (const edge of edges) {
-    if (typeof edge !== 'object' || edge === null) continue
-
-    const e = edge as Record<string, unknown>
-    const source = e.source as string
-    const target = e.target as string
-
-    if (!source || !target) continue
-    if (!nodeIds.has(source) || !nodeIds.has(target)) continue
-
-    validatedEdges.push({
-      id: typeof e.id === 'string' ? e.id : `e-${source}-${target}`,
-      source,
-      target,
-    })
+  if (/ema|지수이평/i.test(lower)) {
+    const periodMatch = lower.match(/ema\s*\(?(\d+)\)?/i);
+    result.indicators.push({
+      type: 'ema',
+      params: { period: periodMatch ? parseInt(periodMatch[1]) : 12 },
+    });
   }
 
-  return validatedEdges
+  if (/macd/i.test(lower)) {
+    result.indicators.push({ type: 'macd', params: { fast: 12, slow: 26, signal: 9 } });
+  }
+
+  if (/볼린저|bollinger/i.test(lower)) {
+    result.indicators.push({ type: 'bollinger', params: { period: 20, stdDev: 2 } });
+  }
+
+  if (/스토캐스틱|stochastic/i.test(lower)) {
+    result.indicators.push({ type: 'stochastic', params: { k: 14, d: 3 } });
+  }
+
+  if (/골든크로스|golden\s*cross/i.test(lower)) {
+    if (result.indicators.length === 0) {
+      result.indicators.push({ type: 'sma', params: { period: 50 } });
+      result.indicators.push({ type: 'sma', params: { period: 200 } });
+    }
+    result.conditions.push({ indicator: 'sma_50', operator: 'crosses_above', value: 'sma_200' });
+    result.actions.push({ type: 'buy', trigger: 'golden_cross' });
+  }
+
+  if (/데드크로스|dead\s*cross/i.test(lower)) {
+    result.conditions.push({ indicator: 'sma_50', operator: 'crosses_below', value: 'sma_200' });
+    result.actions.push({ type: 'sell', trigger: 'dead_cross' });
+  }
+
+  // Condition Detection (RSI specific)
+  const rsiConditions = lower.match(/rsi\s*(?:가|이|가)?\s*(\d+)\s*(?:이하|아래|미만)/i);
+  if (rsiConditions) {
+    result.conditions.push({
+      indicator: 'rsi',
+      operator: 'lt',
+      value: parseInt(rsiConditions[1]),
+    });
+  }
+
+  const rsiConditionsAbove = lower.match(/rsi\s*(?:가|이|가)?\s*(\d+)\s*(?:이상|위|초과)/i);
+  if (rsiConditionsAbove) {
+    result.conditions.push({
+      indicator: 'rsi',
+      operator: 'gt',
+      value: parseInt(rsiConditionsAbove[1]),
+    });
+  }
+
+  // Action Detection
+  if (/매수|사|buy|long/i.test(lower) && !result.actions.some(a => a.type === 'buy')) {
+    result.actions.push({ type: 'buy', trigger: 'condition' });
+  }
+
+  if (/매도|팔|sell|short/i.test(lower) && !result.actions.some(a => a.type === 'sell')) {
+    result.actions.push({ type: 'sell', trigger: 'condition' });
+  }
+
+  // Risk Parameters
+  const stopLossMatch = lower.match(/손절\s*(\d+(?:\.\d+)?)\s*%?/i);
+  const takeProfitMatch = lower.match(/익절\s*(\d+(?:\.\d+)?)\s*%?/i);
+
+  if (stopLossMatch || takeProfitMatch) {
+    result.riskParams = {
+      stopLoss: stopLossMatch ? parseFloat(stopLossMatch[1]) : undefined,
+      takeProfit: takeProfitMatch ? parseFloat(takeProfitMatch[1]) : undefined,
+    };
+  }
+
+  return result;
 }
 
 // ============================================
-// Fallback: Rule-based Node Generation
+// Node Graph Generation
 // ============================================
 
-function generateNodeGraphFallback(
-  prompt: string,
-  symbol: string,
-  timeframe: string
-): GeneratedNodeGraph {
-  const lowerPrompt = prompt.toLowerCase()
-  const nodes: ReactFlowNode[] = []
-  const edges: ReactFlowEdge[] = []
-  let nodeIndex = 0
+function generateNodeGraph(parsed: ParsedPattern, symbol: string, timeframe: string): GeneratedNodeGraph {
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+  let nodeId = 0;
+  let yPosition = 50;
+  const xStart = 100;
 
-  // Parse indicators from prompt
-  const hasRSI = lowerPrompt.includes('rsi')
-  const hasMA = lowerPrompt.includes('이평') || lowerPrompt.includes('ma') || lowerPrompt.includes('이동평균')
-  const hasMACD = lowerPrompt.includes('macd')
-  const hasBollinger = lowerPrompt.includes('볼린저') || lowerPrompt.includes('bollinger')
-  const hasVolume = lowerPrompt.includes('거래량') || lowerPrompt.includes('volume')
+  const getId = () => \`node_\${++nodeId}\`;
 
-  // Parse actions from prompt
-  const isBuy = lowerPrompt.includes('매수') || lowerPrompt.includes('buy') || lowerPrompt.includes('진입')
-  const isSell = lowerPrompt.includes('매도') || lowerPrompt.includes('sell') || lowerPrompt.includes('청산')
-  const hasStopLoss = lowerPrompt.includes('손절') || lowerPrompt.includes('stop')
-  const hasTakeProfit = lowerPrompt.includes('익절') || lowerPrompt.includes('profit')
-
-  // Extract numbers for thresholds
-  const numbers = prompt.match(/\d+/g)?.map(Number) || []
-
-  // 1. Trigger node
+  // 1. Start/Trigger Node
+  const triggerId = getId();
   nodes.push({
-    id: 'trigger-1',
+    id: triggerId,
     type: 'trigger',
-    position: { x: 100, y: 200 },
-    data: {
-      label: '시장 트리거',
-      config: {
-        type: 'price_cross',
-        symbol,
-        timeframe,
-        condition: 'cross_above',
-        value: 0,
-      },
-    },
-  })
+    position: { x: xStart, y: yPosition },
+    data: { label: '시작', symbol, timeframe },
+  });
 
-  // 2. Indicator nodes
-  let indicatorY = 100
-  const indicatorNodes: string[] = []
+  let lastNodeId = triggerId;
+  yPosition += 120;
 
-  if (hasRSI) {
-    const rsiValue = numbers.find(n => n >= 10 && n <= 100) || 30
-    nodes.push({
-      id: `indicator-rsi-${++nodeIndex}`,
-      type: 'indicator',
-      position: { x: 350, y: indicatorY },
-      data: {
-        label: 'RSI',
-        config: {
-          type: 'rsi',
-          period: 14,
-          source: 'close',
-          threshold: rsiValue,
+  // 2. Indicator Nodes
+  const indicatorNodeIds: Record<string, string> = {};
+
+  for (let i = 0; i < parsed.indicators.length; i++) {
+    const indicator = parsed.indicators[i];
+    const indId = getId();
+    const template = NODE_TEMPLATES.indicator[indicator.type as keyof typeof NODE_TEMPLATES.indicator];
+
+    if (template) {
+      nodes.push({
+        id: indId,
+        type: 'indicator',
+        position: { x: xStart + (i * 200), y: yPosition },
+        data: {
+          label: template.label,
+          indicatorType: indicator.type,
+          params: { ...template.params, ...indicator.params },
         },
-      },
-    })
-    indicatorNodes.push(`indicator-rsi-${nodeIndex}`)
-    indicatorY += 150
+      });
+
+      edges.push({
+        id: \`e_\${lastNodeId}_\${indId}\`,
+        source: lastNodeId,
+        target: indId,
+        animated: true,
+      });
+
+      indicatorNodeIds[indicator.type] = indId;
+      if (i === 0) lastNodeId = indId;
+    }
   }
 
-  if (hasMA || lowerPrompt.includes('골든') || lowerPrompt.includes('데드')) {
+  yPosition += 120;
+
+  // 3. Condition Nodes
+  for (let i = 0; i < parsed.conditions.length; i++) {
+    const condition = parsed.conditions[i];
+    const condId = getId();
+
+    const operatorLabel = condition.operator === 'lt' ? '<'
+      : condition.operator === 'gt' ? '>'
+      : condition.operator === 'crosses_above' ? '상향돌파'
+      : condition.operator === 'crosses_below' ? '하향돌파'
+      : '==';
+
     nodes.push({
-      id: `indicator-sma-${++nodeIndex}`,
-      type: 'indicator',
-      position: { x: 350, y: indicatorY },
+      id: condId,
+      type: 'condition',
+      position: { x: xStart + (i * 220), y: yPosition },
       data: {
-        label: 'SMA',
-        config: {
-          type: 'sma',
-          period: numbers.find(n => n >= 5 && n <= 200) || 20,
-          source: 'close',
-        },
+        label: \`\${condition.indicator.toUpperCase()} \${operatorLabel} \${condition.value}\`,
+        indicator: condition.indicator,
+        operator: condition.operator,
+        value: condition.value,
       },
-    })
-    indicatorNodes.push(`indicator-sma-${nodeIndex}`)
-    indicatorY += 150
+    });
+
+    const sourceId = indicatorNodeIds[condition.indicator.split('_')[0]] || lastNodeId;
+    edges.push({ id: \`e_\${sourceId}_\${condId}\`, source: sourceId, target: condId });
+    if (i === 0) lastNodeId = condId;
   }
 
-  if (hasMACD) {
-    nodes.push({
-      id: `indicator-macd-${++nodeIndex}`,
-      type: 'indicator',
-      position: { x: 350, y: indicatorY },
-      data: {
-        label: 'MACD',
-        config: {
-          type: 'macd',
-          fast: 12,
-          slow: 26,
-          signal: 9,
-        },
-      },
-    })
-    indicatorNodes.push(`indicator-macd-${nodeIndex}`)
-    indicatorY += 150
+  yPosition += 120;
+
+  // 4. Action Nodes
+  for (let i = 0; i < parsed.actions.length; i++) {
+    const action = parsed.actions[i];
+    const actionId = getId();
+    const template = NODE_TEMPLATES.action[action.type as keyof typeof NODE_TEMPLATES.action];
+
+    if (template) {
+      nodes.push({
+        id: actionId,
+        type: 'action',
+        position: { x: xStart + (i * 180), y: yPosition },
+        data: { label: template.label, actionType: action.type, trigger: action.trigger },
+      });
+
+      edges.push({
+        id: \`e_\${lastNodeId}_\${actionId}\`,
+        source: lastNodeId,
+        target: actionId,
+        style: { stroke: action.type === 'buy' ? '#22C55E' : '#EF4444' },
+      });
+
+      lastNodeId = actionId;
+    }
   }
 
-  if (hasBollinger) {
-    nodes.push({
-      id: `indicator-bollinger-${++nodeIndex}`,
-      type: 'indicator',
-      position: { x: 350, y: indicatorY },
-      data: {
-        label: '볼린저밴드',
-        config: {
-          type: 'bollinger',
-          period: 20,
-          stdDev: 2,
-        },
-      },
-    })
-    indicatorNodes.push(`indicator-bollinger-${nodeIndex}`)
-    indicatorY += 150
-  }
-
-  if (hasVolume) {
-    nodes.push({
-      id: `indicator-volume-${++nodeIndex}`,
-      type: 'indicator',
-      position: { x: 350, y: indicatorY },
-      data: {
-        label: '거래량',
-        config: {
-          type: 'volume',
-        },
-      },
-    })
-    indicatorNodes.push(`indicator-volume-${nodeIndex}`)
-  }
-
-  // If no indicators detected, add RSI as default
-  if (indicatorNodes.length === 0) {
-    nodes.push({
-      id: 'indicator-rsi-1',
-      type: 'indicator',
-      position: { x: 350, y: 200 },
-      data: {
-        label: 'RSI',
-        config: {
-          type: 'rsi',
-          period: 14,
-          source: 'close',
-        },
-      },
-    })
-    indicatorNodes.push('indicator-rsi-1')
-  }
-
-  // 3. Condition node
-  const conditionId = 'condition-1'
-  nodes.push({
-    id: conditionId,
-    type: 'condition',
-    position: { x: 600, y: 200 },
-    data: {
-      label: '조건 체크',
-      config: {
-        operator: 'and',
-        conditions: hasRSI
-          ? [{ left: 'RSI', operator: lowerPrompt.includes('이하') || lowerPrompt.includes('below') ? '<' : '>', right: numbers.find(n => n >= 10 && n <= 100) || 30 }]
-          : [],
-      },
-    },
-  })
-
-  // 4. Action node
-  const actionId = 'action-1'
-  nodes.push({
-    id: actionId,
-    type: 'action',
-    position: { x: 850, y: 200 },
-    data: {
-      label: isBuy ? '매수 주문' : isSell ? '매도 주문' : '주문 실행',
-      config: {
-        type: isBuy ? 'buy' : isSell ? 'sell' : 'buy',
-        orderType: 'market',
-        amount: 100,
-        amountType: 'percent',
-      },
-    },
-  })
-
-  // 5. Risk node (if mentioned)
-  const riskId = 'risk-1'
-  if (hasStopLoss || hasTakeProfit) {
-    const stopLoss = numbers.find(n => n >= 1 && n <= 50) || 5
-    const takeProfit = numbers.find(n => n > stopLoss && n <= 100) || stopLoss * 2
+  // 5. Risk Node
+  if (parsed.riskParams && (parsed.riskParams.stopLoss || parsed.riskParams.takeProfit)) {
+    yPosition += 120;
+    const riskId = getId();
 
     nodes.push({
       id: riskId,
       type: 'risk',
-      position: { x: 1100, y: 200 },
+      position: { x: xStart, y: yPosition },
       data: {
         label: '리스크 관리',
-        config: {
-          stopLoss,
-          takeProfit,
-          maxDrawdown: 20,
-        },
+        stopLoss: parsed.riskParams.stopLoss || 5,
+        takeProfit: parsed.riskParams.takeProfit || 10,
       },
-    })
+    });
+
+    edges.push({
+      id: \`e_\${lastNodeId}_\${riskId}\`,
+      source: lastNodeId,
+      target: riskId,
+      style: { stroke: '#F59E0B' },
+    });
   }
-
-  // Connect edges
-  edges.push({ id: 'e-trigger', source: 'trigger-1', target: conditionId })
-
-  for (const indId of indicatorNodes) {
-    edges.push({ id: `e-${indId}`, source: indId, target: conditionId })
-  }
-
-  edges.push({ id: 'e-action', source: conditionId, target: actionId })
-
-  if (hasStopLoss || hasTakeProfit) {
-    edges.push({ id: 'e-risk', source: actionId, target: riskId })
-  }
-
-  // Generate suggestions
-  const suggestions: string[] = []
-  if (!hasRSI && !hasMACD) suggestions.push('RSI나 MACD 지표를 추가하면 더 정확한 신호를 받을 수 있습니다')
-  if (!hasStopLoss) suggestions.push('손절 설정을 추가하여 리스크를 관리하세요')
-  if (!hasTakeProfit) suggestions.push('익절 목표를 설정하면 수익을 실현할 수 있습니다')
-  suggestions.push('백테스트를 통해 전략 성과를 검증해보세요')
 
   return {
-    name: `AI 생성 전략 - ${new Date().toLocaleDateString('ko-KR')}`,
-    description: ensureDisclaimer(prompt.slice(0, 100), { short: true }),
+    name: generateStrategyName(parsed),
+    description: generateDescription(parsed, symbol, timeframe),
     nodes,
     edges,
-    confidence: Math.min(85, 50 + indicatorNodes.length * 10 + (hasStopLoss ? 10 : 0)),
-    suggestions: suggestions.slice(0, 3),
-  }
+    confidence: calculateConfidence(parsed),
+    suggestions: generateSuggestions(parsed),
+  };
+}
+
+function calculateConfidence(parsed: ParsedPattern): number {
+  let confidence = 50;
+  confidence += Math.min(parsed.indicators.length * 10, 20);
+  confidence += Math.min(parsed.conditions.length * 10, 20);
+  if (parsed.actions.some(a => a.type === 'buy') && parsed.actions.some(a => a.type === 'sell')) confidence += 10;
+  if (parsed.riskParams?.stopLoss) confidence += 5;
+  if (parsed.riskParams?.takeProfit) confidence += 5;
+  return Math.min(confidence, 95);
+}
+
+function generateSuggestions(parsed: ParsedPattern): string[] {
+  const suggestions: string[] = [];
+  if (parsed.indicators.length === 1) suggestions.push('여러 지표를 조합하면 신호의 정확도를 높일 수 있습니다.');
+  if (!parsed.riskParams?.stopLoss) suggestions.push('손절가를 설정하면 리스크 관리가 가능합니다.');
+  if (!parsed.riskParams?.takeProfit) suggestions.push('익절가를 설정하면 수익 실현을 자동화할 수 있습니다.');
+  suggestions.push('백테스트를 실행하여 전략 성과를 확인해보세요.');
+  return suggestions.slice(0, 4);
+}
+
+function generateStrategyName(parsed: ParsedPattern): string {
+  const parts: string[] = [];
+  if (parsed.indicators.length > 0) parts.push(parsed.indicators[0].type.toUpperCase());
+  if (parsed.conditions.some(c => c.operator === 'crosses_above')) parts.push('골든크로스');
+  else if (parsed.conditions.some(c => c.operator === 'crosses_below')) parts.push('데드크로스');
+  else if (parsed.actions.some(a => a.type === 'buy')) parts.push('매수');
+  parts.push('전략');
+  return parts.join(' ');
+}
+
+function generateDescription(parsed: ParsedPattern, symbol: string, timeframe: string): string {
+  const indicatorNames = parsed.indicators.map(i => i.type.toUpperCase()).join(', ');
+  const actionTypes = [...new Set(parsed.actions.map(a => a.type === 'buy' ? '매수' : '매도'))].join('/');
+  return \`\${symbol} \${timeframe} 차트에서 \${indicatorNames || '기술적 지표'}를 활용한 \${actionTypes || '자동매매'} 전략\`;
 }
 
 // ============================================
 // API Handler
 // ============================================
 
-export const POST = withApiMiddleware(
-  async (request: NextRequest) => {
-    // 1. 사용자 인증
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          },
-        },
-      }
-    )
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      safeLogger.warn('[Generate Strategy API] Unauthorized access attempt')
-      return createApiResponse(
-        { error: '로그인이 필요합니다.' },
-        { status: 401 }
-      )
+    if (!user) {
+      return NextResponse.json({ success: false, error: '로그인이 필요합니다' }, { status: 401 });
     }
 
-    const userId = user.id
+    const body: GenerateRequest = await request.json();
+    const { prompt, symbol = 'BTC/USDT', timeframe = '1h' } = body;
 
-    // 2. Consent Gate
-    const consentResult = await checkUserConsent(userId, ['disclaimer', 'age_verification'])
-    if (!consentResult.hasConsent) {
-      return createConsentRequiredResponse(consentResult.missingConsents)
+    if (!prompt || typeof prompt !== 'string' || prompt.length < 5) {
+      return NextResponse.json({ success: false, error: '더 자세한 설명이 필요합니다' }, { status: 400 });
     }
 
-    // 3. Circuit Breaker
-    const circuitAllowed = await aiCircuit.isAllowed('claude-api')
-    if (!circuitAllowed) {
-      safeLogger.warn('[Generate Strategy API] Circuit breaker open')
-      return createCircuitOpenResponse()
+    let parsed = parsePrompt(prompt);
+
+    // Fallback if nothing parsed
+    if (parsed.indicators.length === 0 && parsed.conditions.length === 0 && parsed.actions.length === 0) {
+      parsed.indicators.push({ type: 'rsi', params: { period: 14 } });
+      parsed.conditions.push({ indicator: 'rsi', operator: 'lt', value: 30 });
+      parsed.actions.push({ type: 'buy', trigger: 'condition' });
+      parsed.conditions.push({ indicator: 'rsi', operator: 'gt', value: 70 });
+      parsed.actions.push({ type: 'sell', trigger: 'condition' });
     }
 
-    // 4. Tiered Rate Limit
-    const userTier: UserTier = 'free'
-    const rateLimitResult = await aiTieredLimiter.check(userId, userTier)
-    if (!rateLimitResult.allowed) {
-      return createTieredRateLimitResponse(rateLimitResult)
-    }
+    const nodeGraph = generateNodeGraph(parsed, symbol, timeframe);
 
-    // 5. Validate request body
-    const validation = await validateRequestBody(request, generateNodeGraphSchema)
-    if ('error' in validation) return validation.error
+    await supabase.from('analytics_events').insert({
+      user_id: user.id,
+      event_type: 'ai_strategy_generated',
+      metadata: { prompt, symbol, timeframe, nodesCount: nodeGraph.nodes.length, confidence: nodeGraph.confidence },
+    }).catch(() => {});
 
-    const { prompt, symbol, timeframe } = validation.data
-
-    safeLogger.info('[Generate Strategy API] Generating node graph', {
-      userId,
-      promptLength: prompt.length,
-      symbol,
-      timeframe,
-    })
-
-    // 6. Spend credits (5 credits for node graph generation)
-    try {
-      await spendCredits({
-        userId,
-        feature: 'ai_node_graph',
-        amount: 5,
-        metadata: { prompt: prompt.slice(0, 50), symbol, timeframe },
-      })
-    } catch (error) {
-      if (error instanceof InsufficientCreditsError) {
-        return createApiResponse(
-          {
-            error: 'INSUFFICIENT_CREDITS',
-            message: '크레딧이 부족합니다',
-            required: error.required,
-            current: error.current,
-          },
-          { status: 402 }
-        )
-      }
-      throw error
-    }
-
-    // 7. Generate node graph
-    let nodeGraph: GeneratedNodeGraph
-
-    const useClaudeApi = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY
-
-    if (useClaudeApi) {
-      try {
-        nodeGraph = await withCircuitBreaker(aiCircuit, 'claude-api', async () => {
-          return generateNodeGraphWithClaude(prompt, symbol, timeframe)
-        })
-      } catch (claudeError) {
-        if (claudeError instanceof Error && claudeError.message === 'CIRCUIT_OPEN') {
-          return createCircuitOpenResponse()
-        }
-        safeLogger.warn('[Generate Strategy API] Claude failed, using fallback', { error: claudeError })
-        nodeGraph = generateNodeGraphFallback(prompt, symbol, timeframe)
-      }
-    } else {
-      // Simulate processing delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      nodeGraph = generateNodeGraphFallback(prompt, symbol, timeframe)
-    }
-
-    safeLogger.info('[Generate Strategy API] Node graph generated', {
-      userId,
-      nodeCount: nodeGraph.nodes.length,
-      edgeCount: nodeGraph.edges.length,
-      confidence: nodeGraph.confidence,
-      usedClaude: !!useClaudeApi,
-    })
-
-    return createApiResponse({
-      success: true,
-      data: nodeGraph,
-      usedClaude: !!useClaudeApi,
-    })
-  },
-  {
-    rateLimit: { category: 'ai' },
-    errorHandler: { logErrors: true },
+    return NextResponse.json({ success: true, data: nodeGraph });
+  } catch (error) {
+    console.error('[AI Generate Strategy] Error:', error);
+    return NextResponse.json({ success: false, error: '전략 생성 중 오류가 발생했습니다' }, { status: 500 });
   }
-)
+}
