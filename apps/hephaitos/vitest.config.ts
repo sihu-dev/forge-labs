@@ -24,6 +24,18 @@ export default defineConfig({
         '**/types/**',
       ],
     },
+    deps: {
+      optimizer: {
+        web: {
+          include: ['framer-motion'],
+        },
+      },
+    },
+    server: {
+      deps: {
+        inline: ['framer-motion'],
+      },
+    },
   },
   resolve: {
     alias: {
