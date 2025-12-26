@@ -884,3 +884,27 @@ a:hover {
 .card-glass { @apply card; }
 .card-elevated { @apply card; }
 .btn-glow { @apply btn-primary; }
+
+/* ============================================
+   AG-GRID DARK THEME CUSTOMIZATION
+   ============================================ */
+
+/* Dark theme for ag-Grid */
+.ag-theme-alpine-dark {
+  --ag-background-color: #0a0a0a;
+  --ag-foreground-color: #fafafa;
+  --ag-border-color: #262626;
+  --ag-secondary-border-color: #171717;
+  --ag-header-background-color: #171717;
+  --ag-header-foreground-color: #fafafa;
+  --ag-odd-row-background-color: #0a0a0a;
+  --ag-row-hover-color: #171717;
+  --ag-selected-row-background-color: #262626;
+  --ag-range-selection-border-color: #3b82f6;
+  --ag-range-selection-background-color: rgba(59, 130, 246, 0.1);
+  --ag-cell-horizontal-border: solid #171717;
+  --ag-row-border-color: #171717;
+
+  /* Custom adjustments */
+  font-family: var(--font-sans);
+}
