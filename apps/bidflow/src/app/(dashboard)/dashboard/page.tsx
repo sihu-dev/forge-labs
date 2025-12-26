@@ -8,7 +8,7 @@
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { Bid } from '@/components/spreadsheet/SpreadsheetView';
 
@@ -285,8 +285,9 @@ export default function DashboardPage() {
   const searchParams = useSearchParams();
   const isDemo = searchParams?.get('demo') === 'true';
   const [showBanner, setShowBanner] = useState(true);
-  const [bids, setBids] = useState<Bid[]>(SAMPLE_BIDS as unknown as Bid[]);
-  const [isLoading, setIsLoading] = useState(false);
+  // 데모 모드면 샘플 데이터로 시작, 아니면 빈 배열로 시작 후 API에서 로드
+  const [bids, setBids] = useState<Bid[]>(isDemo ? SAMPLE_BIDS as unknown as Bid[] : []);
+  const [isLoading, setIsLoading] = useState(!isDemo);
 
   const stats = calculateStats(bids as unknown as typeof SAMPLE_BIDS);
 
@@ -322,7 +323,9 @@ export default function DashboardPage() {
         throw new Error('Failed to fetch bids');
       }
       const data = await response.json();
-      if (data.data) {
+      if (data.data?.items) {
+        setBids(data.data.items);
+      } else if (data.data) {
         setBids(data.data);
       }
     } catch (error) {
@@ -335,6 +338,13 @@ export default function DashboardPage() {
       setIsLoading(false);
     }
   }, [isDemo]);
+
+  // 초기 데이터 로드 (비데모 모드)
+  useEffect(() => {
+    if (!isDemo) {
+      handleRefresh();
+    }
+  }, [isDemo, handleRefresh]);
 
   return (
     <main className="h-screen flex flex-col bg-slate-50">
