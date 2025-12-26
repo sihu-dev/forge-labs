@@ -6,7 +6,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { createChart, ColorType, LineStyle, CrosshairMode } from 'lightweight-charts'
+import { createChart, ColorType, LineStyle, CrosshairMode, AreaSeries, LineSeries } from 'lightweight-charts'
 
 interface EquityCurveChartProps {
   data: Array<{ date: string; value: number }>
@@ -63,7 +63,7 @@ export function EquityCurveChart({ data, initialCapital }: EquityCurveChartProps
     })).sort((a, b) => a.time - b.time)
 
     // Area Series 생성 (자산 곡선)
-    const areaSeries = chart.addAreaSeries({
+    const areaSeries = chart.addSeries(AreaSeries, {
       lineColor: '#10B981',
       topColor: 'rgba(16, 185, 129, 0.4)',
       bottomColor: 'rgba(16, 185, 129, 0.0)',
@@ -78,7 +78,7 @@ export function EquityCurveChart({ data, initialCapital }: EquityCurveChartProps
     areaSeries.setData(chartData)
 
     // 초기 자본 기준선 추가
-    const baselineSeries = chart.addLineSeries({
+    const baselineSeries = chart.addSeries(LineSeries, {
       color: '#71717A',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,

@@ -4,6 +4,58 @@
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server'
+
+// ============================================
+// ApiError Class (for throwing typed errors)
+// ============================================
+
+export class ApiError extends Error {
+  public readonly statusCode: number
+  public readonly code: string
+  public readonly details?: Record<string, unknown>
+
+  constructor(
+    message: string,
+    statusCode: number = 500,
+    code: string = 'INTERNAL_ERROR',
+    details?: Record<string, unknown>
+  ) {
+    super(message)
+    this.name = 'ApiError'
+    this.statusCode = statusCode
+    this.code = code
+    this.details = details
+
+    // Maintains proper stack trace for where error was thrown
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, ApiError)
+    }
+  }
+
+  static badRequest(message: string, details?: Record<string, unknown>): ApiError {
+    return new ApiError(message, 400, 'BAD_REQUEST', details)
+  }
+
+  static unauthorized(message: string = '인증이 필요합니다.'): ApiError {
+    return new ApiError(message, 401, 'UNAUTHORIZED')
+  }
+
+  static forbidden(message: string = '권한이 없습니다.'): ApiError {
+    return new ApiError(message, 403, 'FORBIDDEN')
+  }
+
+  static notFound(message: string = '리소스를 찾을 수 없습니다.'): ApiError {
+    return new ApiError(message, 404, 'NOT_FOUND')
+  }
+
+  static internal(message: string = '서버 오류가 발생했습니다.'): ApiError {
+    return new ApiError(message, 500, 'INTERNAL_ERROR')
+  }
+
+  static rateLimited(message: string = '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.'): ApiError {
+    return new ApiError(message, 429, 'RATE_LIMITED')
+  }
+}
 import { ZodError } from 'zod'
 import {
   createAppError,

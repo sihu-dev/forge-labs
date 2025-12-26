@@ -19,8 +19,13 @@ export interface Database {
           id: string
           email: string
           name: string | null
+          display_name: string | null
+          username: string | null
+          full_name: string | null
           avatar_url: string | null
           plan: 'free' | 'pro' | 'enterprise'
+          role: 'user' | 'mentor' | 'admin' | 'super_admin'
+          balance: number
           created_at: string
           updated_at: string
         }
@@ -28,8 +33,13 @@ export interface Database {
           id: string
           email: string
           name?: string | null
+          display_name?: string | null
+          username?: string | null
+          full_name?: string | null
           avatar_url?: string | null
           plan?: 'free' | 'pro' | 'enterprise'
+          role?: 'user' | 'mentor' | 'admin' | 'super_admin'
+          balance?: number
           created_at?: string
           updated_at?: string
         }
@@ -37,8 +47,38 @@ export interface Database {
           id?: string
           email?: string
           name?: string | null
+          display_name?: string | null
+          username?: string | null
+          full_name?: string | null
           avatar_url?: string | null
           plan?: 'free' | 'pro' | 'enterprise'
+          role?: 'user' | 'mentor' | 'admin' | 'super_admin'
+          balance?: number
+          updated_at?: string
+        }
+      }
+
+      // Credits (simple balance tracking)
+      credits: {
+        Row: {
+          id: string
+          user_id: string
+          balance: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          balance?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          balance?: number
+          created_at?: string
           updated_at?: string
         }
       }
@@ -190,16 +230,18 @@ export interface Database {
           performance: Json
           equity_curve: Json
           trades: Json
+          result_data: Json | null
           created_at: string
         }
         Insert: {
           id?: string
           user_id: string
           strategy_id: string
-          config: Json
-          performance: Json
-          equity_curve: Json
-          trades: Json
+          config?: Json
+          performance?: Json
+          equity_curve?: Json
+          trades?: Json
+          result_data?: Json
           created_at?: string
         }
         Update: {
@@ -207,6 +249,7 @@ export interface Database {
           performance?: Json
           equity_curve?: Json
           trades?: Json
+          result_data?: Json
         }
       }
 
@@ -215,25 +258,41 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          type: 'signal' | 'trade' | 'alert' | 'system'
+          type: string
+          priority: 'low' | 'normal' | 'high' | 'urgent'
           title: string
           message: string
           read: boolean
           data: Json | null
+          action_url: string | null
+          action_label: string | null
+          expires_at: string | null
           created_at: string
         }
         Insert: {
           id?: string
           user_id: string
-          type: 'signal' | 'trade' | 'alert' | 'system'
+          type: string
+          priority?: 'low' | 'normal' | 'high' | 'urgent'
           title: string
           message: string
           read?: boolean
           data?: Json | null
+          action_url?: string | null
+          action_label?: string | null
+          expires_at?: string | null
           created_at?: string
         }
         Update: {
           read?: boolean
+          type?: string
+          priority?: 'low' | 'normal' | 'high' | 'urgent'
+          title?: string
+          message?: string
+          data?: Json | null
+          action_url?: string | null
+          action_label?: string | null
+          expires_at?: string | null
         }
       }
 
@@ -841,6 +900,269 @@ export interface Database {
           filled_price?: number | null
           message?: string | null
           order_id?: string | null
+          updated_at?: string
+        }
+      }
+
+      // Automation Workflows
+      automation_workflows: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          webhook_url: string | null
+          n8n_workflow_id: string | null
+          trigger_type: 'manual' | 'scheduled' | 'event'
+          schedule: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          webhook_url?: string | null
+          n8n_workflow_id?: string | null
+          trigger_type?: 'manual' | 'scheduled' | 'event'
+          schedule?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          description?: string | null
+          webhook_url?: string | null
+          n8n_workflow_id?: string | null
+          trigger_type?: 'manual' | 'scheduled' | 'event'
+          schedule?: string | null
+          is_active?: boolean
+          updated_at?: string
+        }
+      }
+
+      // Workflow Executions
+      workflow_executions: {
+        Row: {
+          id: string
+          workflow_id: string
+          status: 'pending' | 'running' | 'completed' | 'failed'
+          started_at: string
+          completed_at: string | null
+          triggered_by: string
+          result: Json | null
+          error: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workflow_id: string
+          status?: 'pending' | 'running' | 'completed' | 'failed'
+          started_at?: string
+          completed_at?: string | null
+          triggered_by: string
+          result?: Json | null
+          error?: string | null
+          created_at?: string
+        }
+        Update: {
+          status?: 'pending' | 'running' | 'completed' | 'failed'
+          completed_at?: string | null
+          result?: Json | null
+          error?: string | null
+          updated_at?: string
+        }
+      }
+
+      // Exchange Keys (simplified key storage)
+      exchange_keys: {
+        Row: {
+          id: string
+          user_id: string
+          exchange: string
+          api_key: string
+          api_secret: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          exchange: string
+          api_key: string
+          api_secret: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          exchange?: string
+          api_key?: string
+          api_secret?: string
+          updated_at?: string
+        }
+      }
+
+      // Users table (extends auth.users)
+      users: {
+        Row: {
+          id: string
+          email: string
+          role: 'user' | 'mentor' | 'admin' | 'super_admin'
+          display_name: string | null
+          username: string | null
+          avatar_url: string | null
+          full_name: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          email: string
+          role?: 'user' | 'mentor' | 'admin' | 'super_admin'
+          display_name?: string | null
+          username?: string | null
+          avatar_url?: string | null
+          full_name?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          email?: string
+          role?: 'user' | 'mentor' | 'admin' | 'super_admin'
+          display_name?: string | null
+          username?: string | null
+          avatar_url?: string | null
+          full_name?: string | null
+          updated_at?: string
+        }
+      }
+
+      // Analytics Events
+      analytics_events: {
+        Row: {
+          id: string
+          user_id: string
+          event_type: string
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          event_type: string
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          event_type?: string
+          metadata?: Json | null
+        }
+      }
+
+      // Payments (simple payment records)
+      payments: {
+        Row: {
+          id: string
+          user_id: string
+          order_id: string
+          amount: number
+          credits: number
+          payment_key: string | null
+          status: 'pending' | 'completed' | 'failed' | 'refunded'
+          provider: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          order_id: string
+          amount: number
+          credits: number
+          payment_key?: string | null
+          status?: 'pending' | 'completed' | 'failed' | 'refunded'
+          provider?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          status?: 'pending' | 'completed' | 'failed' | 'refunded'
+          payment_key?: string | null
+          updated_at?: string
+        }
+      }
+
+      // Notification Settings
+      notification_settings: {
+        Row: {
+          id: string
+          user_id: string
+          email_enabled: boolean
+          push_enabled: boolean
+          in_app_enabled: boolean
+          categories: Json
+          quiet_hours_enabled: boolean
+          quiet_hours_start: string | null
+          quiet_hours_end: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          email_enabled?: boolean
+          push_enabled?: boolean
+          in_app_enabled?: boolean
+          categories?: Json
+          quiet_hours_enabled?: boolean
+          quiet_hours_start?: string | null
+          quiet_hours_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          email_enabled?: boolean
+          push_enabled?: boolean
+          in_app_enabled?: boolean
+          categories?: Json
+          quiet_hours_enabled?: boolean
+          quiet_hours_start?: string | null
+          quiet_hours_end?: string | null
+          updated_at?: string
+        }
+      }
+
+      // Subscriptions
+      subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          plan: 'free' | 'starter' | 'pro' | 'enterprise'
+          status: 'active' | 'cancelled' | 'past_due' | 'trialing'
+          current_period_start: string
+          current_period_end: string
+          cancel_at_period_end: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          plan?: 'free' | 'starter' | 'pro' | 'enterprise'
+          status?: 'active' | 'cancelled' | 'past_due' | 'trialing'
+          current_period_start?: string
+          current_period_end?: string
+          cancel_at_period_end?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          plan?: 'free' | 'starter' | 'pro' | 'enterprise'
+          status?: 'active' | 'cancelled' | 'past_due' | 'trialing'
+          current_period_start?: string
+          current_period_end?: string
+          cancel_at_period_end?: boolean
           updated_at?: string
         }
       }

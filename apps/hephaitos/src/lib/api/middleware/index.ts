@@ -22,6 +22,8 @@ export {
   // P0 FIX: Admin Auth
   requireAdminAuth,
   withAdminAuth,
+  // P0 FIX: ApiError class for typed errors
+  ApiError,
   type ApiHandlerOptions,
   type ApiResponse,
 } from './error-handler'
