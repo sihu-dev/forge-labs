@@ -38,6 +38,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   SparklesIcon,
+  BoltIcon,
 } from '@heroicons/react/24/outline'
 
 // Custom Nodes
@@ -70,6 +71,7 @@ import { AIStrategyGenerator } from './AIStrategyGenerator'
 import { StrategyPresets } from './StrategyPresets'
 import { BacktestConfigModal } from './BacktestConfigModal'
 import { BacktestResultModal } from '../backtest/BacktestResultModal'
+import { TriggerSaveModal } from './TriggerSaveModal'
 
 // Hooks
 import { useBacktestAPI } from '@/hooks/use-backtest-api'
@@ -178,6 +180,7 @@ function StrategyBuilderInner() {
   const [showPresets, setShowPresets] = useState(false)
   const [showBacktestModal, setShowBacktestModal] = useState(false)
   const [showResultModal, setShowResultModal] = useState(false)
+  const [showTriggerModal, setShowTriggerModal] = useState(false)
 
   // Custom hooks
   const { isSaving, error: saveError, saveStrategy, loadStrategy } = useStrategyPersistence()
@@ -573,6 +576,16 @@ function StrategyBuilderInner() {
             </button>
             <button
               type="button"
+              onClick={() => setShowTriggerModal(true)}
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg text-purple-400 hover:text-purple-300 transition-colors"
+              aria-label="트리거로 저장"
+              title="전략을 자동 트리거로 저장"
+            >
+              <BoltIcon className="w-4 h-4" />
+              <span className="hidden sm:inline text-sm">트리거</span>
+            </button>
+            <button
+              type="button"
               onClick={handleRun}
               className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors ${
                 isRunning
@@ -843,6 +856,15 @@ function StrategyBuilderInner() {
           clearResult()
         }}
         result={backtestResult?.resultData || null}
+      />
+
+      {/* Trigger Save Modal */}
+      <TriggerSaveModal
+        isOpen={showTriggerModal}
+        onClose={() => setShowTriggerModal(false)}
+        nodes={nodes}
+        edges={edges}
+        strategyName={strategyName}
       />
     </div>
   )
