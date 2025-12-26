@@ -44,7 +44,7 @@ function isValidBidUrl(url: string): boolean {
   }
 }
 
-async function handlePost(request: AuthenticatedRequest) {
+async function handlePost(request: AuthenticatedRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const { url, html, text } = body;
@@ -105,7 +105,7 @@ async function handlePost(request: AuthenticatedRequest) {
         text,
       },
       complexity: 'medium', // Use Sonnet for better extraction accuracy
-      userId: request.user.id,
+      userId: request.userId,
     });
 
     // Validate extracted data
@@ -168,6 +168,5 @@ export const POST = withRateLimit(
   }),
   {
     type: 'ai',
-    requests: 15,
   }
 );

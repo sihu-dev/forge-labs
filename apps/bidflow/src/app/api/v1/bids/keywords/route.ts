@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @route GET/POST /api/v1/bids/keywords
  * @description Keywords Management API

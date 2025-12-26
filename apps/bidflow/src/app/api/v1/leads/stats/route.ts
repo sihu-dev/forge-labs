@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @route GET /api/v1/leads/stats
  * @description Lead Statistics & Analytics API

@@ -11,10 +11,10 @@ import { AIGateway } from '@/lib/ai/gateway';
 
 export const dynamic = 'force-dynamic';
 
-async function handleGet(request: AuthenticatedRequest) {
+async function handleGet(request: AuthenticatedRequest): Promise<NextResponse> {
   try {
     const gateway = new AIGateway();
-    const stats = await gateway.getUsageStats(request.user.id);
+    const stats = await gateway.getUsageStats(request.userId);
 
     return NextResponse.json({
       success: true,

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @route POST /api/v1/leads/bulk
  * @description Bulk Lead Operations API

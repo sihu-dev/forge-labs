@@ -13,7 +13,7 @@ import { AIGateway } from '@/lib/ai/gateway';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30; // 30 seconds timeout
 
-async function handlePost(request: AuthenticatedRequest) {
+async function handlePost(request: AuthenticatedRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const { data, complexity = 'medium' } = body;
@@ -53,7 +53,7 @@ async function handlePost(request: AuthenticatedRequest) {
       task: 'analyze',
       data,
       complexity: complexity as any,
-      userId: request.user.id,
+      userId: request.userId,
       metadata: {
         sessionId: request.headers.get('x-session-id') || undefined,
       },
@@ -125,6 +125,5 @@ export const POST = withRateLimit(
   }),
   {
     type: 'ai',
-    requests: 10, // 10 requests per minute
   }
 );

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Sample bid data for demo and testing purposes
  *

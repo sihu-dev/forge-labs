@@ -13,7 +13,7 @@ import { AIGateway } from '@/lib/ai/gateway';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15;
 
-async function handlePost(request: AuthenticatedRequest) {
+async function handlePost(request: AuthenticatedRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const { request: userRequest, columns, sampleData } = body;
@@ -70,7 +70,7 @@ async function handlePost(request: AuthenticatedRequest) {
         sampleData: sampleData || [],
       },
       complexity: 'simple', // Use Haiku for cost efficiency
-      userId: request.user.id,
+      userId: request.userId,
     });
 
     // Return success response
@@ -134,6 +134,5 @@ export const POST = withRateLimit(
   }),
   {
     type: 'ai',
-    requests: 20, // More requests allowed for formula generation
   }
 );

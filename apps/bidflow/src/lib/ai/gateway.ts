@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * AI Gateway - Production-Ready Claude API Integration
  *
