@@ -468,6 +468,306 @@ export function deserializeStrategy(strategy: IStrategy): {
   }
 
   // nodeGraph가 없으면 전략 정의로부터 재구성
-  // TODO: IStrategy → 노드 그래프 변환 로직
-  return null
+  return reconstructNodeGraph(strategy)
+}
+
+/**
+ * IStrategy로부터 노드 그래프 재구성
+ */
+function reconstructNodeGraph(strategy: IStrategy): {
+  nodes: Node[]
+  edges: Edge[]
+} {
+  const nodes: Node[] = []
+  const edges: Edge[] = []
+  let nodeIdCounter = 0
+  const NODE_SPACING_X = 280
+  const NODE_SPACING_Y = 150
+
+  const createNodeId = () => `node_${++nodeIdCounter}`
+
+  // 1. Trigger 노드 생성 (시작점)
+  const triggerId = createNodeId()
+  const triggerNode: Node = {
+    id: triggerId,
+    type: 'trigger',
+    position: { x: 0, y: NODE_SPACING_Y },
+    data: {
+      label: '진입 트리거',
+      config: extractTriggerConfig(strategy.entryConditions),
+    },
+  }
+  nodes.push(triggerNode)
+
+  // 2. Indicator 노드들 생성
+  const indicators = extractIndicators(strategy.entryConditions)
+  const indicatorNodes: Node[] = []
+
+  indicators.forEach((indicator, index) => {
+    const indicatorId = createNodeId()
+    const indicatorNode: Node = {
+      id: indicatorId,
+      type: 'indicator',
+      position: { x: NODE_SPACING_X, y: index * NODE_SPACING_Y },
+      data: {
+        label: getIndicatorLabel(indicator.type),
+        config: {
+          type: indicator.type,
+          period: indicator.period || 14,
+          source: indicator.source || 'close',
+        },
+      },
+    }
+    nodes.push(indicatorNode)
+    indicatorNodes.push(indicatorNode)
+
+    // Trigger → Indicator 연결
+    edges.push({
+      id: `edge_${triggerId}_${indicatorId}`,
+      source: triggerId,
+      target: indicatorId,
+    })
+  })
+
+  // 3. Condition 노드 생성 (조건 로직)
+  const conditionId = createNodeId()
+  const conditionNode: Node = {
+    id: conditionId,
+    type: 'condition',
+    position: { x: NODE_SPACING_X * 2, y: NODE_SPACING_Y },
+    data: {
+      label: strategy.entryConditions.logic === 'and' ? 'AND 조건' : 'OR 조건',
+      config: {
+        logic: strategy.entryConditions.logic,
+        conditions: extractConditionConfigs(strategy.entryConditions),
+      },
+    },
+  }
+  nodes.push(conditionNode)
+
+  // Indicator → Condition 연결
+  indicatorNodes.forEach((indicatorNode) => {
+    edges.push({
+      id: `edge_${indicatorNode.id}_${conditionId}`,
+      source: indicatorNode.id,
+      target: conditionId,
+    })
+  })
+
+  // 인디케이터가 없으면 Trigger → Condition 직접 연결
+  if (indicatorNodes.length === 0) {
+    edges.push({
+      id: `edge_${triggerId}_${conditionId}`,
+      source: triggerId,
+      target: conditionId,
+    })
+  }
+
+  // 4. Risk 노드 생성 (리스크 관리)
+  let riskId: string | null = null
+  if (strategy.riskManagement) {
+    riskId = createNodeId()
+    const riskNode: Node = {
+      id: riskId,
+      type: 'risk',
+      position: { x: NODE_SPACING_X * 3, y: 0 },
+      data: {
+        label: '리스크 관리',
+        config: {
+          type: 'stop_take',
+          stopLoss: strategy.riskManagement.stopLossPercent,
+          takeProfit: strategy.riskManagement.takeProfitPercent,
+          trailingStop: strategy.riskManagement.trailingStopPercent,
+          maxDrawdown: strategy.riskManagement.dailyMaxLoss,
+        },
+      },
+    }
+    nodes.push(riskNode)
+
+    // Condition → Risk 연결
+    edges.push({
+      id: `edge_${conditionId}_${riskId}`,
+      source: conditionId,
+      target: riskId,
+    })
+  }
+
+  // 5. Action 노드 생성 (매수 액션)
+  const actionId = createNodeId()
+  const actionNode: Node = {
+    id: actionId,
+    type: 'action',
+    position: { x: NODE_SPACING_X * 4, y: NODE_SPACING_Y },
+    data: {
+      label: '매수',
+      config: {
+        type: 'buy',
+        amount: strategy.positionSizing.percent || strategy.positionSizing.amount || 100,
+        amountType: strategy.positionSizing.type === 'fixed_percent' ? 'percent' : 'fixed',
+      },
+    },
+  }
+  nodes.push(actionNode)
+
+  // Risk → Action 또는 Condition → Action 연결
+  if (riskId) {
+    edges.push({
+      id: `edge_${riskId}_${actionId}`,
+      source: riskId,
+      target: actionId,
+    })
+  } else {
+    edges.push({
+      id: `edge_${conditionId}_${actionId}`,
+      source: conditionId,
+      target: actionId,
+    })
+  }
+
+  return { nodes, edges }
+}
+
+/**
+ * 진입 조건에서 트리거 설정 추출
+ */
+function extractTriggerConfig(conditions: IConditionGroup): Record<string, unknown> {
+  // 첫 번째 조건에서 트리거 타입 추론
+  const firstCondition = conditions.conditions[0]
+
+  if (!firstCondition || 'logic' in firstCondition) {
+    return { type: 'price_cross', symbol: 'BTC/USDT', condition: 'above' }
+  }
+
+  const condition = firstCondition as ICondition
+  const leftType = condition.left.type
+
+  if (leftType === 'price') {
+    const operator = condition.operator
+    if (operator === 'cross_above' || operator === 'cross_below') {
+      return {
+        type: 'price_cross',
+        symbol: 'BTC/USDT',
+        condition: operator === 'cross_above' ? 'cross_above' : 'cross_below',
+        value: typeof condition.right === 'number' ? condition.right : 0,
+      }
+    }
+    return {
+      type: operator === 'gt' || operator === 'gte' ? 'price_above' : 'price_below',
+      symbol: 'BTC/USDT',
+      condition: operator,
+      value: typeof condition.right === 'number' ? condition.right : 0,
+    }
+  }
+
+  if (leftType === 'volume') {
+    return {
+      type: 'volume',
+      symbol: 'BTC/USDT',
+      value: typeof condition.right === 'number' ? condition.right : 0,
+    }
+  }
+
+  return { type: 'price_cross', symbol: 'BTC/USDT', condition: 'above' }
+}
+
+/**
+ * 조건 그룹에서 인디케이터 추출
+ */
+function extractIndicators(conditions: IConditionGroup): IIndicatorConfig[] {
+  const indicators: IIndicatorConfig[] = []
+  const seenTypes = new Set<string>()
+
+  function traverse(group: IConditionGroup | ICondition) {
+    if ('logic' in group) {
+      for (const cond of group.conditions) {
+        traverse(cond)
+      }
+    } else {
+      const condition = group as ICondition
+      // 가격/볼륨이 아닌 인디케이터만 추출
+      if (condition.left.type !== 'price' && condition.left.type !== 'volume') {
+        const key = `${condition.left.type}_${condition.left.period || 0}`
+        if (!seenTypes.has(key)) {
+          seenTypes.add(key)
+          indicators.push(condition.left)
+        }
+      }
+      // 우변이 인디케이터인 경우
+      if (typeof condition.right === 'object' && condition.right.type !== 'price' && condition.right.type !== 'volume') {
+        const rightIndicator = condition.right as IIndicatorConfig
+        const key = `${rightIndicator.type}_${rightIndicator.period || 0}`
+        if (!seenTypes.has(key)) {
+          seenTypes.add(key)
+          indicators.push(rightIndicator)
+        }
+      }
+    }
+  }
+
+  traverse(conditions)
+  return indicators
+}
+
+/**
+ * 조건 그룹에서 조건 설정 추출
+ */
+function extractConditionConfigs(conditions: IConditionGroup): Array<{
+  left: string
+  operator: string
+  right: number
+}> {
+  const configs: Array<{ left: string; operator: string; right: number }> = []
+
+  function traverse(group: IConditionGroup | ICondition) {
+    if ('logic' in group) {
+      for (const cond of group.conditions) {
+        traverse(cond)
+      }
+    } else {
+      const condition = group as ICondition
+      configs.push({
+        left: condition.left.type,
+        operator: reverseMapOperator(condition.operator),
+        right: typeof condition.right === 'number' ? condition.right : 0,
+      })
+    }
+  }
+
+  traverse(conditions)
+  return configs
+}
+
+/**
+ * 연산자 역매핑 (ComparisonOperator → 표시용 문자열)
+ */
+function reverseMapOperator(operator: ComparisonOperator): string {
+  const mapping: Record<ComparisonOperator, string> = {
+    gt: '>',
+    gte: '>=',
+    lt: '<',
+    lte: '<=',
+    eq: '==',
+    neq: '!=',
+    cross_above: 'cross_above',
+    cross_below: 'cross_below',
+  }
+  return mapping[operator] || '>'
+}
+
+/**
+ * 인디케이터 타입에서 레이블 생성
+ */
+function getIndicatorLabel(type: IndicatorType): string {
+  const labels: Record<IndicatorType, string> = {
+    price: '가격',
+    sma: 'SMA',
+    ema: 'EMA',
+    rsi: 'RSI',
+    macd: 'MACD',
+    bollinger: '볼린저 밴드',
+    atr: 'ATR',
+    volume: '거래량',
+    vwap: 'VWAP',
+  }
+  return labels[type] || type.toUpperCase()
 }
