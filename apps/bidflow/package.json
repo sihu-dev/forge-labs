@@ -17,6 +17,7 @@
     "db:reset": "supabase db reset"
   },
   "dependencies": {
+    "@forge/ai-router": "workspace:*",
     "@forge/crm": "workspace:*",
     "@forge/integrations": "workspace:*",
     "@forge/types": "workspace:*",
