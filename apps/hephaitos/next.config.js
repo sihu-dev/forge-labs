@@ -23,7 +23,7 @@ const nextConfig = {
     // Enable optimizations (tree-shake specific packages)
     optimizePackageImports: [
       'lucide-react',
-      'recharts',
+      'lightweight-charts',
       'framer-motion',
       '@supabase/supabase-js',
       'zustand',
