@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import type { Node, Edge } from 'reactflow'
+import type { Timeframe } from '@hephaitos/types'
 import { createClient } from '@/lib/supabase/server'
 import { serializeStrategy } from '@/lib/strategy-serializer'
 import { getBacktestCost, useCredits } from '@/lib/credits/service'
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
       endDate: body.config.endDate,
       feeRate: body.config.feeRate || 0.1,
       slippage: body.config.slippage || 0.05,
-      timeframe,
+      timeframe: timeframe as Timeframe,
       symbols: [symbol],
       currency: 'USD',
       useMargin: false,

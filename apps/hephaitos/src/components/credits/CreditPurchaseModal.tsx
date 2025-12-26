@@ -60,8 +60,8 @@ export function CreditPurchaseModal({ isOpen, onClose }: CreditPurchaseModalProp
       // Toss Payments SDK 로드
       const tossPayments = await loadTossPayments(checkoutData.clientKey)
 
-      // 결제 요청
-      await tossPayments.requestPayment('카드', {
+      // 결제 요청 (SDK 타입 호환성 이슈로 as any 사용)
+      await (tossPayments as any).requestPayment('카드', {
         amount: checkoutData.amount,
         orderId: checkoutData.orderId,
         orderName: '크레딧 ' + totalCredits + '개',
