@@ -47,36 +47,36 @@ interface FormulaBarProps {
   isExecuting?: boolean;
 }
 
-// 스마트 함수 목록 (모노크롬)
+// AI 스마트 함수 목록 (v2 - @forge/ai-router 연동)
 const SMART_FUNCTIONS = [
   {
-    name: 'SUMMARY',
-    description: '입찰 공고를 3줄로 요약',
-    example: '=SUMMARY()',
+    name: 'AI_SUMMARY',
+    description: '입찰 공고를 2-3문장으로 요약',
+    example: '=AI_SUMMARY()',
     icon: FileText,
     color: 'text-neutral-700',
     bg: 'bg-neutral-100',
   },
   {
-    name: 'SCORE',
-    description: '낙찰 확률 예측 (0-100%)',
-    example: '=SCORE()',
+    name: 'AI_SCORE',
+    description: '낙찰 가능성 점수 (0-100)',
+    example: '=AI_SCORE()',
     icon: TrendingUp,
     color: 'text-neutral-700',
     bg: 'bg-neutral-100',
   },
   {
-    name: 'MATCH',
-    description: '자사 제품 매칭 점수',
-    example: '=MATCH()',
+    name: 'AI_MATCH',
+    description: '가장 적합한 제품 추천',
+    example: '=AI_MATCH()',
     icon: Target,
     color: 'text-neutral-700',
     bg: 'bg-neutral-100',
   },
   {
-    name: 'ASK',
-    description: '자유 질문 (커스텀 프롬프트)',
-    example: '=ASK("핵심 요구사항은?")',
+    name: 'AI_KEYWORDS',
+    description: '핵심 키워드 3-5개 추출',
+    example: '=AI_KEYWORDS()',
     icon: MessageSquare,
     color: 'text-neutral-700',
     bg: 'bg-neutral-100',
@@ -142,7 +142,7 @@ export function FormulaBar({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const isSmartFormula = value.startsWith('=SUMMARY') || value.startsWith('=SCORE') || value.startsWith('=MATCH') || value.startsWith('=ASK');
+  const isSmartFormula = value.startsWith('=AI_');
 
   return (
     <div className="border-b bg-white">
@@ -361,7 +361,7 @@ export function FormulaBar({
               <div>
                 <p className="text-xs font-medium text-neutral-700 mb-1">사용 팁</p>
                 <p className="text-xs text-neutral-600">
-                  <code className="px-1.5 py-0.5 bg-white rounded font-mono">=SUMMARY()</code>
+                  <code className="px-1.5 py-0.5 bg-white rounded font-mono">=AI_SUMMARY()</code>
                   를 입력하고 Enter를 누르면 선택된 셀의 공고를 자동으로 요약합니다.
                 </p>
               </div>
