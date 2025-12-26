@@ -18,13 +18,16 @@ interface CreateTransactionParams {
   metadata?: Record<string, any>
 }
 
+// Type helper for Supabase queries (workaround for complex Database type inference)
+type SupabaseAny = ReturnType<typeof createClient> extends Promise<infer T> ? T : never
+
 /**
  * 사용자의 크레딧 잔액 조회
  */
 export async function getCreditBalance(userId: string): Promise<number> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('credits')
     .select('balance')
     .eq('user_id', userId)
@@ -39,7 +42,7 @@ export async function getCreditBalance(userId: string): Promise<number> {
     throw error
   }
 
-  return data.balance
+  return (data as { balance: number }).balance
 }
 
 /**
@@ -50,7 +53,7 @@ export async function initializeCredits(userId: string): Promise<void> {
   const welcomeBonus = parseInt(process.env.NEXT_PUBLIC_WELCOME_BONUS || '50', 10)
 
   // 크레딧 레코드 생성
-  const { error: creditError } = await supabase
+  const { error: creditError } = await (supabase as any)
     .from('credits')
     .insert({
       user_id: userId,
@@ -90,7 +93,7 @@ export async function useCredits(
   // 잔액 차감
   const newBalance = currentBalance - amount
 
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from('credits')
     .update({ balance: newBalance })
     .eq('user_id', userId)
@@ -126,7 +129,7 @@ export async function addCredits(
   const newBalance = currentBalance + amount
 
   // 잔액 업데이트
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from('credits')
     .update({ balance: newBalance })
     .eq('user_id', userId)
@@ -151,7 +154,7 @@ export async function addCredits(
 async function createTransaction(params: CreateTransactionParams): Promise<void> {
   const supabase = await createClient()
 
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from('credit_transactions')
     .insert({
       user_id: params.userId,

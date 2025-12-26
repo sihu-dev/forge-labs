@@ -1242,15 +1242,91 @@ export interface Database {
 
       // Mirroring Tables
       mirror_subscriptions: {
-        Row: { id: string; user_id: string; celebrity_id: string; status: string; created_at: string; updated_at: string }
-        Insert: { id?: string; user_id: string; celebrity_id: string; status?: string; created_at?: string; updated_at?: string }
-        Update: { status?: string; updated_at?: string }
+        Row: {
+          id: string
+          user_id: string
+          celebrity_id: string
+          celebrity_name: string
+          investment_amount: number
+          auto_execute: boolean
+          min_trade_value: number
+          max_trade_value: number
+          exclude_symbols: string[]
+          notify_on_trade: boolean
+          notify_methods: ('email' | 'push' | 'inapp')[]
+          is_active: boolean
+          status: 'active' | 'paused' | 'cancelled'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          celebrity_id: string
+          celebrity_name: string
+          investment_amount?: number
+          auto_execute?: boolean
+          min_trade_value?: number
+          max_trade_value?: number
+          exclude_symbols?: string[]
+          notify_on_trade?: boolean
+          notify_methods?: ('email' | 'push' | 'inapp')[]
+          is_active?: boolean
+          status?: 'active' | 'paused' | 'cancelled'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          celebrity_name?: string
+          investment_amount?: number
+          auto_execute?: boolean
+          min_trade_value?: number
+          max_trade_value?: number
+          exclude_symbols?: string[]
+          notify_on_trade?: boolean
+          notify_methods?: ('email' | 'push' | 'inapp')[]
+          is_active?: boolean
+          status?: 'active' | 'paused' | 'cancelled'
+          updated_at?: string
+        }
       }
 
       mirror_orders: {
-        Row: { id: string; user_id: string; subscription_id: string; order_id: string; symbol: string; side: string; quantity: number; price: number; status: string; created_at: string }
-        Insert: { id?: string; user_id: string; subscription_id: string; order_id?: string; symbol: string; side: string; quantity: number; price?: number; status?: string; created_at?: string }
-        Update: { status?: string }
+        Row: {
+          id: string
+          user_id: string
+          subscription_id: string
+          order_id: string
+          symbol: string
+          side: 'buy' | 'sell'
+          quantity: number
+          price: number
+          suggested_value: number
+          status: 'pending' | 'approved' | 'rejected' | 'executed'
+          rejection_reason: string | null
+          executed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          subscription_id: string
+          order_id?: string
+          symbol: string
+          side: 'buy' | 'sell'
+          quantity: number
+          price?: number
+          suggested_value?: number
+          status?: 'pending' | 'approved' | 'rejected' | 'executed'
+          rejection_reason?: string | null
+          executed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          status?: 'pending' | 'approved' | 'rejected' | 'executed'
+          rejection_reason?: string | null
+          executed_at?: string | null
+        }
       }
 
       // Trading/Leverage Tables
@@ -1892,6 +1968,10 @@ export interface Database {
       trade_status: 'pending' | 'filled' | 'partial' | 'cancelled' | 'rejected'
       notification_type: 'signal' | 'trade' | 'alert' | 'system'
       user_plan: 'free' | 'pro' | 'enterprise'
+    }
+
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }
