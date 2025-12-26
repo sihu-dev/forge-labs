@@ -1167,6 +1167,534 @@ export interface Database {
         }
       }
 
+      // ===========================================
+      // Additional Tables (auto-generated stubs)
+      // ===========================================
+
+      // Workflows (alias for admin automation)
+      workflows: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          webhook_url: string | null
+          n8n_workflow_id: string | null
+          trigger_type: string
+          schedule: string | null
+          status: 'active' | 'paused' | 'draft'
+          category: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          webhook_url?: string | null
+          n8n_workflow_id?: string | null
+          trigger_type?: string
+          schedule?: string | null
+          status?: 'active' | 'paused' | 'draft'
+          category?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          description?: string | null
+          webhook_url?: string | null
+          n8n_workflow_id?: string | null
+          trigger_type?: string
+          schedule?: string | null
+          status?: 'active' | 'paused' | 'draft'
+          category?: string | null
+          is_active?: boolean
+          updated_at?: string
+        }
+      }
+
+      // Learning/Education Tables
+      learning_progress: {
+        Row: { id: string; user_id: string; topic: string; progress: number; completed: boolean; created_at: string; updated_at: string }
+        Insert: { id?: string; user_id: string; topic: string; progress?: number; completed?: boolean; created_at?: string }
+        Update: { progress?: number; completed?: boolean; updated_at?: string }
+      }
+
+      tutor_history: {
+        Row: { id: string; user_id: string; question: string; answer: string; topic: string | null; created_at: string }
+        Insert: { id?: string; user_id: string; question: string; answer: string; topic?: string | null; created_at?: string }
+        Update: {}
+      }
+
+      disclaimer_versions: {
+        Row: { id: string; version: string; content: string; effective_date: string; created_at: string }
+        Insert: { id?: string; version: string; content: string; effective_date: string; created_at?: string }
+        Update: { version?: string; content?: string; effective_date?: string }
+      }
+
+      user_consents: {
+        Row: { id: string; user_id: string; version_id: string; consented_at: string; ip_address: string | null }
+        Insert: { id?: string; user_id: string; version_id: string; consented_at?: string; ip_address?: string | null }
+        Update: {}
+      }
+
+      // Mirroring Tables
+      mirror_subscriptions: {
+        Row: { id: string; user_id: string; celebrity_id: string; status: string; created_at: string; updated_at: string }
+        Insert: { id?: string; user_id: string; celebrity_id: string; status?: string; created_at?: string; updated_at?: string }
+        Update: { status?: string; updated_at?: string }
+      }
+
+      mirror_orders: {
+        Row: { id: string; user_id: string; subscription_id: string; order_id: string; symbol: string; side: string; quantity: number; price: number; status: string; created_at: string }
+        Insert: { id?: string; user_id: string; subscription_id: string; order_id?: string; symbol: string; side: string; quantity: number; price?: number; status?: string; created_at?: string }
+        Update: { status?: string }
+      }
+
+      // Trading/Leverage Tables
+      leverage_settings: {
+        Row: { id: string; user_id: string; symbol: string; leverage: number; created_at: string; updated_at: string }
+        Insert: { id?: string; user_id: string; symbol: string; leverage: number; created_at?: string; updated_at?: string }
+        Update: { leverage?: number; updated_at?: string }
+      }
+
+      margin_accounts: {
+        Row: { id: string; user_id: string; balance: number; margin_used: number; created_at: string }
+        Insert: { id?: string; user_id: string; balance?: number; margin_used?: number; created_at?: string }
+        Update: { balance?: number; margin_used?: number }
+      }
+
+      margin_positions: {
+        Row: { id: string; user_id: string; symbol: string; side: string; size: number; entry_price: number; liquidation_price: number | null; created_at: string }
+        Insert: { id?: string; user_id: string; symbol: string; side: string; size: number; entry_price: number; liquidation_price?: number | null; created_at?: string }
+        Update: { size?: number; liquidation_price?: number | null }
+      }
+
+      liquidation_events: {
+        Row: { id: string; user_id: string; position_id: string; liquidation_price: number; amount: number; created_at: string }
+        Insert: { id?: string; user_id: string; position_id: string; liquidation_price: number; amount: number; created_at?: string }
+        Update: {}
+      }
+
+      // Mentor/Course Tables
+      mentor_profiles: {
+        Row: { id: string; user_id: string; display_name: string; bio: string | null; specialization: string[] | null; rating: number; review_count: number; is_verified: boolean; created_at: string }
+        Insert: { id?: string; user_id: string; display_name: string; bio?: string | null; specialization?: string[] | null; rating?: number; review_count?: number; is_verified?: boolean; created_at?: string }
+        Update: { display_name?: string; bio?: string | null; specialization?: string[] | null; rating?: number; review_count?: number; is_verified?: boolean }
+      }
+
+      enrollments: {
+        Row: { id: string; user_id: string; course_id: string; status: string; enrolled_at: string; completed_at: string | null }
+        Insert: { id?: string; user_id: string; course_id: string; status?: string; enrolled_at?: string; completed_at?: string | null }
+        Update: { status?: string; completed_at?: string | null }
+      }
+
+      courses: {
+        Row: { id: string; mentor_id: string; title: string; description: string | null; price: number; is_active: boolean; created_at: string }
+        Insert: { id?: string; mentor_id: string; title: string; description?: string | null; price?: number; is_active?: boolean; created_at?: string }
+        Update: { title?: string; description?: string | null; price?: number; is_active?: boolean }
+      }
+
+      transactions: {
+        Row: { id: string; user_id: string; type: string; amount: number; description: string | null; created_at: string }
+        Insert: { id?: string; user_id: string; type: string; amount: number; description?: string | null; created_at?: string }
+        Update: {}
+      }
+
+      reviews: {
+        Row: { id: string; user_id: string; target_id: string; target_type: string; rating: number; comment: string | null; created_at: string }
+        Insert: { id?: string; user_id: string; target_id: string; target_type: string; rating: number; comment?: string | null; created_at?: string }
+        Update: { rating?: number; comment?: string | null }
+      }
+
+      referral_commissions: {
+        Row: { id: string; referrer_id: string; referee_id: string; amount: number; status: string; created_at: string }
+        Insert: { id?: string; referrer_id: string; referee_id: string; amount: number; status?: string; created_at?: string }
+        Update: { status?: string }
+      }
+
+      payouts: {
+        Row: { id: string; user_id: string; amount: number; status: string; payout_method: string | null; created_at: string; processed_at: string | null }
+        Insert: { id?: string; user_id: string; amount: number; status?: string; payout_method?: string | null; created_at?: string; processed_at?: string | null }
+        Update: { status?: string; processed_at?: string | null }
+      }
+
+      // Portfolio/Position Tables
+      portfolios: {
+        Row: { id: string; user_id: string; name: string; total_value: number; created_at: string; updated_at: string }
+        Insert: { id?: string; user_id: string; name: string; total_value?: number; created_at?: string; updated_at?: string }
+        Update: { name?: string; total_value?: number; updated_at?: string }
+      }
+
+      positions: {
+        Row: { id: string; user_id: string; portfolio_id: string | null; symbol: string; quantity: number; avg_price: number; current_price: number | null; pnl: number | null; created_at: string }
+        Insert: { id?: string; user_id: string; portfolio_id?: string | null; symbol: string; quantity: number; avg_price: number; current_price?: number | null; pnl?: number | null; created_at?: string }
+        Update: { quantity?: number; avg_price?: number; current_price?: number | null; pnl?: number | null }
+      }
+
+      // User Profile Variants
+      user_profiles: {
+        Row: { id: string; user_id: string; display_name: string | null; bio: string | null; avatar_url: string | null; preferences: Json | null; created_at: string; updated_at: string }
+        Insert: { id?: string; user_id: string; display_name?: string | null; bio?: string | null; avatar_url?: string | null; preferences?: Json | null; created_at?: string; updated_at?: string }
+        Update: { display_name?: string | null; bio?: string | null; avatar_url?: string | null; preferences?: Json | null; updated_at?: string }
+      }
+
+      // Promotion Tables
+      coupons: {
+        Row: { id: string; code: string; discount_type: string; discount_value: number; max_uses: number | null; uses: number; expires_at: string | null; is_active: boolean; created_at: string }
+        Insert: { id?: string; code: string; discount_type: string; discount_value: number; max_uses?: number | null; uses?: number; expires_at?: string | null; is_active?: boolean; created_at?: string }
+        Update: { code?: string; discount_type?: string; discount_value?: number; max_uses?: number | null; uses?: number; expires_at?: string | null; is_active?: boolean }
+      }
+
+      coupon_usages: {
+        Row: { id: string; coupon_id: string; user_id: string; used_at: string }
+        Insert: { id?: string; coupon_id: string; user_id: string; used_at?: string }
+        Update: {}
+      }
+
+      referral_codes: {
+        Row: { id: string; user_id: string; code: string; uses: number; created_at: string }
+        Insert: { id?: string; user_id: string; code: string; uses?: number; created_at?: string }
+        Update: { uses?: number }
+      }
+
+      onboarding_progress: {
+        Row: { id: string; user_id: string; step: string; completed: boolean; completed_at: string | null; created_at: string }
+        Insert: { id?: string; user_id: string; step: string; completed?: boolean; completed_at?: string | null; created_at?: string }
+        Update: { completed?: boolean; completed_at?: string | null }
+      }
+
+      // Exchange/Broker Tables
+      broker_credentials: {
+        Row: { id: string; user_id: string; broker: string; api_key: string; api_secret: string; is_active: boolean; created_at: string }
+        Insert: { id?: string; user_id: string; broker: string; api_key: string; api_secret: string; is_active?: boolean; created_at?: string }
+        Update: { api_key?: string; api_secret?: string; is_active?: boolean }
+      }
+
+      exchange_credentials: {
+        Row: { id: string; user_id: string; exchange: string; api_key: string; api_secret: string; is_active: boolean; created_at: string }
+        Insert: { id?: string; user_id: string; exchange: string; api_key: string; api_secret: string; is_active?: boolean; created_at?: string }
+        Update: { api_key?: string; api_secret?: string; is_active?: boolean }
+      }
+
+      exchange_api_keys: {
+        Row: { id: string; user_id: string; exchange: string; api_key: string; api_secret: string; passphrase: string | null; is_active: boolean; created_at: string; updated_at: string }
+        Insert: { id?: string; user_id: string; exchange: string; api_key: string; api_secret: string; passphrase?: string | null; is_active?: boolean; created_at?: string; updated_at?: string }
+        Update: { api_key?: string; api_secret?: string; passphrase?: string | null; is_active?: boolean; updated_at?: string }
+      }
+
+      simulation_accounts: {
+        Row: { id: string; user_id: string; name: string; balance: number; initial_balance: number; created_at: string }
+        Insert: { id?: string; user_id: string; name: string; balance?: number; initial_balance?: number; created_at?: string }
+        Update: { name?: string; balance?: number }
+      }
+
+      // Coaching Tables
+      mentor_availability: {
+        Row: { id: string; mentor_id: string; day_of_week: number; start_time: string; end_time: string; is_available: boolean }
+        Insert: { id?: string; mentor_id: string; day_of_week: number; start_time: string; end_time: string; is_available?: boolean }
+        Update: { start_time?: string; end_time?: string; is_available?: boolean }
+      }
+
+      coaching_sessions: {
+        Row: { id: string; mentor_id: string; student_id: string; scheduled_at: string; duration_minutes: number; status: string; notes: string | null; created_at: string }
+        Insert: { id?: string; mentor_id: string; student_id: string; scheduled_at: string; duration_minutes?: number; status?: string; notes?: string | null; created_at?: string }
+        Update: { scheduled_at?: string; duration_minutes?: number; status?: string; notes?: string | null }
+      }
+
+      mentor_dashboard_stats: {
+        Row: { mentor_id: string; total_sessions: number; total_students: number; avg_rating: number; total_earnings: number }
+        Insert: { mentor_id: string; total_sessions?: number; total_students?: number; avg_rating?: number; total_earnings?: number }
+        Update: {}
+      }
+
+      coaching_platform_stats: {
+        Row: { id: string; total_mentors: number; total_sessions: number; avg_session_rating: number }
+        Insert: { id?: string; total_mentors?: number; total_sessions?: number; avg_session_rating?: number }
+        Update: {}
+      }
+
+      coaching_reviews: {
+        Row: { id: string; session_id: string; reviewer_id: string; rating: number; comment: string | null; created_at: string }
+        Insert: { id?: string; session_id: string; reviewer_id: string; rating: number; comment?: string | null; created_at?: string }
+        Update: { rating?: number; comment?: string | null }
+      }
+
+      session_notes: {
+        Row: { id: string; session_id: string; author_id: string; content: string; created_at: string }
+        Insert: { id?: string; session_id: string; author_id: string; content: string; created_at?: string }
+        Update: { content?: string }
+      }
+
+      // Status/Monitoring Tables
+      current_service_status: {
+        Row: { id: string; service_name: string; status: string; last_checked: string }
+        Insert: { id?: string; service_name: string; status: string; last_checked?: string }
+        Update: { status?: string; last_checked?: string }
+      }
+
+      status_checks: {
+        Row: { id: string; service_name: string; status: string; response_time_ms: number | null; checked_at: string }
+        Insert: { id?: string; service_name: string; status: string; response_time_ms?: number | null; checked_at?: string }
+        Update: { status?: string; response_time_ms?: number | null }
+      }
+
+      status_incidents: {
+        Row: { id: string; title: string; description: string; severity: string; status: string; started_at: string; resolved_at: string | null; created_at: string }
+        Insert: { id?: string; title: string; description: string; severity: string; status?: string; started_at?: string; resolved_at?: string | null; created_at?: string }
+        Update: { title?: string; description?: string; severity?: string; status?: string; resolved_at?: string | null }
+      }
+
+      status_maintenance: {
+        Row: { id: string; title: string; description: string; scheduled_start: string; scheduled_end: string; status: string; created_at: string }
+        Insert: { id?: string; title: string; description: string; scheduled_start: string; scheduled_end: string; status?: string; created_at?: string }
+        Update: { title?: string; description?: string; scheduled_start?: string; scheduled_end?: string; status?: string }
+      }
+
+      status_incident_updates: {
+        Row: { id: string; incident_id: string; message: string; status: string; created_at: string }
+        Insert: { id?: string; incident_id: string; message: string; status?: string; created_at?: string }
+        Update: { message?: string; status?: string }
+      }
+
+      status_subscribers: {
+        Row: { id: string; email: string; subscribed_at: string }
+        Insert: { id?: string; email: string; subscribed_at?: string }
+        Update: { email?: string }
+      }
+
+      beta_invite_codes: {
+        Row: { id: string; code: string; uses: number; max_uses: number | null; expires_at: string | null; created_at: string }
+        Insert: { id?: string; code: string; uses?: number; max_uses?: number | null; expires_at?: string | null; created_at?: string }
+        Update: { uses?: number; max_uses?: number | null; expires_at?: string | null }
+      }
+
+      // Marketplace Tables
+      strategy_listings: {
+        Row: { id: string; strategy_id: string; creator_id: string; title: string; description: string | null; price: number; is_active: boolean; downloads: number; rating: number; created_at: string }
+        Insert: { id?: string; strategy_id: string; creator_id: string; title: string; description?: string | null; price?: number; is_active?: boolean; downloads?: number; rating?: number; created_at?: string }
+        Update: { title?: string; description?: string | null; price?: number; is_active?: boolean; downloads?: number; rating?: number }
+      }
+
+      strategy_reviews: {
+        Row: { id: string; listing_id: string; reviewer_id: string; rating: number; comment: string | null; created_at: string }
+        Insert: { id?: string; listing_id: string; reviewer_id: string; rating: number; comment?: string | null; created_at?: string }
+        Update: { rating?: number; comment?: string | null }
+      }
+
+      category_stats: {
+        Row: { id: string; category: string; count: number; avg_rating: number }
+        Insert: { id?: string; category: string; count?: number; avg_rating?: number }
+        Update: { count?: number; avg_rating?: number }
+      }
+
+      marketplace_stats: {
+        Row: { id: string; total_listings: number; total_downloads: number; total_revenue: number }
+        Insert: { id?: string; total_listings?: number; total_downloads?: number; total_revenue?: number }
+        Update: {}
+      }
+
+      creator_leaderboard: {
+        Row: { creator_id: string; total_sales: number; total_revenue: number; avg_rating: number; rank: number }
+        Insert: { creator_id: string; total_sales?: number; total_revenue?: number; avg_rating?: number; rank?: number }
+        Update: {}
+      }
+
+      creator_profiles: {
+        Row: { id: string; user_id: string; display_name: string; bio: string | null; avatar_url: string | null; follower_count: number; created_at: string }
+        Insert: { id?: string; user_id: string; display_name: string; bio?: string | null; avatar_url?: string | null; follower_count?: number; created_at?: string }
+        Update: { display_name?: string; bio?: string | null; avatar_url?: string | null; follower_count?: number }
+      }
+
+      strategy_bookmarks: {
+        Row: { id: string; user_id: string; listing_id: string; created_at: string }
+        Insert: { id?: string; user_id: string; listing_id: string; created_at?: string }
+        Update: {}
+      }
+
+      creator_followers: {
+        Row: { id: string; follower_id: string; creator_id: string; created_at: string }
+        Insert: { id?: string; follower_id: string; creator_id: string; created_at?: string }
+        Update: {}
+      }
+
+      // Experiment/Pricing Tables
+      pricing_experiments: {
+        Row: { id: string; name: string; description: string | null; status: string; start_date: string | null; end_date: string | null; created_at: string }
+        Insert: { id?: string; name: string; description?: string | null; status?: string; start_date?: string | null; end_date?: string | null; created_at?: string }
+        Update: { name?: string; description?: string | null; status?: string; start_date?: string | null; end_date?: string | null }
+      }
+
+      experiment_results: {
+        Row: { id: string; experiment_id: string; variant_id: string; metric: string; value: number; recorded_at: string }
+        Insert: { id?: string; experiment_id: string; variant_id: string; metric: string; value: number; recorded_at?: string }
+        Update: { metric?: string; value?: number }
+      }
+
+      experiment_assignments: {
+        Row: { id: string; experiment_id: string; user_id: string; variant_id: string; assigned_at: string }
+        Insert: { id?: string; experiment_id: string; user_id: string; variant_id: string; assigned_at?: string }
+        Update: {}
+      }
+
+      performance_pricing_accounts: {
+        Row: { id: string; user_id: string; balance: number; profit_share_rate: number; created_at: string }
+        Insert: { id?: string; user_id: string; balance?: number; profit_share_rate?: number; created_at?: string }
+        Update: { balance?: number; profit_share_rate?: number }
+      }
+
+      performance_settlements: {
+        Row: { id: string; account_id: string; period_start: string; period_end: string; profit: number; fee: number; status: string; created_at: string }
+        Insert: { id?: string; account_id: string; period_start: string; period_end: string; profit: number; fee: number; status?: string; created_at?: string }
+        Update: { status?: string }
+      }
+
+      experiment_variants: {
+        Row: { id: string; experiment_id: string; name: string; weight: number; config: Json | null }
+        Insert: { id?: string; experiment_id: string; name: string; weight?: number; config?: Json | null }
+        Update: { name?: string; weight?: number; config?: Json | null }
+      }
+
+      experiment_conversions: {
+        Row: { id: string; assignment_id: string; event_type: string; value: number | null; converted_at: string }
+        Insert: { id?: string; assignment_id: string; event_type: string; value?: number | null; converted_at?: string }
+        Update: {}
+      }
+
+      // Webhook Tables
+      webhook_events: {
+        Row: { id: string; event_type: string; payload: Json; status: string; attempts: number; created_at: string; processed_at: string | null }
+        Insert: { id?: string; event_type: string; payload: Json; status?: string; attempts?: number; created_at?: string; processed_at?: string | null }
+        Update: { status?: string; attempts?: number; processed_at?: string | null }
+      }
+
+      webhook_retries: {
+        Row: { id: string; event_id: string; attempt: number; error: string | null; attempted_at: string }
+        Insert: { id?: string; event_id: string; attempt: number; error?: string | null; attempted_at?: string }
+        Update: {}
+      }
+
+      payment_webhook_events: {
+        Row: { id: string; event_id: string; event_type: string; payload: Json; status: string; attempts: number; created_at: string; processed_at: string | null }
+        Insert: { id?: string; event_id: string; event_type: string; payload: Json; status?: string; attempts?: number; created_at?: string; processed_at?: string | null }
+        Update: { status?: string; attempts?: number; processed_at?: string | null }
+      }
+
+      // Investor Relations Tables
+      investor_metrics_snapshots: {
+        Row: { id: string; date: string; mrr: number; arr: number; users: number; churn_rate: number; ltv: number; cac: number; created_at: string }
+        Insert: { id?: string; date: string; mrr?: number; arr?: number; users?: number; churn_rate?: number; ltv?: number; cac?: number; created_at?: string }
+        Update: { mrr?: number; arr?: number; users?: number; churn_rate?: number; ltv?: number; cac?: number }
+      }
+
+      funding_rounds: {
+        Row: { id: string; name: string; target_amount: number; raised_amount: number; status: string; close_date: string | null; created_at: string }
+        Insert: { id?: string; name: string; target_amount: number; raised_amount?: number; status?: string; close_date?: string | null; created_at?: string }
+        Update: { name?: string; target_amount?: number; raised_amount?: number; status?: string; close_date?: string | null }
+      }
+
+      investors: {
+        Row: { id: string; name: string; type: string; contact_email: string | null; status: string; invested_amount: number; created_at: string }
+        Insert: { id?: string; name: string; type: string; contact_email?: string | null; status?: string; invested_amount?: number; created_at?: string }
+        Update: { name?: string; type?: string; contact_email?: string | null; status?: string; invested_amount?: number }
+      }
+
+      fundraising_pipeline: {
+        Row: { id: string; investor_id: string; round_id: string; stage: string; probability: number; expected_amount: number; created_at: string }
+        Insert: { id?: string; investor_id: string; round_id: string; stage: string; probability?: number; expected_amount?: number; created_at?: string }
+        Update: { stage?: string; probability?: number; expected_amount?: number }
+      }
+
+      investor_meetings: {
+        Row: { id: string; investor_id: string; scheduled_at: string; duration_minutes: number; status: string; notes: string | null; created_at: string }
+        Insert: { id?: string; investor_id: string; scheduled_at: string; duration_minutes?: number; status?: string; notes?: string | null; created_at?: string }
+        Update: { scheduled_at?: string; duration_minutes?: number; status?: string; notes?: string | null }
+      }
+
+      kpi_targets: {
+        Row: { id: string; metric: string; target_value: number; current_value: number; period: string; created_at: string }
+        Insert: { id?: string; metric: string; target_value: number; current_value?: number; period: string; created_at?: string }
+        Update: { target_value?: number; current_value?: number }
+      }
+
+      competitor_analysis: {
+        Row: { id: string; competitor_name: string; category: string; data: Json; updated_at: string }
+        Insert: { id?: string; competitor_name: string; category: string; data: Json; updated_at?: string }
+        Update: { competitor_name?: string; category?: string; data?: Json; updated_at?: string }
+      }
+
+      // Strategy Insights Tables
+      strategy_insights: {
+        Row: { id: string; strategy_id: string; insight_type: string; data: Json; created_at: string }
+        Insert: { id?: string; strategy_id: string; insight_type: string; data: Json; created_at?: string }
+        Update: { insight_type?: string; data?: Json }
+      }
+
+      strategy_type_performance: {
+        Row: { id: string; strategy_type: string; avg_return: number; win_rate: number; sample_size: number; updated_at: string }
+        Insert: { id?: string; strategy_type: string; avg_return?: number; win_rate?: number; sample_size?: number; updated_at?: string }
+        Update: { avg_return?: number; win_rate?: number; sample_size?: number; updated_at?: string }
+      }
+
+      strategy_tags: {
+        Row: { id: string; strategy_id: string; tag: string; created_at: string }
+        Insert: { id?: string; strategy_id: string; tag: string; created_at?: string }
+        Update: { tag?: string }
+      }
+
+      market_conditions: {
+        Row: { id: string; date: string; condition: string; volatility: number; trend: string; data: Json | null }
+        Insert: { id?: string; date: string; condition: string; volatility?: number; trend: string; data?: Json | null }
+        Update: { condition?: string; volatility?: number; trend?: string; data?: Json | null }
+      }
+
+      strategy_executions: {
+        Row: { id: string; strategy_id: string; user_id: string; started_at: string; ended_at: string | null; status: string; pnl: number | null }
+        Insert: { id?: string; strategy_id: string; user_id: string; started_at?: string; ended_at?: string | null; status?: string; pnl?: number | null }
+        Update: { ended_at?: string | null; status?: string; pnl?: number | null }
+      }
+
+      // Feature/Pricing Tables
+      feature_flags: {
+        Row: { id: string; name: string; enabled: boolean; rollout_percentage: number; created_at: string }
+        Insert: { id?: string; name: string; enabled?: boolean; rollout_percentage?: number; created_at?: string }
+        Update: { enabled?: boolean; rollout_percentage?: number }
+      }
+
+      pricing_display: {
+        Row: { id: string; plan: string; price: number; features: Json; is_active: boolean }
+        Insert: { id?: string; plan: string; price: number; features: Json; is_active?: boolean }
+        Update: { plan?: string; price?: number; features?: Json; is_active?: boolean }
+      }
+
+      feature_pricing: {
+        Row: { id: string; feature: string; price: number; unit: string; is_active: boolean }
+        Insert: { id?: string; feature: string; price: number; unit: string; is_active?: boolean }
+        Update: { feature?: string; price?: number; unit?: string; is_active?: boolean }
+      }
+
+      // Feedback Table
+      feedback: {
+        Row: { id: string; user_id: string; type: string; message: string; rating: number | null; created_at: string }
+        Insert: { id?: string; user_id: string; type: string; message: string; rating?: number | null; created_at?: string }
+        Update: { message?: string; rating?: number | null }
+      }
+
+      // Views (as tables for compatibility)
+      public_strategy_ranking: {
+        Row: { strategy_id: string; user_id: string; name: string; total_return: number; sharpe_ratio: number | null; rank: number }
+        Insert: { strategy_id: string; user_id: string; name: string; total_return?: number; sharpe_ratio?: number | null; rank?: number }
+        Update: {}
+      }
+
+      strategy_performance_agg: {
+        Row: { strategy_id: string; avg_return: number; total_trades: number; win_rate: number; sharpe_ratio: number | null }
+        Insert: { strategy_id: string; avg_return?: number; total_trades?: number; win_rate?: number; sharpe_ratio?: number | null }
+        Update: {}
+      }
+
     }
 
     Views: {
