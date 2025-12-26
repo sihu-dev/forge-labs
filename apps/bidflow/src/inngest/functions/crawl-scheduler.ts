@@ -5,9 +5,22 @@
 
 import { inngest } from '../client';
 import { NaraJangtoClient, type MappedBid } from '@/lib/clients/narajangto-api';
+import { getTEDClient, convertTEDToBidData, type TEDAPIClient } from '@/lib/clients/ted-api';
+import { getSAMGovClient, convertSAMToBidData, type SAMGovAPIClient } from '@/lib/clients/sam-gov-api';
 import { getBidRepository } from '@/lib/domain/repositories/bid-repository';
 import { createISODateString, createKRW, type CreateInput, type BidData } from '@/types';
 import { sendNotification, type BidNotificationData } from '@/lib/notifications';
+
+// ============================================================================
+// 공통 타입
+// ============================================================================
+
+interface CrawlResult {
+  source: string;
+  total: number;
+  saved: number;
+  bids: BidNotificationData[];
+}
 
 // ============================================================================
 // 키워드 필터링 유틸리티
@@ -41,6 +54,120 @@ function filterByKeywords(notices: MappedBid[], keywords: string[]): MappedBid[]
   }
 
   return notices.filter(notice => matchesKeywords(notice, keywords));
+}
+
+// ============================================================================
+// TED (EU) 크롤링 헬퍼
+// ============================================================================
+
+async function crawlTED(logger: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string, e?: unknown) => void }): Promise<CrawlResult> {
+  const result: CrawlResult = { source: 'ted', total: 0, saved: 0, bids: [] };
+
+  try {
+    const client = getTEDClient();
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - 7); // 최근 7일
+
+    const notices = await client.searchFlowMeterTenders({ fromDate });
+    result.total = notices.length;
+    logger.info(`TED에서 ${notices.length}건 수집`);
+
+    if (notices.length === 0) return result;
+
+    const repository = getBidRepository();
+
+    for (const notice of notices) {
+      try {
+        // 중복 확인
+        const existing = await repository.findByExternalId('ted', notice.noticeId);
+        if (existing.success && existing.data) continue;
+
+        // BidData로 변환 및 저장
+        const bidInput = convertTEDToBidData(notice);
+        const createResult = await repository.create(bidInput);
+
+        if (createResult.success) {
+          result.saved++;
+          result.bids.push({
+            id: notice.noticeId,
+            title: notice.title,
+            organization: notice.buyerName,
+            deadline: notice.deadline,
+            estimatedAmount: notice.estimatedValue?.amount ?? null,
+            url: notice.url,
+          });
+        }
+      } catch (error) {
+        logger.error(`TED 저장 실패: ${notice.noticeId}`, error);
+      }
+    }
+
+    logger.info(`TED: ${result.saved}건 저장 완료`);
+  } catch (error) {
+    logger.error('TED 크롤링 실패:', error);
+  }
+
+  return result;
+}
+
+// ============================================================================
+// SAM.gov (미국) 크롤링 헬퍼
+// ============================================================================
+
+async function crawlSAMGov(logger: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string, e?: unknown) => void }): Promise<CrawlResult> {
+  const result: CrawlResult = { source: 'sam', total: 0, saved: 0, bids: [] };
+
+  try {
+    const apiKey = process.env.SAM_GOV_API_KEY;
+    if (!apiKey) {
+      logger.warn('SAM.gov API 키가 없습니다. 스킵합니다.');
+      return result;
+    }
+
+    const client = getSAMGovClient();
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - 7); // 최근 7일
+
+    const opportunities = await client.searchFlowMeterOpportunities({ fromDate });
+    result.total = opportunities.length;
+    logger.info(`SAM.gov에서 ${opportunities.length}건 수집`);
+
+    if (opportunities.length === 0) return result;
+
+    const repository = getBidRepository();
+
+    for (const opportunity of opportunities) {
+      try {
+        // 중복 확인
+        const existing = await repository.findByExternalId('sam', opportunity.noticeId);
+        if (existing.success && existing.data) continue;
+
+        // BidData로 변환 및 저장
+        const bidInput = convertSAMToBidData(opportunity);
+        const createResult = await repository.create(bidInput);
+
+        if (createResult.success) {
+          result.saved++;
+          result.bids.push({
+            id: opportunity.noticeId,
+            title: opportunity.title,
+            organization: opportunity.department || 'US Government',
+            deadline: opportunity.responseDeadLine || '',
+            estimatedAmount: opportunity.award?.amount ?? null,
+            url: opportunity.uiLink || `https://sam.gov/opp/${opportunity.noticeId}/view`,
+          });
+        }
+      } catch (error) {
+        logger.error(`SAM.gov 저장 실패: ${opportunity.noticeId}`, error);
+      }
+    }
+
+    logger.info(`SAM.gov: ${result.saved}건 저장 완료`);
+  } catch (error) {
+    logger.error('SAM.gov 크롤링 실패:', error);
+  }
+
+  return result;
 }
 
 // ============================================================================
@@ -81,10 +208,10 @@ export const scheduledCrawl = inngest.createFunction(
       }
     });
 
-    // Step 2: DB 저장
-    const savedCount = await step.run('save-to-db', async () => {
+    // Step 1-2: 나라장터 DB 저장
+    const naraResult = await step.run('save-narajangto-to-db', async () => {
       if (naraResults.length === 0) {
-        return 0;
+        return { saved: 0, bids: [] as MappedBid[] };
       }
 
       const repository = getBidRepository();
@@ -128,27 +255,45 @@ export const scheduledCrawl = inngest.createFunction(
         }
       }
 
-      logger.info(`${saved}건 저장 완료`);
-      return saved;
+      logger.info(`나라장터: ${saved}건 저장 완료`);
+      return { saved, bids: naraResults.slice(0, saved) };
     });
 
-    // Step 3: 알림 발송 (새 공고가 있는 경우)
-    if (savedCount > 0) {
+    // Step 2: TED (EU) 크롤링
+    const tedResults = await step.run('crawl-ted', async () => {
+      return await crawlTED(logger);
+    });
+
+    // Step 3: SAM.gov (미국) 크롤링
+    const samResults = await step.run('crawl-sam', async () => {
+      return await crawlSAMGov(logger);
+    });
+
+    // 전체 저장 건수
+    const totalSaved = naraResult.saved + tedResults.saved + samResults.saved;
+
+    // Step 4: 알림 발송 (새 공고가 있는 경우)
+    if (totalSaved > 0) {
       await step.run('send-notification', async () => {
+        // Inngest JSON 직렬화로 인해 Date가 string으로 변환됨
+        type SerializedBid = { external_id: string; title: string; organization: string; deadline: string; estimated_amount: number | null; url: string | null };
+
         // 저장된 공고 데이터를 알림용으로 변환
-        const notificationBids: BidNotificationData[] = naraResults.slice(0, savedCount).map(bid => ({
+        const naraBids: BidNotificationData[] = (naraResult.bids as SerializedBid[]).map((bid) => ({
           id: bid.external_id,
           title: bid.title,
           organization: bid.organization,
-          deadline: typeof bid.deadline === 'string' ? bid.deadline : new Date(bid.deadline).toISOString(),
+          deadline: bid.deadline,
           estimatedAmount: bid.estimated_amount,
           url: bid.url,
         }));
 
+        const allBids = [...naraBids, ...tedResults.bids, ...samResults.bids];
+
         // Slack 알림 발송
         const results = await sendNotification(['slack'], {
           type: 'new_bids',
-          bids: notificationBids,
+          bids: allBids,
         });
 
         const success = results.filter(r => r.success).length;
@@ -163,8 +308,12 @@ export const scheduledCrawl = inngest.createFunction(
 
     return {
       success: true,
-      crawled: naraResults.length,
-      saved: savedCount,
+      results: {
+        narajangto: { crawled: naraResults.length, saved: naraResult.saved },
+        ted: { crawled: tedResults.total, saved: tedResults.saved },
+        sam: { crawled: samResults.total, saved: samResults.saved },
+      },
+      totalSaved,
     };
   }
 );
@@ -187,9 +336,12 @@ export const manualCrawl = inngest.createFunction(
 
     logger.info(`수동 크롤링 시작: source=${source}, keywords=${keywords.length}개`);
 
+    // 나라장터 크롤링 결과
+    let naraResult: { success: boolean; total: number; filtered: number; saved: number; bids: BidNotificationData[] } | null = null;
+
     if (source === 'narajangto' || source === 'all') {
       // Step 1: 나라장터 크롤링 + 키워드 필터링 + DB 저장
-      const result = await step.run('crawl-filter-save', async () => {
+      const result = await step.run('crawl-narajangto-manual', async () => {
         const apiKey = process.env.NARA_JANGTO_API_KEY;
         if (!apiKey) {
           return { success: false, error: 'API 키 없음', total: 0, filtered: 0, saved: 0, notices: [] as MappedBid[] };
@@ -260,40 +412,73 @@ export const manualCrawl = inngest.createFunction(
       });
 
       if (!result.success) {
-        return { success: false, error: 'error' in result ? result.error : '알 수 없는 오류' };
-      }
-
-      // Step 2: 알림 발송 (새 공고가 있는 경우)
-      if (result.saved > 0) {
-        await step.run('send-manual-crawl-notification', async () => {
-          // Inngest JSON 직렬화로 Date가 string이 됨
-          type SerializedBid = Omit<MappedBid, 'deadline'> & { deadline: string };
-          const notificationBids: BidNotificationData[] = (result.notices as SerializedBid[]).map((bid) => ({
+        // API 키 없는 경우도 계속 진행 (다른 소스 크롤링 가능)
+        logger.warn('나라장터 크롤링 실패: ' + ('error' in result ? result.error : '알 수 없는 오류'));
+      } else {
+        // 성공 시 naraResult 설정
+        type SerializedBid = Omit<MappedBid, 'deadline'> & { deadline: string };
+        naraResult = {
+          success: true,
+          total: result.total,
+          filtered: result.filtered,
+          saved: result.saved,
+          bids: (result.notices as SerializedBid[]).map((bid) => ({
             id: bid.external_id,
             title: bid.title,
             organization: bid.organization,
             deadline: bid.deadline,
             estimatedAmount: bid.estimated_amount,
             url: bid.url,
-          }));
-
-          await sendNotification(['slack'], {
-            type: 'new_bids',
-            bids: notificationBids,
-          });
-        });
+          })),
+        };
       }
-
-      return {
-        success: true,
-        total: result.total,
-        filtered: result.filtered,
-        saved: result.saved,
-        keywords: keywords.length > 0 ? keywords : '(전체)',
-      };
     }
 
-    return { success: true, message: '크롤링 완료' };
+    // TED 크롤링
+    let tedResult: CrawlResult = { source: 'ted', total: 0, saved: 0, bids: [] };
+    if (source === 'ted' || source === 'all') {
+      tedResult = await step.run('crawl-ted-manual', async () => {
+        return await crawlTED(logger);
+      });
+    }
+
+    // SAM.gov 크롤링
+    let samResult: CrawlResult = { source: 'sam', total: 0, saved: 0, bids: [] };
+    if (source === 'sam' || source === 'all') {
+      samResult = await step.run('crawl-sam-manual', async () => {
+        return await crawlSAMGov(logger);
+      });
+    }
+
+    // 결과 집계
+    const totalSaved = (naraResult?.saved ?? 0) + tedResult.saved + samResult.saved;
+
+    // 알림 발송 (새 공고가 있는 경우)
+    if (totalSaved > 0) {
+      await step.run('send-all-notifications', async () => {
+        const allBids = [
+          ...(naraResult?.bids ?? []),
+          ...tedResult.bids,
+          ...samResult.bids,
+        ];
+
+        await sendNotification(['slack'], {
+          type: 'new_bids',
+          bids: allBids,
+        });
+      });
+    }
+
+    return {
+      success: true,
+      results: {
+        narajangto: naraResult ? { total: naraResult.total, filtered: naraResult.filtered, saved: naraResult.saved } : null,
+        ted: tedResult.total > 0 ? { total: tedResult.total, saved: tedResult.saved } : null,
+        sam: samResult.total > 0 ? { total: samResult.total, saved: samResult.saved } : null,
+      },
+      totalSaved,
+      keywords: keywords.length > 0 ? keywords : '(전체)',
+    };
   }
 );
 
