@@ -1,0 +1,29 @@
+{
+  "name": "@forge/ai-router",
+  "version": "1.0.0",
+  "description": "AI 라우팅 시스템 - Multi-model routing + Nomic embedding + Anthropic provider",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@forge/types": "workspace:*",
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@xenova/transformers": "^2.17.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
