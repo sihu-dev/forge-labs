@@ -130,6 +130,8 @@ export async function POST(request: NextRequest) {
       slippage: body.config.slippage || 0.05,
       timeframe,
       symbols: [symbol],
+      currency: 'USD',
+      useMargin: false,
     }
 
     // 7. 백테스트 실행 (실제 엔진)

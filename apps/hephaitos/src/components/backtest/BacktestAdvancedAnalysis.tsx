@@ -441,7 +441,7 @@ const RiskReturnScatter = memo(function RiskReturnScatter({ trades }: RiskReturn
     const weeklyData: Record<string, { returns: number[]; total: number }> = {}
 
     trades.forEach(t => {
-      const week = new Date(t.exitTimestamp).toISOString().slice(0, 10)
+      const week = new Date(t.exitTime || t.entryTime).toISOString().slice(0, 10)
       if (!weeklyData[week]) {
         weeklyData[week] = { returns: [], total: 0 }
       }

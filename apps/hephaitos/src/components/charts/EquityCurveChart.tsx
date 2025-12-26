@@ -6,7 +6,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { createChart, ColorType, LineStyle, CrosshairMode, AreaSeries, LineSeries } from 'lightweight-charts'
+import { createChart, ColorType, LineStyle, CrosshairMode, AreaSeries, LineSeries, UTCTimestamp } from 'lightweight-charts'
 
 interface EquityCurveChartProps {
   data: Array<{ date: string; value: number }>
@@ -58,7 +58,7 @@ export function EquityCurveChart({ data, initialCapital }: EquityCurveChartProps
 
     // 데이터 변환 (timestamp로)
     const chartData = data.map((point) => ({
-      time: Math.floor(new Date(point.date).getTime() / 1000),
+      time: Math.floor(new Date(point.date).getTime() / 1000) as UTCTimestamp,
       value: point.value,
     })).sort((a, b) => a.time - b.time)
 
