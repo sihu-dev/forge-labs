@@ -1695,6 +1695,77 @@ export interface Database {
         Update: {}
       }
 
+      // Trigger System Tables
+      triggers: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          status: 'active' | 'paused' | 'triggered' | 'expired' | 'error'
+          conditions: Json
+          actions: Json
+          cooldown: number | null
+          max_executions: number | null
+          execution_count: number
+          last_triggered_at: string | null
+          expires_at: string | null
+          metadata: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          status?: 'active' | 'paused' | 'triggered' | 'expired' | 'error'
+          conditions: Json
+          actions: Json
+          cooldown?: number | null
+          max_executions?: number | null
+          execution_count?: number
+          last_triggered_at?: string | null
+          expires_at?: string | null
+          metadata?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          status?: 'active' | 'paused' | 'triggered' | 'expired' | 'error'
+          conditions?: Json
+          actions?: Json
+          cooldown?: number | null
+          max_executions?: number | null
+          execution_count?: number
+          last_triggered_at?: string | null
+          expires_at?: string | null
+          metadata?: Json | null
+          updated_at?: string
+        }
+      }
+
+      trigger_executions: {
+        Row: {
+          id: string
+          trigger_id: string
+          success: boolean
+          actions_executed: number
+          errors: Json | null
+          executed_at: string
+          duration_ms: number
+        }
+        Insert: {
+          id?: string
+          trigger_id: string
+          success: boolean
+          actions_executed: number
+          errors?: Json | null
+          executed_at?: string
+          duration_ms: number
+        }
+        Update: {}
+      }
+
     }
 
     Views: {
