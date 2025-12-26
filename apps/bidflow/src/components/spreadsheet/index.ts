@@ -12,6 +12,10 @@ export { SidePanel } from './SidePanel';
 // Hooks
 export { useSpreadsheet } from './hooks/useSpreadsheet';
 export { useCellSelection } from './hooks/useCellSelection';
+export { useAIFunctions, formatAIResult, getAIFunctionDescription } from './hooks/useAIFunctions';
+
+// Renderers
+export * from './renderers';
 
 // Types
 export type { Bid } from './SpreadsheetView';
