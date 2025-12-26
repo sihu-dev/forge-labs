@@ -1,20 +1,12 @@
 'use client'
 
+/**
+ * Backtest Chart Component
+ * Lightweight Charts 기반 (Recharts 마이그레이션)
+ * -200KB 번들 최적화
+ */
+
 import { memo, useMemo, useState, useCallback } from 'react'
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  ComposedChart,
-  Line,
-  ReferenceLine,
-  Cell,
-} from 'recharts'
 import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
@@ -22,6 +14,8 @@ import {
   PresentationChartLineIcon,
   CalendarIcon,
 } from '@heroicons/react/24/outline'
+import { LWAreaChart } from '@/components/charts/LWAreaChart'
+import { LWHistogramChart } from '@/components/charts/LWHistogramChart'
 import type { BacktestResult, BacktestTrade, PortfolioSnapshot } from '@/lib/backtest'
 
 interface BacktestChartProps {
@@ -117,35 +111,9 @@ const ChartTypeButton = memo(function ChartTypeButton({ type, current, onClick, 
   )
 })
 
-// Custom Tooltip Component
-interface CustomTooltipProps {
-  active?: boolean
-  payload?: Array<{ value: number; dataKey: string; color?: string }>
-  label?: string
-  formatter?: (value: number) => string
-  labelFormatter?: (label: string) => string
-}
-
-const CustomTooltip = memo(function CustomTooltip({
-  active,
-  payload,
-  label,
-  formatter = (v) => `$${v.toLocaleString()}`,
-  labelFormatter = (l) => l,
-}: CustomTooltipProps) {
-  if (!active || !payload?.length) return null
-
-  return (
-    <div className="bg-zinc-900/95 backdrop-blur border border-white/[0.08] rounded-lg px-3 py-2 shadow-xl">
-      <p className="text-xs text-zinc-400 mb-1">{labelFormatter(label || '')}</p>
-      {payload.map((entry, index) => (
-        <p key={index} className="text-sm font-medium" style={{ color: entry.color || '#fff' }}>
-          {formatter(entry.value)}
-        </p>
-      ))}
-    </div>
-  )
-})
+// ============================================
+// Equity Curve Chart
+// ============================================
 
 interface EquityCurveProps {
   snapshots: PortfolioSnapshot[]
@@ -156,11 +124,9 @@ const EquityCurve = memo(function EquityCurve({ snapshots, trades }: EquityCurve
   const chartData = useMemo(() => {
     if (snapshots.length === 0) return null
 
-    const data = snapshots.map((s, i) => ({
-      index: i,
-      date: new Date(s.timestamp).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
-      equity: s.equity,
-      benchmark: s.equity * (1 + (Math.random() - 0.5) * 0.02), // Mock benchmark for demo
+    const data = snapshots.map((s) => ({
+      time: s.timestamp,
+      value: s.equity,
     }))
 
     const startValue = snapshots[0].equity
@@ -196,51 +162,15 @@ const EquityCurve = memo(function EquityCurve({ snapshots, trades }: EquityCurve
         </div>
       </div>
 
-      {/* Recharts Area Chart */}
-      <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData.data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="equityGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor={chartData.isPositive ? '#34d399' : '#f87171'}
-                  stopOpacity={0.3}
-                />
-                <stop
-                  offset="95%"
-                  stopColor={chartData.isPositive ? '#34d399' : '#f87171'}
-                  stopOpacity={0}
-                />
-              </linearGradient>
-            </defs>
-            <XAxis
-              dataKey="date"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-              tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-              domain={['dataMin - 1000', 'dataMax + 1000']}
-            />
-            <Tooltip
-              content={<CustomTooltip formatter={(v) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />}
-            />
-            <Area
-              type="monotone"
-              dataKey="equity"
-              stroke={chartData.isPositive ? '#34d399' : '#f87171'}
-              strokeWidth={2}
-              fill="url(#equityGradient)"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Lightweight Charts Area Chart */}
+      <LWAreaChart
+        data={chartData.data}
+        height={192}
+        lineColor={chartData.isPositive ? '#34d399' : '#f87171'}
+        areaTopColor={chartData.isPositive ? 'rgba(52, 211, 153, 0.3)' : 'rgba(248, 113, 113, 0.3)'}
+        areaBottomColor={chartData.isPositive ? 'rgba(52, 211, 153, 0)' : 'rgba(248, 113, 113, 0)'}
+        yAxisFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+      />
 
       {/* Trade count indicator */}
       <div className="flex items-center gap-2 text-xs text-zinc-400">
@@ -256,6 +186,10 @@ const EquityCurve = memo(function EquityCurve({ snapshots, trades }: EquityCurve
   )
 })
 
+// ============================================
+// Drawdown Chart
+// ============================================
+
 interface DrawdownChartProps {
   snapshots: PortfolioSnapshot[]
 }
@@ -265,18 +199,17 @@ const DrawdownChart = memo(function DrawdownChart({ snapshots }: DrawdownChartPr
     if (snapshots.length === 0) return null
 
     let runningMax = 0
-    const data = snapshots.map((s, i) => {
+    const data = snapshots.map((s) => {
       runningMax = Math.max(runningMax, s.equity)
       const drawdown = ((s.equity - runningMax) / runningMax) * 100
       return {
-        index: i,
-        date: new Date(s.timestamp).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
-        drawdown,
+        time: s.timestamp,
+        value: drawdown,
       }
     })
 
-    const maxDrawdown = Math.min(...data.map(d => d.drawdown))
-    const currentDrawdown = data[data.length - 1].drawdown
+    const maxDrawdown = Math.min(...data.map(d => d.value))
+    const currentDrawdown = data[data.length - 1].value
 
     return { data, maxDrawdown, currentDrawdown }
   }, [snapshots])
@@ -303,49 +236,21 @@ const DrawdownChart = memo(function DrawdownChart({ snapshots }: DrawdownChartPr
         </div>
       </div>
 
-      {/* Recharts Area Chart */}
-      <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData.data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="drawdownGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f87171" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#f87171" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <XAxis
-              dataKey="date"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-              tickFormatter={(v) => `${v.toFixed(0)}%`}
-              domain={['dataMin - 5', 0]}
-            />
-            <Tooltip
-              content={<CustomTooltip formatter={(v) => `${v.toFixed(2)}%`} />}
-            />
-            <ReferenceLine y={0} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 3" />
-            <Area
-              type="monotone"
-              dataKey="drawdown"
-              stroke="#f87171"
-              strokeWidth={2}
-              fill="url(#drawdownGradient)"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Lightweight Charts Area Chart */}
+      <LWAreaChart
+        data={chartData.data}
+        height={192}
+        lineColor="#f87171"
+        areaTopColor="rgba(248, 113, 113, 0.3)"
+        areaBottomColor="rgba(248, 113, 113, 0)"
+        referenceLine={0}
+        yAxisFormatter={(v) => `${v.toFixed(0)}%`}
+      />
 
       {/* Drawdown distribution */}
       <div className="grid grid-cols-4 gap-2">
         {[5, 10, 15, 20].map(threshold => {
-          const periods = chartData.data.filter(d => d.drawdown <= -threshold).length
+          const periods = chartData.data.filter(d => d.value <= -threshold).length
           const percent = (periods / chartData.data.length * 100).toFixed(1)
           return (
             <div key={threshold} className="text-center">
@@ -359,6 +264,10 @@ const DrawdownChart = memo(function DrawdownChart({ snapshots }: DrawdownChartPr
   )
 })
 
+// ============================================
+// Trades Chart
+// ============================================
+
 interface TradesChartProps {
   trades: BacktestTrade[]
 }
@@ -368,9 +277,8 @@ const TradesChart = memo(function TradesChart({ trades }: TradesChartProps) {
     if (trades.length === 0) return null
 
     const data = trades.slice(-50).map((t, i) => ({
-      index: i,
-      pnl: t.pnl,
-      isPositive: t.pnl >= 0,
+      time: i,
+      value: t.pnl,
     }))
 
     const wins = trades.filter(t => t.pnl > 0).length
@@ -408,37 +316,12 @@ const TradesChart = memo(function TradesChart({ trades }: TradesChartProps) {
         </div>
       </div>
 
-      {/* Recharts Bar Chart */}
-      <div className="h-40">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData.data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-            <XAxis
-              dataKey="index"
-              axisLine={false}
-              tickLine={false}
-              tick={false}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-              tickFormatter={(v) => `$${v}`}
-            />
-            <Tooltip
-              content={<CustomTooltip formatter={(v) => `$${v.toFixed(2)}`} />}
-            />
-            <ReferenceLine y={0} stroke="rgba(255,255,255,0.1)" />
-            <Bar dataKey="pnl" radius={[2, 2, 0, 0]}>
-              {chartData.data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={entry.isPositive ? '#34d399' : '#f87171'}
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Lightweight Charts Histogram */}
+      <LWHistogramChart
+        data={chartData.data}
+        height={160}
+        yAxisFormatter={(v) => `$${v.toFixed(0)}`}
+      />
 
       <div className="flex items-center justify-between">
         <p className="text-xs text-zinc-400">
@@ -451,6 +334,10 @@ const TradesChart = memo(function TradesChart({ trades }: TradesChartProps) {
     </div>
   )
 })
+
+// ============================================
+// Monthly Returns Chart
+// ============================================
 
 interface MonthlyReturnsChartProps {
   snapshots: PortfolioSnapshot[]
@@ -474,18 +361,23 @@ const MonthlyReturnsChart = memo(function MonthlyReturnsChart({ snapshots }: Mon
       }
     })
 
-    const data = Object.entries(monthlyData)
-      .map(([month, values]) => ({
-        month,
-        return: ((values.end - values.start) / values.start) * 100,
-      }))
-      .slice(-12) // Last 12 months
+    const entries = Object.entries(monthlyData).slice(-12) // Last 12 months
+    const data = entries.map(([month, values], i) => ({
+      time: i,
+      value: ((values.end - values.start) / values.start) * 100,
+    }))
 
-    const positiveMonths = data.filter(d => d.return > 0).length
-    const negativeMonths = data.filter(d => d.return <= 0).length
-    const avgReturn = data.reduce((s, d) => s + d.return, 0) / data.length
+    const positiveMonths = data.filter(d => d.value > 0).length
+    const negativeMonths = data.filter(d => d.value <= 0).length
+    const avgReturn = data.reduce((s, d) => s + d.value, 0) / data.length
 
-    return { data, positiveMonths, negativeMonths, avgReturn }
+    // For heatmap
+    const heatmapData = entries.map(([month, values]) => ({
+      month,
+      return: ((values.end - values.start) / values.start) * 100,
+    }))
+
+    return { data, positiveMonths, negativeMonths, avgReturn, heatmapData }
   }, [snapshots])
 
   if (!chartData) {
@@ -512,51 +404,20 @@ const MonthlyReturnsChart = memo(function MonthlyReturnsChart({ snapshots }: Mon
         </div>
       </div>
 
-      {/* Monthly Returns Bar Chart */}
-      <div className="h-40">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData.data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-            <XAxis
-              dataKey="month"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-              tickFormatter={(v) => v.split('-')[1] + '월'}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-              tickFormatter={(v) => `${v}%`}
-            />
-            <Tooltip
-              content={<CustomTooltip formatter={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`} />}
-            />
-            <ReferenceLine y={0} stroke="rgba(255,255,255,0.1)" />
-            <Bar dataKey="return" radius={[4, 4, 0, 0]}>
-              {chartData.data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={entry.return >= 0 ? '#34d399' : '#f87171'}
-                />
-              ))}
-            </Bar>
-            <Line
-              type="monotone"
-              dataKey="return"
-              stroke="#5E6AD2"
-              strokeWidth={2}
-              dot={false}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Lightweight Charts Histogram with trend line */}
+      <LWHistogramChart
+        data={chartData.data}
+        height={160}
+        showTrendLine={true}
+        trendLineColor="#5E6AD2"
+        yAxisFormatter={(v) => `${v.toFixed(0)}%`}
+      />
 
       {/* Monthly Returns Heatmap */}
       <div className="space-y-2">
         <span className="text-xs text-zinc-400">월별 수익률 분포</span>
         <div className="grid grid-cols-6 gap-1">
-          {chartData.data.map((d, i) => {
+          {chartData.heatmapData.map((d, i) => {
             const intensity = Math.min(Math.abs(d.return) / 10, 1) // Normalize to max 10%
             const bgColor = d.return >= 0
               ? `rgba(52, 211, 153, ${0.2 + intensity * 0.6})`
@@ -578,6 +439,10 @@ const MonthlyReturnsChart = memo(function MonthlyReturnsChart({ snapshots }: Mon
     </div>
   )
 })
+
+// ============================================
+// Empty Chart Placeholder
+// ============================================
 
 const EmptyChart = memo(function EmptyChart({ message }: { message: string }) {
   return (

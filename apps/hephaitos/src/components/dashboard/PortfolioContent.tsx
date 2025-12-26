@@ -1,19 +1,13 @@
 'use client'
 
+/**
+ * Portfolio Content Component
+ * Lightweight Charts + SVG 기반 (Recharts 마이그레이션)
+ * -400KB 번들 최적화
+ */
 
 import { useState, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts'
 import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
@@ -31,6 +25,8 @@ import { DisclaimerInline } from '@/components/ui/Disclaimer'
 import { useI18n } from '@/i18n/client'
 import { useHoldings, type HoldingItem, type PortfolioStats } from '@/hooks/useHoldings'
 import { usePortfolioHistory, type Transaction, type PortfolioHistoryPoint } from '@/hooks/usePortfolioHistory'
+import { LWAreaChart } from '@/components/charts/LWAreaChart'
+import { SVGPieChart } from '@/components/charts/SVGPieChart'
 
 
 // ============================================
@@ -84,104 +80,49 @@ const StatCard = memo(function StatCard({
   )
 })
 
+// EquityChart using Lightweight Charts
 const EquityChart = memo(function EquityChart({ data }: { data: PortfolioHistoryPoint[] }) {
-  const isPositive = data[data.length - 1].value > data[0].value
+  const isPositive = data.length > 1 && data[data.length - 1].value > data[0].value
+
+  const chartData = useMemo(() => {
+    return data.map((d) => ({
+      time: d.date,
+      value: d.value,
+    }))
+  }, [data])
 
   return (
-    <div className="h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-          <defs>
-            <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={isPositive ? '#34d399' : '#f87171'} stopOpacity={0.3} />
-              <stop offset="95%" stopColor={isPositive ? '#34d399' : '#f87171'} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <XAxis
-            dataKey="date"
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: '#71717a', fontSize: 10 }}
-            interval="preserveStartEnd"
-          />
-          <YAxis
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: '#71717a', fontSize: 10 }}
-            tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: 'rgba(24, 24, 27, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '8px',
-              fontSize: '12px',
-            }}
-            formatter={(value: number) => [`$${value.toLocaleString()}`, '자산']}
-          />
-          <Area
-            type="monotone"
-            dataKey="value"
-            stroke={isPositive ? '#34d399' : '#f87171'}
-            strokeWidth={2}
-            fill="url(#portfolioGradient)"
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
+    <LWAreaChart
+      data={chartData}
+      height={256}
+      lineColor={isPositive ? '#34d399' : '#f87171'}
+      areaTopColor={isPositive ? 'rgba(52, 211, 153, 0.3)' : 'rgba(248, 113, 113, 0.3)'}
+      areaBottomColor={isPositive ? 'rgba(52, 211, 153, 0)' : 'rgba(248, 113, 113, 0)'}
+      yAxisFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+    />
   )
 })
 
+// AllocationPieChart using SVG
 const AllocationPieChart = memo(function AllocationPieChart({ holdings }: { holdings: HoldingItem[] }) {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null)
+  const pieData = useMemo(() => {
+    return holdings.map((h) => ({
+      name: h.symbol,
+      value: h.weight,
+      color: h.color,
+    }))
+  }, [holdings])
 
   return (
-    <div className="flex items-center gap-6">
-      <div className="w-40 h-40">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={holdings}
-              cx="50%"
-              cy="50%"
-              innerRadius={45}
-              outerRadius={70}
-              paddingAngle={2}
-              dataKey="weight"
-              onMouseEnter={(_, index) => setActiveIndex(index)}
-              onMouseLeave={() => setActiveIndex(null)}
-            >
-              {holdings.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={entry.color}
-                  opacity={activeIndex === null || activeIndex === index ? 1 : 0.5}
-                  style={{ transition: 'opacity 0.2s' }}
-                />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="flex-1 grid grid-cols-2 gap-2">
-        {holdings.map((h, i) => (
-          <div
-            key={h.symbol}
-            className={clsx(
-              'flex items-center gap-2 p-2 rounded-lg transition-colors cursor-pointer',
-              activeIndex === i ? 'bg-white/[0.06]' : 'hover:bg-white/[0.04]'
-            )}
-            onMouseEnter={() => setActiveIndex(i)}
-            onMouseLeave={() => setActiveIndex(null)}
-          >
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: h.color }} />
-            <span className="text-xs text-white font-medium">{h.symbol}</span>
-            <span className="text-xs text-zinc-400 ml-auto">{h.weight.toFixed(1)}%</span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <SVGPieChart
+      data={pieData}
+      size={160}
+      innerRadius={45}
+      outerRadius={70}
+      paddingAngle={2}
+      showLegend={true}
+      legendPosition="right"
+    />
   )
 })
 

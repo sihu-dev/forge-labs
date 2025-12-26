@@ -3,27 +3,11 @@
 /**
  * Backtest Advanced Analysis Component
  * QRY-015: 고급 백테스트 분석 시각화
+ * Lightweight Charts + SVG 기반 (Recharts 마이그레이션)
+ * -300KB 번들 최적화
  */
 
 import { memo, useMemo, useState, useCallback } from 'react'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  LineChart,
-  Line,
-  ReferenceLine,
-  Legend,
-  AreaChart,
-  Area,
-  ScatterChart,
-  Scatter,
-  ZAxis,
-} from 'recharts'
 import {
   ChartBarIcon,
   ArrowPathIcon,
@@ -32,6 +16,9 @@ import {
   BeakerIcon,
   TableCellsIcon,
 } from '@heroicons/react/24/outline'
+import { LWAreaChart } from '@/components/charts/LWAreaChart'
+import { LWHistogramChart } from '@/components/charts/LWHistogramChart'
+import { SVGScatterChart } from '@/components/charts/SVGScatterChart'
 import type { BacktestResult, BacktestTrade, PortfolioSnapshot } from '@/lib/backtest'
 
 interface BacktestAdvancedAnalysisProps {
@@ -142,33 +129,10 @@ const TabButton = memo(function TabButton({ tab, current, onClick, icon: Icon, l
   )
 })
 
-// Custom Tooltip
-const CustomTooltip = memo(function CustomTooltip({
-  active,
-  payload,
-  label,
-  formatter = (v) => `${v}`,
-}: {
-  active?: boolean
-  payload?: Array<{ value: number; dataKey: string; color?: string }>
-  label?: string
-  formatter?: (value: number) => string
-}) {
-  if (!active || !payload?.length) return null
-
-  return (
-    <div className="bg-zinc-900/95 backdrop-blur border border-white/[0.08] rounded-lg px-3 py-2 shadow-xl">
-      <p className="text-xs text-zinc-400 mb-1">{label}</p>
-      {payload.map((entry, index) => (
-        <p key={index} className="text-sm font-medium" style={{ color: entry.color || '#fff' }}>
-          {formatter(entry.value)}
-        </p>
-      ))}
-    </div>
-  )
-})
-
+// ============================================
 // 1. Trade Distribution Analysis
+// ============================================
+
 interface TradeDistributionProps {
   trades: BacktestTrade[]
 }
@@ -183,23 +147,25 @@ const TradeDistribution = memo(function TradeDistribution({ trades }: TradeDistr
     const maxPnl = Math.max(...pnls)
     const bucketSize = (maxPnl - minPnl) / 10 || 1
 
-    const buckets: Record<string, number> = {}
+    const buckets: Record<string, { count: number; isPositive: boolean }> = {}
     for (let i = 0; i < 10; i++) {
       const bucketStart = minPnl + i * bucketSize
       const label = `$${bucketStart.toFixed(0)}`
-      buckets[label] = 0
+      buckets[label] = { count: 0, isPositive: bucketStart >= 0 }
     }
 
     trades.forEach(t => {
       const bucketIndex = Math.min(Math.floor((t.pnl - minPnl) / bucketSize), 9)
       const label = `$${(minPnl + bucketIndex * bucketSize).toFixed(0)}`
-      buckets[label] = (buckets[label] || 0) + 1
+      if (buckets[label]) {
+        buckets[label].count += 1
+      }
     })
 
-    const data = Object.entries(buckets).map(([label, count]) => ({
-      label,
-      count,
-      isPositive: parseFloat(label.replace('$', '')) >= 0,
+    const data = Object.entries(buckets).map(([label, { count, isPositive }], i) => ({
+      time: i,
+      value: count,
+      color: isPositive ? '#34d399' : '#f87171',
     }))
 
     // Statistics
@@ -232,33 +198,13 @@ const TradeDistribution = memo(function TradeDistribution({ trades }: TradeDistr
         />
       </div>
 
-      {/* Distribution Chart */}
-      <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={distributionData.data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-            <XAxis
-              dataKey="label"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-            />
-            <Tooltip content={<CustomTooltip formatter={(v) => `${v} 거래`} />} />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-              {distributionData.data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={entry.isPositive ? '#34d399' : '#f87171'}
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Distribution Chart - Lightweight Charts Histogram */}
+      <LWHistogramChart
+        data={distributionData.data}
+        height={192}
+        showReferenceLine={false}
+        yAxisFormatter={(v) => `${v.toFixed(0)} 거래`}
+      />
 
       <p className="text-xs text-zinc-500 text-center">
         손익 분포 히스토그램 (10개 구간)
@@ -267,7 +213,10 @@ const TradeDistribution = memo(function TradeDistribution({ trades }: TradeDistr
   )
 })
 
+// ============================================
 // 2. Rolling Returns Chart
+// ============================================
+
 interface RollingReturnsProps {
   snapshots: PortfolioSnapshot[]
 }
@@ -276,27 +225,27 @@ const RollingReturns = memo(function RollingReturns({ snapshots }: RollingReturn
   const rollingData = useMemo(() => {
     if (snapshots.length < 20) return null
 
-    const data: Array<{ date: string; rolling7: number; rolling30: number }> = []
+    const data: Array<{ time: number | string; value: number; value2: number }> = []
 
     for (let i = 30; i < snapshots.length; i++) {
-      const date = new Date(snapshots[i].timestamp).toLocaleDateString('ko-KR', {
-        month: 'short',
-        day: 'numeric',
-      })
-
       // 7-day rolling return
       const rolling7 = ((snapshots[i].equity - snapshots[i - 7].equity) / snapshots[i - 7].equity) * 100
 
       // 30-day rolling return
       const rolling30 = ((snapshots[i].equity - snapshots[i - 30].equity) / snapshots[i - 30].equity) * 100
 
-      data.push({ date, rolling7, rolling30 })
+      data.push({
+        time: snapshots[i].timestamp,
+        value: rolling7,
+        value2: rolling30
+      })
     }
 
-    const avg7 = data.reduce((s, d) => s + d.rolling7, 0) / data.length
-    const avg30 = data.reduce((s, d) => s + d.rolling30, 0) / data.length
+    const slicedData = data.slice(-60) // Last 60 data points
+    const avg7 = slicedData.reduce((s, d) => s + d.value, 0) / slicedData.length
+    const avg30 = slicedData.reduce((s, d) => s + d.value2, 0) / slicedData.length
 
-    return { data: data.slice(-60), avg7, avg30 } // Last 60 data points
+    return { data: slicedData, avg7, avg30 }
   }, [snapshots])
 
   if (!rollingData) {
@@ -319,49 +268,28 @@ const RollingReturns = memo(function RollingReturns({ snapshots }: RollingReturn
         />
       </div>
 
-      {/* Rolling Returns Chart */}
-      <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rollingData.data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-            <XAxis
-              dataKey="date"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-              tickFormatter={(v) => `${v}%`}
-            />
-            <Tooltip
-              content={<CustomTooltip formatter={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`} />}
-            />
-            <Legend
-              wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }}
-              iconType="line"
-            />
-            <ReferenceLine y={0} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 3" />
-            <Line
-              type="monotone"
-              dataKey="rolling7"
-              name="7일 수익률"
-              stroke="#5E6AD2"
-              strokeWidth={2}
-              dot={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="rolling30"
-              name="30일 수익률"
-              stroke="#F59E0B"
-              strokeWidth={2}
-              dot={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+      {/* Rolling Returns Chart - Lightweight Charts with dual lines */}
+      <LWAreaChart
+        data={rollingData.data}
+        height={192}
+        lineColor="#5E6AD2"
+        showArea={false}
+        showLine2={true}
+        line2Color="#F59E0B"
+        referenceLine={0}
+        yAxisFormatter={(v) => `${v.toFixed(0)}%`}
+      />
+
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-6 text-xs">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-0.5 bg-[#5E6AD2]" />
+          <span className="text-zinc-400">7일 수익률</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-0.5 bg-[#F59E0B]" />
+          <span className="text-zinc-400">30일 수익률</span>
+        </div>
       </div>
 
       <p className="text-xs text-zinc-500 text-center">
@@ -371,7 +299,10 @@ const RollingReturns = memo(function RollingReturns({ snapshots }: RollingReturn
   )
 })
 
+// ============================================
 // 3. Returns Heatmap (by Day of Week and Hour)
+// ============================================
+
 interface ReturnsHeatmapProps {
   snapshots: PortfolioSnapshot[]
 }
@@ -494,7 +425,10 @@ const ReturnsHeatmap = memo(function ReturnsHeatmap({ snapshots }: ReturnsHeatma
   )
 })
 
+// ============================================
 // 4. Risk-Return Scatter Plot
+// ============================================
+
 interface RiskReturnScatterProps {
   trades: BacktestTrade[]
 }
@@ -520,16 +454,16 @@ const RiskReturnScatter = memo(function RiskReturnScatter({ trades }: RiskReturn
       const variance = returns.reduce((s, r) => s + Math.pow(r - avg, 2), 0) / returns.length
       const risk = Math.sqrt(variance)
       return {
-        date: week,
-        return: avg,
-        risk,
-        trades: returns.length,
+        x: risk,
+        y: avg,
+        z: returns.length,
+        label: week,
       }
     })
 
-    // Calculate correlation
-    const avgReturn = data.reduce((s, d) => s + d.return, 0) / data.length
-    const avgRisk = data.reduce((s, d) => s + d.risk, 0) / data.length
+    // Calculate averages
+    const avgReturn = data.reduce((s, d) => s + d.y, 0) / data.length
+    const avgRisk = data.reduce((s, d) => s + d.x, 0) / data.length
 
     return { data, avgReturn, avgRisk }
   }, [trades])
@@ -550,58 +484,25 @@ const RiskReturnScatter = memo(function RiskReturnScatter({ trades }: RiskReturn
         <StatBox label="평균 위험" value={`$${scatterData.avgRisk.toFixed(2)}`} />
       </div>
 
-      {/* Scatter Chart */}
-      <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-            <XAxis
-              type="number"
-              dataKey="risk"
-              name="위험"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-              tickFormatter={(v) => `$${v.toFixed(0)}`}
-            />
-            <YAxis
-              type="number"
-              dataKey="return"
-              name="수익"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717a', fontSize: 10 }}
-              tickFormatter={(v) => `$${v.toFixed(0)}`}
-            />
-            <ZAxis type="number" dataKey="trades" range={[50, 400]} />
-            <Tooltip
-              content={({ payload }) => {
-                if (!payload?.[0]) return null
-                const data = payload[0].payload as { date: string; return: number; risk: number; trades: number }
-                return (
-                  <div className="bg-zinc-900/95 backdrop-blur border border-white/[0.08] rounded-lg px-3 py-2 shadow-xl">
-                    <p className="text-xs text-zinc-400">{data.date}</p>
-                    <p className="text-sm text-emerald-400">수익: ${data.return.toFixed(2)}</p>
-                    <p className="text-sm text-orange-400">위험: ${data.risk.toFixed(2)}</p>
-                    <p className="text-xs text-zinc-500">{data.trades}건 거래</p>
-                  </div>
-                )
-              }}
-            />
-            <ReferenceLine y={0} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 3" />
-            <Scatter
-              data={scatterData.data}
-              fill="#5E6AD2"
-            >
-              {scatterData.data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={entry.return >= 0 ? '#34d399' : '#f87171'}
-                />
-              ))}
-            </Scatter>
-          </ScatterChart>
-        </ResponsiveContainer>
-      </div>
+      {/* SVG Scatter Chart */}
+      <SVGScatterChart
+        data={scatterData.data}
+        width={400}
+        height={192}
+        xLabel="위험 (표준편차)"
+        yLabel="평균 수익"
+        xAxisFormatter={(v) => `$${v.toFixed(0)}`}
+        yAxisFormatter={(v) => `$${v.toFixed(0)}`}
+        tooltipContent={(point) => (
+          <div>
+            <p className="text-xs text-zinc-400">{point.label}</p>
+            <p className="text-sm text-emerald-400">수익: ${point.y.toFixed(2)}</p>
+            <p className="text-sm text-orange-400">위험: ${point.x.toFixed(2)}</p>
+            <p className="text-xs text-zinc-500">{point.z}건 거래</p>
+          </div>
+        )}
+        className="mx-auto"
+      />
 
       <p className="text-xs text-zinc-500 text-center">
         X축: 위험 (표준편차), Y축: 평균 수익, 크기: 거래 수
@@ -610,7 +511,10 @@ const RiskReturnScatter = memo(function RiskReturnScatter({ trades }: RiskReturn
   )
 })
 
+// ============================================
 // 5. Risk Metrics Panel
+// ============================================
+
 interface RiskMetricsPanelProps {
   result: BacktestResult
 }
@@ -736,7 +640,10 @@ const RiskMetricsPanel = memo(function RiskMetricsPanel({ result }: RiskMetricsP
   )
 })
 
+// ============================================
 // Helper Components
+// ============================================
+
 interface StatBoxProps {
   label: string
   value: string
@@ -770,7 +677,10 @@ const EmptyState = memo(function EmptyState({ message }: { message: string }) {
   )
 })
 
+// ============================================
 // Utility Functions
+// ============================================
+
 function getRiskRating(sharpe: number, maxDD: number, recovery: number): string {
   const score = calculateRiskScore(sharpe, maxDD, recovery)
   if (score >= 80) return '매우 안전'
