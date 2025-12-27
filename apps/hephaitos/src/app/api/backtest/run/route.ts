@@ -13,6 +13,7 @@ import { getBacktestCost, useCredits } from '@/lib/credits/service'
 import { BacktestAgent } from '@/agents/backtest-agent'
 import { RealPriceDataService } from '@forge/core'
 import { InMemoryStrategyRepository, InMemoryBacktestResultRepository } from '@forge/core'
+import { backtestProgressStore } from '@/lib/backtest-progress-store'
 
 /**
  * 백테스트 실행 요청
@@ -132,13 +133,34 @@ export async function POST(request: NextRequest) {
       symbols: [symbol],
     }
 
-    // 7. 백테스트 실행 (실제 엔진)
+    const backtestId = backtestConfig.id
+
+    // 7. 진행 상황 추적 초기화
+    backtestProgressStore.initialize(backtestId)
+
+    // 8. 백테스트 실행 (실제 엔진)
     const priceDataService = new RealPriceDataService()
     const strategyRepo = new InMemoryStrategyRepository()
     const resultRepo = new InMemoryBacktestResultRepository()
 
     // 전략 저장
     await strategyRepo.create(strategy)
+
+    // 진행 상황 맵핑 (0-100% → 단계별)
+    const progressSteps = [
+      { range: [0, 10], step: 0, message: '전략 로드 중...' },
+      { range: [10, 20], step: 1, message: '가격 데이터 로드 중...' },
+      { range: [20, 80], step: 2, message: '시뮬레이션 실행 중...' },
+      { range: [80, 90], step: 3, message: '성과 지표 계산 중...' },
+      { range: [90, 100], step: 4, message: '결과 저장 중...' },
+    ]
+
+    const getStepInfo = (progress: number) => {
+      const step = progressSteps.find(
+        (s) => progress >= s.range[0] && progress < s.range[1]
+      )
+      return step || progressSteps[progressSteps.length - 1]
+    }
 
     // 백테스트 에이전트 실행
     const agent = new BacktestAgent(
@@ -147,7 +169,15 @@ export async function POST(request: NextRequest) {
       resultRepo,
       {
         onProgress: (progress, message) => {
-          console.log('Backtest progress:', progress, message)
+          const stepInfo = getStepInfo(progress)
+          backtestProgressStore.update(backtestId, {
+            status: 'running',
+            progress: Math.min(Math.round(progress), 100),
+            message: message || stepInfo.message,
+            currentStep: stepInfo.message,
+            currentStepIndex: stepInfo.step,
+          })
+          console.log(`[Backtest ${backtestId}] ${progress}% - ${message}`)
         },
       }
     )
@@ -155,6 +185,12 @@ export async function POST(request: NextRequest) {
     const backtestResult = await agent.runBacktest(backtestConfig)
 
     if (!backtestResult.success || !backtestResult.data) {
+      // 실패 시 진행 상황 업데이트
+      backtestProgressStore.markFailed(
+        backtestId,
+        backtestResult.error || '알 수 없는 에러'
+      )
+
       return NextResponse.json(
         {
           success: false,
@@ -167,7 +203,12 @@ export async function POST(request: NextRequest) {
 
     const result = backtestResult.data
 
-    // 8. 결과를 데이터베이스에 저장
+    // 9. 결과를 데이터베이스에 저장
+    backtestProgressStore.update(backtestId, {
+      progress: 95,
+      message: '결과 저장 중...',
+      currentStepIndex: 4,
+    })
     const { error: saveError } = await supabase.from('backtest_results').insert({
       user_id: user.id,
       strategy_id: strategy.id,
@@ -189,7 +230,10 @@ export async function POST(request: NextRequest) {
       console.error('Failed to save backtest result:', saveError)
     }
 
-    // 9. 응답 반환
+    // 10. 완료 처리
+    backtestProgressStore.markCompleted(backtestId, '백테스트가 완료되었습니다')
+
+    // 11. 응답 반환 (backtestId 포함)
     return NextResponse.json({
       success: true,
       message: '백테스트가 완료되었습니다',
@@ -220,11 +264,18 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Backtest run error:', error)
+
+    // 에러 발생 시 진행 상황 업데이트 (backtestId가 있는 경우)
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 에러'
+
+    // try-catch 내부에서 backtestId를 얻을 수 있는지 확인
+    // (에러가 백테스트 설정 생성 이후에 발생한 경우에만)
+
     return NextResponse.json(
       {
         success: false,
         error: '백테스트 실행 실패',
-        message: error instanceof Error ? error.message : '알 수 없는 에러',
+        message: errorMessage,
       },
       { status: 500 }
     )

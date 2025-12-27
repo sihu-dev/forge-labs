@@ -66,6 +66,7 @@ export function useBacktestAPI() {
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<BacktestResultAPI | null>(null)
+  const [backtestId, setBacktestId] = useState<string | null>(null)
 
   const runBacktest = useCallback(
     async (
@@ -78,6 +79,7 @@ export function useBacktestAPI() {
       setIsRunning(true)
       setError(null)
       setResult(null)
+      setBacktestId(null)
 
       try {
         const response = await fetch('/api/backtest/run', {
@@ -106,6 +108,11 @@ export function useBacktestAPI() {
           status: data.data.resultData ? 'completed' : data.data.status,
         }
 
+        // backtestId 저장 (진행 상황 추적용)
+        if (data.data.backtestId) {
+          setBacktestId(data.data.backtestId)
+        }
+
         setResult(backtestResult)
         return backtestResult
       } catch (err) {
@@ -122,6 +129,7 @@ export function useBacktestAPI() {
   const clearResult = useCallback(() => {
     setResult(null)
     setError(null)
+    setBacktestId(null)
   }, [])
 
   return {
@@ -130,5 +138,6 @@ export function useBacktestAPI() {
     isRunning,
     error,
     result,
+    backtestId,
   }
 }

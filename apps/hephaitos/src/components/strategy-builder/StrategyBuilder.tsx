@@ -70,6 +70,7 @@ import { AIStrategyGenerator } from './AIStrategyGenerator'
 import { StrategyPresets } from './StrategyPresets'
 import { BacktestConfigModal } from './BacktestConfigModal'
 import { BacktestResultModal } from '../backtest/BacktestResultModal'
+import { BacktestProgressModal } from '../backtest/BacktestProgressModal'
 
 // Hooks
 import { useBacktestAPI } from '@/hooks/use-backtest-api'
@@ -177,12 +178,13 @@ function StrategyBuilderInner() {
   const [showAIGenerator, setShowAIGenerator] = useState(false)
   const [showPresets, setShowPresets] = useState(false)
   const [showBacktestModal, setShowBacktestModal] = useState(false)
+  const [showProgressModal, setShowProgressModal] = useState(false)
   const [showResultModal, setShowResultModal] = useState(false)
 
   // Custom hooks
   const { isSaving, error: saveError, saveStrategy, loadStrategy } = useStrategyPersistence()
   const { canUndo, canRedo, undo, redo, takeSnapshot, clear: clearHistory } = useUndoRedo(initialNodes, initialEdges)
-  const { runBacktest, isRunning: isBacktestRunning, result: backtestResult, clearResult } = useBacktestAPI()
+  const { runBacktest, isRunning: isBacktestRunning, result: backtestResult, clearResult, backtestId } = useBacktestAPI()
   const toast = useToast()
   const { notify } = useNotifications()
 
@@ -387,6 +389,9 @@ function StrategyBuilderInner() {
 
   // 백테스트 실행
   const handleRunBacktest = useCallback(async (config: any) => {
+    setShowBacktestModal(false)
+    setShowProgressModal(true) // 진행 상황 모달 표시
+
     const result = await runBacktest(strategyName, nodes, edges, config)
 
     if (result) {
@@ -394,19 +399,27 @@ function StrategyBuilderInner() {
         '백테스트 완료',
         `전략 "${strategyName}"의 백테스트가 완료되었습니다`
       )
-      setShowBacktestModal(false)
 
-      // 결과가 있으면 결과 모달 표시
-      if (result.resultData) {
-        setShowResultModal(true)
-      }
+      // 진행 상황 모달은 자동으로 닫히고 결과 모달로 전환
+      setTimeout(() => {
+        setShowProgressModal(false)
+        if (result.resultData) {
+          setShowResultModal(true)
+        }
+      }, 1000) // 1초 대기 (완료 메시지 표시)
+
+      notify({
+        type: 'success',
+        message: '백테스트 완료',
+      })
     } else {
       toast.error(
         '백테스트 실패',
         '백테스트를 시작할 수 없습니다'
       )
+      setShowProgressModal(false)
     }
-  }, [strategyName, nodes, edges, runBacktest, toast])
+  }, [strategyName, nodes, edges, runBacktest, toast, notify])
 
   // Validate strategy and show results
   const handleValidate = useCallback(() => {
@@ -833,6 +846,19 @@ function StrategyBuilderInner() {
         onClose={() => setShowBacktestModal(false)}
         onRun={handleRunBacktest}
         isRunning={isBacktestRunning}
+      />
+
+      {/* Backtest Progress Modal */}
+      <BacktestProgressModal
+        isOpen={showProgressModal}
+        onClose={() => {
+          setShowProgressModal(false)
+          // 완료 시 결과 모달로 전환
+          if (backtestResult?.resultData) {
+            setShowResultModal(true)
+          }
+        }}
+        backtestId={backtestId}
       />
 
       {/* Backtest Result Modal */}
